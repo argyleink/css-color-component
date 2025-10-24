@@ -21,11 +21,6 @@
     <script type="module">
       // In dev we import source; in production you can import from 'dist/index.js'
       import '../src/index.ts'
-      window.addEventListener('DOMContentLoaded', () => {
-        const btn = document.getElementById('openBtn')
-        const picker = document.getElementById('picker')
-        btn?.addEventListener('click', () => picker?.show())
-      })
     </script>
   </head>
   <body>
@@ -40,7 +35,7 @@
           <h3>Basic usage</h3>
           <div class="row">
             <color-input id="picker" value="oklch(75% .3 180)" colorspace="oklch"></color-input>
-            <button id="openBtn">Open</button>
+            <button commandfor="picker" command="toggle-popover">Open</button>
           </div>
           <pre><code>&lt;script type="module"&gt;
 import 'color-input/dist/index.js'

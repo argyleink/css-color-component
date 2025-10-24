@@ -39,9 +39,8 @@ function gencolor(space: ColorSpace, ch: Record<string, string | number>) {
 
 function parseIntoChannels(space: ColorSpace, colorStr: string) {
   const c = new Color(colorStr)
-  const id = reverseColorJSSpaceID(c.space.id) as ColorSpace
-  let s: ColorSpace = id as any
-  if (s === 'rgb') s = 'srgb'
+  const id = reverseColorJSSpaceID(c.space.id) as string
+  const s = (id === 'rgb' ? 'srgb' : id) as ColorSpace
 
   const ch: Record<string, string | number> = {}
   if (s === 'oklab') {
@@ -124,7 +123,7 @@ template.innerHTML = `
     <span class="chip" part="chip"></span>
     <span class="label" part="label">Color</span>
   </button>
-  <div class="panel" popover="auto" part="panel" hidden>
+  <div class="panel" popover="auto" part="panel">
     <div class="preview">
       <div class="badges" part="badges">
         <span class="gamut" part="gamut"></span>
@@ -157,8 +156,8 @@ export class ColorInput extends HTMLElement {
     if (typeof v !== 'string' || !v) return
     try {
       const parsed = new Color(v)
-      const s = reverseColorJSSpaceID(parsed.space.id) as ColorSpace
-      this.#space.value = (s === 'rgb' ? 'srgb' : s)
+      const sid = reverseColorJSSpaceID(parsed.space.id) as string
+      this.#space.value = (sid === 'rgb' ? 'srgb' : (sid as ColorSpace))
       this.#value.value = v
       this.setAttribute('value', v)
       this.setAttribute('colorspace', this.#space.value)
@@ -196,6 +195,8 @@ export class ColorInput extends HTMLElement {
   // popover API
   show() { this.#panel?.showPopover?.(); }
   close() { this.#panel?.hidePopover?.(); }
+  // HTMLInputElement.showPicker() alignment for custom element consumers
+  showPicker() { this.show() }
 
   setAnchor(el: HTMLElement | null) { this.#anchor.value = el }
   set setColor(v: string) { this.value = v }
@@ -247,9 +248,24 @@ export class ColorInput extends HTMLElement {
       </optgroup>
     `
 
+    // internal trigger opens via click
     btn.addEventListener('click', () => this.show())
+
+    // Invoker Commands API: respond to command events addressed to the host
+    this.addEventListener('command', (ev: Event) => {
+      const command = (ev as any).command as string | undefined
+      if (!command) return
+      if (command === 'show-popover' || command === 'show') this.show()
+      else if (command === 'hide-popover' || command === 'close') this.close()
+      else if (command === 'toggle-popover' || command === 'toggle') {
+        if (this.#open.value) this.close(); else this.show()
+      }
+    })
+
     this.#panel?.addEventListener('toggle', () => {
-      const isOpen = !(this.#panel as HTMLElement).hasAttribute('hidden')
+      // Prefer native :popover-open; fall back to !hidden for polyfills
+      const el = this.#panel as HTMLElement
+      const isOpen = (el.matches?.(':popover-open') ?? false) || !el.hasAttribute('hidden')
       this.#open.value = isOpen
       this.dispatchEvent(new CustomEvent(isOpen ? 'open' : 'close', { bubbles: true }))
     })
@@ -286,9 +302,9 @@ export class ColorInput extends HTMLElement {
     if (name === 'value' && typeof value === 'string') {
       try {
         const parsed = new Color(value)
-        const s = reverseColorJSSpaceID(parsed.space.id) as ColorSpace
+        const sid = reverseColorJSSpaceID(parsed.space.id) as string
         this.#value.value = value
-        this.#space.value = (s === 'rgb' ? 'srgb' : s)
+        this.#space.value = (sid === 'rgb' ? 'srgb' : (sid as ColorSpace))
         if (this.#spaceSelect) this.#spaceSelect.value = this.#space.value
       } catch {}
     }
