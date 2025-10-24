@@ -1,0 +1,45 @@
+{
+  "name": "color-input",
+  "version": "0.1.0",
+  "description": "A standalone web component color picker using colorjs.io and preact signals.",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "main": "dist/index.js",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    "docs"
+  ],
+  "sideEffects": false,
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview --open",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@preact/signals-core": "^1.6.0",
+    "colorjs.io": "^0.5.2"
+  },
+  "devDependencies": {
+    "@types/jsdom": "^21.1.7",
+    "autoprefixer": "^10.4.19",
+    "jsdom": "^24.1.0",
+    "open-props": "^1.7.16",
+    "postcss": "^8.4.40",
+    "postcss-jit-props": "^1.0.14",
+    "typescript": "^5.6.2",
+    "vite": "^5.4.9",
+    "vitest": "^1.6.0"
+  }
+}

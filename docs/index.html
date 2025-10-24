@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>color-input – Web Component</title>
+    <meta name="description" content="A standalone web component color picker using colorjs.io and preact signals" />
+    <style>
+      :root { color-scheme: light dark; }
+      html, body { height: 100%; margin: 0; }
+      body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; display: grid; place-items: start center; gap: 24px; padding: 24px; }
+      header { max-width: 900px; }
+      main { display: grid; grid-template-columns: 1fr; gap: 24px; width: min(100%, 980px); }
+      section { background: var(--surface-2, #f7f7f7); padding: 16px; border-radius: 12px; }
+      pre { overflow: auto; background: #111; color: #eee; padding: 12px; border-radius: 8px; }
+      .row { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
+      .grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(280px,1fr)); gap: 16px; }
+      .card { padding: 12px; border-radius: 12px; background: var(--surface-1, #fff); box-shadow: 0 1px 4px #0001; }
+      footer { opacity: .7; font-size: 13px; }
+    </style>
+    <script type="module">
+      // In dev we import source; in production you can import from 'dist/index.js'
+      import '../src/index.ts'
+      window.addEventListener('DOMContentLoaded', () => {
+        const btn = document.getElementById('openBtn')
+        const picker = document.getElementById('picker')
+        btn?.addEventListener('click', () => picker?.show())
+      })
+    </script>
+  </head>
+  <body>
+    <header>
+      <h1>color-input</h1>
+      <p>A standalone web component color picker using <strong>colorjs.io</strong> and <strong>signals</strong>. Import one script, use one tag.</p>
+    </header>
+
+    <main>
+      <section class="grid">
+        <div class="card">
+          <h3>Basic usage</h3>
+          <div class="row">
+            <color-input id="picker" value="oklch(75% .3 180)" colorspace="oklch"></color-input>
+            <button id="openBtn">Open</button>
+          </div>
+          <pre><code>&lt;script type="module"&gt;
+import 'color-input/dist/index.js'
+&lt;/script&gt;
+
+&lt;color-input value="oklch(75% .3 180)" colorspace="oklch"&gt;&lt;/color-input&gt;</code></pre>
+        </div>
+
+        <div class="card">
+          <h3>Themes</h3>
+          <div class="row">
+            <color-input value="hsl(200 100% 50%)" theme="light"></color-input>
+            <color-input value="hsl(200 100% 50%)" theme="dark"></color-input>
+            <color-input value="hsl(200 100% 50%)"></color-input>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>Events</h3>
+          <div class="row">
+            <color-input id="evt"></color-input>
+          </div>
+          <pre><code>picker.addEventListener('change', (e) =&gt; {
+  const { value, colorspace } = e.detail
+  console.log(value, colorspace)
+})
+
+picker.addEventListener('open', () =&gt; console.log('open'))
+picker.addEventListener('close', () =&gt; console.log('close'))</code></pre>
+          <script type="module">
+            const el = document.getElementById('evt')
+            el.addEventListener('change', e => {
+              el.nextElementSibling?.remove?.()
+              const p = document.createElement('p')
+              p.textContent = `change: ${e.detail.value} (${e.detail.colorspace})`
+              el.parentElement?.appendChild(p)
+            })
+          </script>
+        </div>
+
+        <div class="card">
+          <h3>API</h3>
+          <ul>
+            <li>Attributes: <code>value</code>, <code>colorspace</code>, <code>theme</code></li>
+            <li>Properties: <code>value</code>, <code>colorspace</code>, <code>theme</code>, readonly: <code>gamut</code>, <code>contrastColor</code></li>
+            <li>Methods: <code>show()</code>, <code>close()</code>, <code>setAnchor(element)</code></li>
+            <li>Events: <code>change</code>, <code>open</code>, <code>close</code></li>
+          </ul>
+        </div>
+      </section>
+
+      <section class="card">
+        <h3>Notes</h3>
+        <ul>
+          <li>Popover and anchor positioning handled internally; set an anchor via <code>setAnchor(el)</code> (optional).</li>
+          <li>Open Props used in styles and compiled away with PostCSS.</li>
+          <li>Color math by colorjs.io; state updates by signals.</li>
+        </ul>
+      </section>
+    </main>
+
+    <footer>© 2025 color-input</footer>
+  </body>
+</html>
