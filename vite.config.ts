@@ -1,15 +1,16 @@
 import { defineConfig } from 'vite'
 import { resolve } from 'node:path'
 
-export default defineConfig(({ command }) => {
+export default defineConfig(({ command, mode }) => {
   const isServe = command === 'serve'
+  const isTest = mode === 'test' || process.env.VITEST
   return {
-    root: isServe ? 'docs' : '.',
+    root: isServe && !isTest ? 'docs' : '.',
     server: {
       open: true,
       fs: { allow: ['..'] }
     },
-    build: isServe ? undefined : {
+    build: isServe && !isTest ? undefined : {
       lib: {
         entry: resolve(__dirname, 'src/index.ts'),
         formats: ['es'],

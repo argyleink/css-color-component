@@ -133,48 +133,147 @@ function parseIntoChannels(space: ColorSpace, colorStr: string) {
 const template = document.createElement('template')
 template.innerHTML = `
   <style>
-    :host { display: inline-block; position: relative; }
+    /* Design tokens and system colors */
+    :host {
+      /* System colors */
+      --canvas: Canvas;
+      --canvas-text: CanvasText;
+      /* Radii */
+      --radius-2: 0.5rem;
+      --radius-3: 0.75rem;
+      --radius-round: 9999px;
+      /* Shadows */
+      --shadow-elev: 0 10px 30px rgba(0,0,0,.18);
+      --shadow-inner: inset 0 0 0 1px color-mix(in oklab, var(--canvas-text), transparent 94%);
+      /* Checkerboard for alpha previews */
+      --checker: repeating-conic-gradient(color-mix(in oklab, var(--canvas-text), transparent 90%) 0% 25%, transparent 0% 50%) 50%/1rem 1rem;
+      color-scheme: light dark;
+      display: inline-block;
+      position: relative;
+    }
     :host([hidden]) { display: none; }
-    
-    button.trigger { all: unset; cursor: pointer; padding: var(--size-2) var(--size-3); border-radius: var(--radius-2); background: var(--surface-2); box-shadow: var(--inner-shadow-0); }
-    .chip { inline-size: 1.25rem; block-size: 1.25rem; border-radius: 999px; box-shadow: inset 0 0 0 1px #0002; margin-inline-end: .5rem; background: linear-gradient(var(--value) 0 0), repeating-conic-gradient(#0000001a 0% 25%, transparent 0% 50%) 50%/1rem 1rem; }
-    .space { color: var(--contrast); border: 1px solid color-mix(in oklab, var(--counter), transparent 50%); outline: none; background: color-mix(in oklab, var(--counter) 25%, transparent); }
-    .space:is(:hover, :focus-visible) { border-color: color-mix(in oklab, var(--counter), transparent 30%); }
 
-    .panel { max-inline-size: min(92vw, 560px); border: 1px solid var(--surface-2); background: var(--surface-1); color: var(--text-1); box-shadow: var(--shadow-5); padding: 0; }
-    .panel[popover] { border: none; }
-
-    .preview { position: relative; aspect-ratio: 16 / 9; display: grid; align-content: end; justify-items: start; padding: 12px; box-shadow: var(--inner-shadow-0); background: linear-gradient(var(--value) 0 0), repeating-conic-gradient(#0000001a 0% 25%, transparent 0% 50%) 50%/1rem 1rem; gap: .5rem; }
-    .preview:hover .copy-btn, .preview:focus-within .copy-btn { opacity: 1; }
-    .copy-btn { position: absolute; top: .5rem; right: .5rem; background: rgba(0,0,0,.4); color: white; border: none; border-radius: .5rem; padding: .25rem; cursor: pointer; opacity: 0; transition: opacity .2s ease; display: inline-flex; align-items: center; }
-    .info { display: inline-flex; align-items: center; gap: .5rem; color: var(--contrast); padding: 4px 8px; border-radius: 9999px; background: transparent; }
-    .info:is(:hover,:focus-visible) { background: color-mix(in oklab, var(--counter) 25%, transparent); }
-    .gamut { background: transparent; color: var(--contrast); border-radius: 9999px; font-size: 12px; margin-block-start: .25rem; padding-inline: .25rem; }
-    .gamut:is(:hover,:focus-visible) { background: color-mix(in oklab, var(--counter) 25%, transparent); }
-
-    .controls { display: grid; gap: 8px; padding: 12px; background: var(--surface-2); border-radius: 10px; }
-    .control { display: grid; grid-template-columns: min-content 1fr minmax(60px, 80px); align-items: center; gap: 8px; }
-    .control label { font: 500 12px/1.2 var(--font-mono, ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace); }
-
-    /* Range slider base */
-    .control input[type="number"] { width: 100%; }
-
-    .control input[type="range"] {
-      width: 100%; height: 1rem; border-radius: 999px; background: var(--surface-1); box-shadow: var(--inner-shadow-0); appearance: none;
+    /* Trigger button */
+    button.trigger {
+      all: unset;
+      cursor: pointer;
+      padding: 0.5rem 0.75rem;
+      border-radius: var(--radius-2);
+      background: color-mix(in oklab, var(--canvas-text), var(--canvas) 92%);
+      box-shadow: var(--shadow-inner);
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      .chip {
+        inline-size: 1.25rem;
+        block-size: 1.25rem;
+        border-radius: var(--radius-round);
+        box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--canvas-text), transparent 92%);
+        margin-inline-end: .25rem;
+        background: linear-gradient(var(--value) 0 0), var(--checker);
+      }
     }
-    .control input[type="range"]::-webkit-slider-thumb {
-      cursor: grab; appearance: none; border: 4px solid #fff; height: calc(1rem + 8px); aspect-ratio: 1; border-radius: 9999px;
-      box-shadow: 0 6px 16px rgba(0,0,0,.25), inset 0 1px 2px rgba(0,0,0,.15);
-    }
-    .control input[type="range"]:active::-webkit-slider-thumb { cursor: grabbing; }
-    .control input[type="range"]::-moz-range-thumb {
-      cursor: grab; appearance: none; border: 4px solid #fff; height: calc(1rem + 8px); aspect-ratio: 1; border-radius: 9999px;
-      box-shadow: 0 6px 16px rgba(0,0,0,.25), inset 0 1px 2px rgba(0,0,0,.15);
-    }
-    .control input[type="range"]:active::-moz-range-thumb { cursor: grabbing; }
 
-    :host([theme="dark"]) .panel { background: #161616; color: #efefef; }
-    :host([theme="dark"]) .controls { background: #1f1f1f; }
+    /* Panel */
+    .panel {
+      max-inline-size: min(92vw, 560px);
+      background: var(--canvas);
+      color: var(--canvas-text);
+      box-shadow: var(--shadow-elev);
+      border-radius: var(--radius-3);
+      padding: 0;
+      &[popover] { border: none; }
+    }
+
+    /* Preview area */
+    .preview {
+      position: relative;
+      aspect-ratio: 16 / 9;
+      display: grid;
+      align-content: end;
+      justify-items: start;
+      padding: 0.75rem;
+      gap: 0.5rem;
+      box-shadow: var(--shadow-inner);
+      background: linear-gradient(var(--value) 0 0), var(--checker);
+      &:hover .copy-btn, &:focus-within .copy-btn { opacity: 1; }
+      .copy-btn {
+        position: absolute;
+        top: .5rem;
+        right: .5rem;
+        /* Match info/gamut colors */
+        background: color-mix(in oklab, var(--counter) 25%, transparent);
+        color: var(--contrast);
+        border: none;
+        border-radius: 0;
+        padding: 0;
+        cursor: pointer;
+        opacity: 0;
+        transition: opacity .2s ease;
+        display: inline-flex;
+        align-items: center;
+      }
+      .copy-btn svg { display: block; }
+    }
+
+    /* Colorspace select + badges */
+    .space {
+      align-self: start;
+      color: var(--contrast);
+      padding: .25rem .5rem;
+      border-radius: .4rem;
+      border: 1px solid color-mix(in oklab, var(--canvas-text), transparent 70%);
+      outline: none;
+      background: transparent;
+      &:is(:hover, :focus-visible) { background: color-mix(in oklab, var(--counter) 25%, transparent); }
+    }
+
+.gamut, .info {
+      display: inline-flex;
+      align-items: center;
+      gap: .5rem;
+      color: var(--contrast);
+      /* No padding/radius; background only on hover/focus */
+      background: transparent;
+      &:is(:hover,:focus-visible) { background: color-mix(in oklab, var(--counter) 25%, transparent); }
+    }
+    .gamut { font-size: 12px; margin-block-start: .25rem; }
+
+    /* Controls */
+    .controls {
+      display: grid;
+      gap: 0.5rem;
+      padding: 0.75rem;
+      background: color-mix(in oklab, var(--canvas-text), var(--canvas) 94%);
+      border-radius: 0 0 var(--radius-3) var(--radius-3);
+      .control {
+        display: grid;
+        grid-template-columns: min-content 1fr minmax(6ch, 10ch);
+        align-items: center;
+        gap: 0.5rem;
+        label { font: 500 12px/1.2 ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace; }
+        /* Range slider base (contextual track images are inline via style attr) */
+        input[type="number"] { width: 100%; font-size: 0.875rem; padding: .25rem .5rem; background: none; }
+        input[type="range"] {
+          width: 100%; height: 1rem; border-radius: 999px; background: var(--canvas); box-shadow: var(--shadow-inner); appearance: none;
+        }
+        /* Flattened pseudo-element selectors (no nesting) */
+        .control input[type="range"].alpha { background: linear-gradient(to right, #0000, #000), var(--checker); }
+        .control input[type="range"]::-webkit-slider-thumb {
+          cursor: grab; appearance: none; border: 2px solid var(--canvas-text); background: var(--canvas);
+          height: calc(1rem + 8px); aspect-ratio: 1; border-radius: var(--radius-round);
+          box-shadow: 0 6px 16px rgba(0,0,0,.25), inset 0 1px 2px rgba(0,0,0,.15);
+        }
+        .control input[type="range"]:active::-webkit-slider-thumb { cursor: grabbing; }
+        .control input[type="range"]::-moz-range-thumb {
+          cursor: grab; appearance: none; border: 2px solid var(--canvas-text); background: var(--canvas);
+          height: calc(1rem + 8px); aspect-ratio: 1; border-radius: var(--radius-round);
+          box-shadow: 0 6px 16px rgba(0,0,0,.25), inset 0 1px 2px rgba(0,0,0,.15);
+        }
+        .control input[type="range"]:active::-moz-range-thumb { cursor: grabbing; }
+        }
+      }
+    }
   </style>
   <button class="trigger" part="trigger" aria-haspopup="dialog">
     <span class="chip" part="chip"></span>
@@ -280,17 +379,20 @@ export class ColorInput extends HTMLElement {
   }
 
   connectedCallback() {
-    const btn = this.#root.querySelector<HTMLButtonElement>('button.trigger')!
-    this.#internalTrigger = btn
+    const btn = this.#root.querySelector<HTMLButtonElement>('button.trigger')
+    this.#internalTrigger = btn ?? undefined
     this.#panel = this.#root.querySelector('.panel') as any
     this.#controls = this.#root.querySelector('.controls') as HTMLElement
     this.#spaceSelect = this.#root.querySelector('.space') as HTMLSelectElement
     this.#output = this.#root.querySelector('output.info') as HTMLOutputElement
     this.#chip = this.#root.querySelector('.chip') as HTMLElement
+    // Copy to clipboard from preview button
     const copyBtn = this.#root.querySelector<HTMLButtonElement>('button.copy-btn')
-    copyBtn?.addEventListener('click', async () => {
-      try { await navigator.clipboard.writeText(this.#value.value) } catch {}
-    })
+    if (copyBtn) {
+      copyBtn.addEventListener('click', async () => {
+        try { await navigator.clipboard.writeText(this.#value.value) } catch {}
+      })
+    }
 
     // init space options
     this.#spaceSelect.innerHTML = `
@@ -318,7 +420,7 @@ export class ColorInput extends HTMLElement {
     `
 
     // internal trigger opens via click
-    btn.addEventListener('click', () => this.show(btn))
+    if (btn) btn.addEventListener('click', () => this.show(btn))
 
     // Invoker Commands API: respond to command events addressed to the host
     this.addEventListener('command', (ev: Event) => {

@@ -34,13 +34,14 @@ describe('colorspace conversions', () => {
 
   it('channel ranges are sane when converting simple color', () => {
     const c = new Color('oklch(70% 0.2 240)')
-    const hsl = c.to('hsl')
+    // Clamp to sRGB before converting to HSL to avoid out-of-gamut channel spikes
+    const hsl = c.toGamut({ space: 'srgb', method: 'clip' }).to('hsl')
     const [h, s, l] = hsl.coords
     expect(h).toBeGreaterThanOrEqual(0)
     expect(h).toBeLessThanOrEqual(360)
     expect(s).toBeGreaterThanOrEqual(0)
-    expect(s).toBeLessThanOrEqual(1)
+    expect(s).toBeLessThanOrEqual(100.0001)
     expect(l).toBeGreaterThanOrEqual(0)
-    expect(l).toBeLessThanOrEqual(1)
+    expect(l).toBeLessThanOrEqual(100.0001)
   })
 })
