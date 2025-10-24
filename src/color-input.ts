@@ -73,7 +73,12 @@ function gencolor(space: ColorSpace, ch: Record<string, string | number>) {
 }
 
 function parseIntoChannels(space: ColorSpace, colorStr: string) {
-  const c = new Color(colorStr)
+  let c = new Color(colorStr)
+  // Convert to target space if different
+  const targetId = getColorJSSpaceID(space)
+  if (c.space.id !== targetId) {
+    c = c.to(targetId)
+  }
   const id = reverseColorJSSpaceID(c.space.id) as string
   const s = (id === 'rgb' ? 'srgb' : id) as ColorSpace
 
@@ -105,14 +110,16 @@ function parseIntoChannels(space: ColorSpace, colorStr: string) {
   } else if (s === 'hsl') {
     const [h, s2, l] = c.coords
     ch.H = toFixed(h)
-    ch.S = toFixed(s2 * 100)
-    ch.L = toFixed(l * 100)
+    // colorjs.io returns 0-1 when parsing HSL strings, but 0-100 when converting from other spaces
+    ch.S = toFixed(s2 > 1 ? s2 : s2 * 100)
+    ch.L = toFixed(l > 1 ? l : l * 100)
     ch.ALP = toFixed(c.alpha * 100)
   } else if (s === 'hwb') {
     const [h, w, b] = c.coords
     ch.H = toFixed(h)
-    ch.W = toFixed(w * 100)
-    ch.B = toFixed(b * 100)
+    // colorjs.io returns 0-1 when parsing HWB strings, but 0-100 when converting from other spaces
+    ch.W = toFixed(w > 1 ? w : w * 100)
+    ch.B = toFixed(b > 1 ? b : b * 100)
     ch.ALP = toFixed(c.alpha * 100)
   } else if (s === 'srgb') {
     const [r, g, b] = c.toGamut({ space: 'srgb', method: 'clip' }).coords
@@ -253,14 +260,14 @@ template.innerHTML = `
         gap: 0.5rem;
         label { font: 500 12px/1.2 ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace; }
         /* Range slider base (contextual track images are inline via style attr) */
-        input[type="number"] { width: 100%; font-size: 0.875rem; padding: .25rem .5rem; background: none; }
+        input[type="number"] { max-width: 10ch; font-size: 0.875rem; padding: .25rem .5rem; background: none; border: 1px solid color-mix(in oklab, var(--canvas-text), transparent 80%); border-radius: 0.25rem; }
         input[type="range"] {
           width: 100%; height: 1rem; border-radius: 999px; background: var(--canvas); box-shadow: var(--shadow-inner); appearance: none;
         }
         /* Flattened pseudo-element selectors (no nesting) */
         .control input[type="range"].alpha { background: linear-gradient(to right, #0000, #000), var(--checker); }
         .control input[type="range"]::-webkit-slider-thumb {
-          cursor: grab; appearance: none; border: 2px solid var(--canvas-text); background: var(--canvas);
+          cursor: grab; appearance: none; border: 2px solid var(--canvas-text); background: Canvas;
           height: calc(1rem + 8px); aspect-ratio: 1; border-radius: var(--radius-round);
           box-shadow: 0 6px 16px rgba(0,0,0,.25), inset 0 1px 2px rgba(0,0,0,.15);
         }
@@ -326,11 +333,14 @@ export class ColorInput extends HTMLElement {
     const next = (s as ColorSpace) || DEFAULT_SPACE
     this.#space.value = next
     this.setAttribute('colorspace', next)
-    // convert current value to target space to preserve color (high precision)
+    // convert current value to target space to preserve color
     try {
       const current = new Color(this.#value.value)
       const converted = current.to(getColorJSSpaceID(next)).toGamut()
-      this.#value.value = converted.toString({ precision: 12 })
+      // Parse and regenerate using our formatters for proper precision
+      const tempStr = converted.toString({ precision: 12 })
+      const parsed = parseIntoChannels(next, tempStr)
+      this.#value.value = gencolor(next, parsed.ch)
       this.setAttribute('value', this.#value.value)
       this.#emitChange()
     } catch {}
@@ -439,7 +449,13 @@ export class ColorInput extends HTMLElement {
     this.#panel?.addEventListener('toggle', () => {
       // Prefer native :popover-open; fall back to !hidden for polyfills
       const el = this.#panel as HTMLElement
-      const isOpen = (el.matches?.(':popover-open') ?? false) || !el.hasAttribute('hidden')
+      let isOpen = false
+      try {
+        isOpen = el.matches?.(':popover-open') ?? false
+      } catch {
+        // jsdom doesn't support :popover-open pseudo-class
+      }
+      isOpen = isOpen || !el.hasAttribute('hidden')
       this.#open.value = isOpen
       if (isOpen) {
         const a = this.#anchor.value ?? this.#lastInvoker ?? this.#internalTrigger
@@ -547,7 +563,7 @@ export class ColorInput extends HTMLElement {
     const current = parseIntoChannels(space, this.#value.value)
     const ch = current.ch
 
-    const make = (label: string, key: string, min: number, max: number, step = 1, bg?: string) => {
+    const make = (label: string, key: string, min: number, max: number, step = 1, bg?: string, bgColor?: string) => {
       const wrapHue = key === 'H'
       const group = document.createElement('div')
       group.className = 'control'
@@ -559,8 +575,19 @@ export class ColorInput extends HTMLElement {
       range.max = String(max)
       range.step = String(step)
       if (bg) range.style.backgroundImage = bg
+      if (bgColor) range.style.backgroundColor = bgColor
       range.value = String(ch[key] ?? 0)
-      if (key === 'ALP') range.classList.add('alpha')
+      if (key === 'ALP') {
+        range.classList.add('alpha')
+        // Alpha slider shows transparent -> current color over checkerboard
+        try {
+          const c0 = gencolor(space, { ...ch, ALP: '0' })
+          const c1 = gencolor(space, { ...ch, ALP: '100' })
+          // Use appropriate interpolation color space for alpha gradient
+          const interpSpace = space === 'hsl' ? 'hsl' : (space === 'lch' ? 'lch' : (space === 'oklch' ? 'oklch' : 'oklab'))
+          range.style.background = `linear-gradient(to right in ${interpSpace}, ${c0}, ${c1}), var(--checker)`
+        } catch {}
+      }
       const num = document.createElement('input')
       num.type = 'number'
       num.min = String(min)
@@ -610,8 +637,10 @@ export class ColorInput extends HTMLElement {
     } else if (space === 'oklch') {
       this.#controls.append(
         make('L', 'L', 0, 100, 1, 'linear-gradient(in oklab to right, black, white)'),
-        make('C', 'C', 0, 0.5, 0.01),
-        make('H', 'H', 0, 360, 1, `linear-gradient(to right in oklch longer hue, oklch(95% ${ch.C ?? 0} 0), oklch(95% ${ch.C ?? 0} 0))`),
+        // Chroma: gray → max chroma at current L and H (interpolate in oklch)
+        make('C', 'C', 0, 0.5, 0.01, `linear-gradient(in oklch to right, oklch(${ch.L ?? 0}% 0 ${ch.H ?? 0}), oklch(${ch.L ?? 0}% 0.5 ${ch.H ?? 0}))`),
+        // Hue: full spectrum (simplified red → red per request)
+        make('H', 'H', 0, 360, 1, 'linear-gradient(to right in oklch longer hue, red, red)'),
         make('A', 'ALP', 0, 100, 1)
       )
     } else if (space === 'lab') {
@@ -624,36 +653,40 @@ export class ColorInput extends HTMLElement {
     } else if (space === 'lch') {
       this.#controls.append(
         make('L', 'L', 0, 100, 1, 'linear-gradient(in lab to right, black, white)'),
-        make('C', 'C', 0, 230, 1),
-        make('H', 'H', 0, 360, 1, `linear-gradient(to right in lch longer hue, lch(95% ${ch.C ?? 0} 0), lch(95% ${ch.C ?? 0} 0))`),
+        // Chroma: gray → max chroma at current L and H (interpolate in lch)
+        make('C', 'C', 0, 230, 1, `linear-gradient(in lch to right, lch(${ch.L ?? 0}% 0 ${ch.H ?? 0}), lch(${ch.L ?? 0}% 230 ${ch.H ?? 0}))`),
+        // Hue: full spectrum (simplified red → red per request)
+        make('H', 'H', 0, 360, 1, 'linear-gradient(to right in lch longer hue, red, red)'),
         make('A', 'ALP', 0, 100, 1)
       )
     } else if (space === 'hsl') {
       this.#controls.append(
-        make('H', 'H', 0, 360, 1, `linear-gradient(to right in hsl longer hue, hsl(0 ${ch.S ?? 0}% 50%), hsl(0 ${ch.S ?? 0}% 50%))`),
-        make('S', 'S', 0, 100, 1, `linear-gradient(to right in oklab, hsl(${ch.H ?? 0} 0% ${ch.L ?? 0}%), hsl(${ch.H ?? 0} 100% ${ch.L ?? 0}%))`),
-        make('L', 'L', 0, 100, 1, `linear-gradient(to right in oklab, hsl(${ch.H ?? 0} ${ch.S ?? 0}% 0%), hsl(${ch.H ?? 0} ${ch.S ?? 0}% 100%))`),
+        make('H', 'H', 0, 360, 1, 'linear-gradient(to right in hsl longer hue, red, red)'),
+        // Saturation: gray → fully saturated at current H and L (interpolate in hsl with full context)
+        make('S', 'S', 0, 100, 1, `linear-gradient(in hsl to right, hsl(${ch.H ?? 0} 0% ${ch.L ?? 50}% / 100%), hsl(${ch.H ?? 0} 100% ${ch.L ?? 50}% / 100%))`),
+        // Lightness: black → white at current H/S (interpolate in oklab)
+        make('L', 'L', 0, 100, 1, `linear-gradient(in oklab to right, hsl(${ch.H ?? 0} ${ch.S ?? 100}% 0%), hsl(${ch.H ?? 0} ${ch.S ?? 100}% 100%))`),
         make('A', 'ALP', 0, 100, 1)
       )
     } else if (space === 'hwb') {
       this.#controls.append(
         make('H', 'H', 0, 360, 1, 'linear-gradient(to right in hsl longer hue, red, red)'),
-        make('W', 'W', 0, 100, 1, 'linear-gradient(to right in oklab, #fff0, #fff)'),
-        make('B', 'B', 0, 100, 1, 'linear-gradient(to right in oklab, #0000, #000)'),
+        make('W', 'W', 0, 100, 1, 'linear-gradient(to right in oklab, #fff0, #fff)', 'black'),
+        make('B', 'B', 0, 100, 1, 'linear-gradient(to right in oklab, #0000, #000)', 'white'),
         make('A', 'ALP', 0, 100, 1)
       )
     } else if (space === 'srgb') {
       this.#controls.append(
-        make('R', 'R', 0, 100, 1, 'linear-gradient(to right in oklab, #f000, #f00)'),
-        make('G', 'G', 0, 100, 1, 'linear-gradient(to right in oklab, #0f00, #0f0)'),
-        make('B', 'B', 0, 100, 1, 'linear-gradient(to right in oklab, #00f0, #00f)'),
+        make('R', 'R', 0, 100, 1, 'linear-gradient(to right in oklab, #f000, #f00)', 'black'),
+        make('G', 'G', 0, 100, 1, 'linear-gradient(to right in oklab, #0f00, #0f0)', 'black'),
+        make('B', 'B', 0, 100, 1, 'linear-gradient(to right in oklab, #00f0, #00f)', 'black'),
         make('A', 'ALP', 0, 100, 1)
       )
     } else if (isRGBLike(space)) {
       this.#controls.append(
-        make('R', 'R', 0, 100, 1, 'linear-gradient(to right in oklab, #f000, #f00)'),
-        make('G', 'G', 0, 100, 1, 'linear-gradient(to right in oklab, #0f00, #0f0)'),
-        make('B', 'B', 0, 100, 1, 'linear-gradient(to right in oklab, #00f0, #00f)'),
+        make('R', 'R', 0, 100, 1, 'linear-gradient(to right in oklab, #f000, #f00)', 'black'),
+        make('G', 'G', 0, 100, 1, 'linear-gradient(to right in oklab, #0f00, #0f0)', 'black'),
+        make('B', 'B', 0, 100, 1, 'linear-gradient(to right in oklab, #00f0, #00f)', 'black'),
         make('A', 'ALP', 0, 100, 1)
       )
     }

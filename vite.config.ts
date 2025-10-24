@@ -25,6 +25,11 @@ export default defineConfig(({ command, mode }) => {
         }
       }
     },
-    css: { postcss: resolve(__dirname, 'postcss.config.cjs') }
+    css: { postcss: resolve(__dirname, 'postcss.config.cjs') },
+    test: {
+      environment: 'jsdom',
+      setupFiles: ['./tests/setup.ts'],
+      globals: true
+    }
   }
 })
