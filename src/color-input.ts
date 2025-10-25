@@ -258,27 +258,38 @@ template.innerHTML = `
         grid-template-columns: min-content 1fr minmax(6ch, 10ch);
         align-items: center;
         gap: 0.5rem;
-        label { font: 500 12px/1.2 ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace; }
-        /* Range slider base (contextual track images are inline via style attr) */
-        input[type="number"] { max-width: 10ch; font-size: 0.875rem; padding: .25rem .5rem; background: none; border: 1px solid color-mix(in oklab, var(--canvas-text), transparent 80%); border-radius: 0.25rem; }
-        input[type="range"] {
-          width: 100%; height: 1rem; border-radius: 999px; background: var(--canvas); box-shadow: var(--shadow-inner); appearance: none;
-        }
-        /* Flattened pseudo-element selectors (no nesting) */
-        .control input[type="range"].alpha { background: linear-gradient(to right, #0000, #000), var(--checker); }
-        .control input[type="range"]::-webkit-slider-thumb {
-          cursor: grab; appearance: none; border: 2px solid var(--canvas-text); background: Canvas;
-          height: calc(1rem + 8px); aspect-ratio: 1; border-radius: var(--radius-round);
-          box-shadow: 0 6px 16px rgba(0,0,0,.25), inset 0 1px 2px rgba(0,0,0,.15);
-        }
-        .control input[type="range"]:active::-webkit-slider-thumb { cursor: grabbing; }
-        .control input[type="range"]::-moz-range-thumb {
-          cursor: grab; appearance: none; border: 2px solid var(--canvas-text); background: var(--canvas);
-          height: calc(1rem + 8px); aspect-ratio: 1; border-radius: var(--radius-round);
-          box-shadow: 0 6px 16px rgba(0,0,0,.25), inset 0 1px 2px rgba(0,0,0,.15);
-        }
-        .control input[type="range"]:active::-moz-range-thumb { cursor: grabbing; }
-        }
+      }
+      .control label { 
+        font: 500 12px/1.2 ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace; 
+      }
+      .control input[type="number"] { 
+        max-width: 10ch; font-size: 0.875rem; padding: .25rem .5rem; background: none; 
+        border: 1px solid color-mix(in oklab, var(--canvas-text), transparent 80%); 
+        border-radius: 0.25rem; 
+      }
+      .control input[type="range"] {
+        width: 100%; height: 1rem; border-radius: 999px; 
+        background: var(--canvas); box-shadow: var(--shadow-inner); appearance: none;
+      }
+      .control input[type="range"].alpha { 
+        background: linear-gradient(to right, #0000, #000), var(--checker); 
+      }
+      /* Slider thumb styles */
+      .control input[type="range"]::-webkit-slider-thumb {
+        cursor: grab; appearance: none; border: 4px solid white;
+        height: calc(1rem + 8px); aspect-ratio: 1; border-radius: var(--radius-round);
+        box-shadow: 0 6px 16px rgba(0,0,0,.25), inset 0 1px 2px rgba(0,0,0,.15);
+      }
+      .control input[type="range"]:active::-webkit-slider-thumb { 
+        cursor: grabbing; 
+      }
+      .control input[type="range"]::-moz-range-thumb {
+        cursor: grab; appearance: none; border: 4px solid white;
+        height: calc(1rem + 8px); aspect-ratio: 1; border-radius: var(--radius-round);
+        box-shadow: 0 6px 16px rgba(0,0,0,.25), inset 0 1px 2px rgba(0,0,0,.15);
+      }
+      .control input[type="range"]:active::-moz-range-thumb { 
+        cursor: grabbing; 
       }
     }
   </style>
