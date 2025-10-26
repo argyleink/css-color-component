@@ -137,6 +137,231 @@ function parseIntoChannels(space: ColorSpace, colorStr: string) {
   return { space: s, ch }
 }
 
+// ──────────────────────────────────────────────────────────────────────────────
+// Positioning utilities
+// ──────────────────────────────────────────────────────────────────────────────
+
+const VIEWPORT_MARGIN = 8
+const GUTTER = 8
+
+type Placement =
+  | 'bottom-center' | 'top-center'
+  | 'right-start' | 'left-start'
+  | 'bottom-left' | 'bottom-right'
+  | 'top-left' | 'top-right'
+
+interface Rect {
+  left: number
+  top: number
+  right: number
+  bottom: number
+  width: number
+  height: number
+}
+
+interface Size {
+  width: number
+  height: number
+}
+
+interface Candidate {
+  placement: Placement
+  left: number
+  top: number
+  right: number
+  bottom: number
+}
+
+let cachedInsets: { top: number; right: number; bottom: number; left: number } | null = null
+
+function getSafeAreaInsets(): { top: number; right: number; bottom: number; left: number } {
+  if (cachedInsets) return cachedInsets
+
+  const probe = document.createElement('div')
+  probe.style.position = 'fixed'
+  probe.style.left = '-9999px'
+  probe.style.top = '0'
+  probe.style.paddingTop = 'env(safe-area-inset-top)'
+  probe.style.paddingRight = 'env(safe-area-inset-right)'
+  probe.style.paddingBottom = 'env(safe-area-inset-bottom)'
+  probe.style.paddingLeft = 'env(safe-area-inset-left)'
+  document.documentElement.appendChild(probe)
+
+  const computed = getComputedStyle(probe)
+  const top = parseFloat(computed.paddingTop) || 0
+  const right = parseFloat(computed.paddingRight) || 0
+  const bottom = parseFloat(computed.paddingBottom) || 0
+  const left = parseFloat(computed.paddingLeft) || 0
+
+  document.documentElement.removeChild(probe)
+  cachedInsets = { top, right, bottom, left }
+  return cachedInsets
+}
+
+function getViewportClampRect(insets: { top: number; right: number; bottom: number; left: number }): Rect {
+  const vw = window.visualViewport?.width ?? window.innerWidth
+  const vh = window.visualViewport?.height ?? window.innerHeight
+  const scrollX = window.pageXOffset || document.documentElement.scrollLeft
+  const scrollY = window.pageYOffset || document.documentElement.scrollTop
+
+  const left = insets.left + VIEWPORT_MARGIN + scrollX
+  const top = insets.top + VIEWPORT_MARGIN + scrollY
+  const right = vw - insets.right - VIEWPORT_MARGIN + scrollX
+  const bottom = vh - insets.bottom - VIEWPORT_MARGIN + scrollY
+
+  return {
+    left,
+    top,
+    right,
+    bottom,
+    width: right - left,
+    height: bottom - top,
+  }
+}
+
+function computeCandidates(anchor: Rect, size: Size): Candidate[] {
+  const { width: w, height: h } = size
+  const placements: Candidate[] = [
+    {
+      placement: 'bottom-center',
+      left: anchor.left + anchor.width / 2 - w / 2,
+      top: anchor.bottom + GUTTER,
+      right: 0, bottom: 0
+    },
+    {
+      placement: 'top-center',
+      left: anchor.left + anchor.width / 2 - w / 2,
+      top: anchor.top - GUTTER - h,
+      right: 0, bottom: 0
+    },
+    {
+      placement: 'right-start',
+      left: anchor.right + GUTTER,
+      top: anchor.top,
+      right: 0, bottom: 0
+    },
+    {
+      placement: 'left-start',
+      left: anchor.left - GUTTER - w,
+      top: anchor.top,
+      right: 0, bottom: 0
+    },
+    {
+      placement: 'bottom-left',
+      left: anchor.left,
+      top: anchor.bottom + GUTTER,
+      right: 0, bottom: 0
+    },
+    {
+      placement: 'bottom-right',
+      left: anchor.right - w,
+      top: anchor.bottom + GUTTER,
+      right: 0, bottom: 0
+    },
+    {
+      placement: 'top-left',
+      left: anchor.left,
+      top: anchor.top - GUTTER - h,
+      right: 0, bottom: 0
+    },
+    {
+      placement: 'top-right',
+      left: anchor.right - w,
+      top: anchor.top - GUTTER - h,
+      right: 0, bottom: 0
+    },
+  ]
+
+  // Compute right and bottom for each
+  placements.forEach((p) => {
+    p.right = p.left + w
+    p.bottom = p.top + h
+  })
+
+  return placements
+}
+
+function findFirstFitOrMaxArea(
+  candidates: Candidate[],
+  viewport: Rect,
+  lastPlacement: Placement | null
+): Candidate {
+  // Check if last placement still fits (for stability)
+  if (lastPlacement) {
+    const last = candidates.find((c) => c.placement === lastPlacement)
+    if (last && fitsInside(last, viewport)) {
+      return last
+    }
+  }
+
+  // First pass: find first that fully fits
+  for (const c of candidates) {
+    if (fitsInside(c, viewport)) {
+      return c
+    }
+  }
+
+  // Second pass: choose candidate with maximum visible area
+  let best = candidates[0]
+  let maxArea = visibleArea(best, viewport)
+
+  for (let i = 1; i < candidates.length; i++) {
+    const area = visibleArea(candidates[i], viewport)
+    if (area > maxArea) {
+      maxArea = area
+      best = candidates[i]
+    }
+  }
+
+  return best
+}
+
+function fitsInside(candidate: Candidate, viewport: Rect): boolean {
+  return (
+    candidate.left >= viewport.left &&
+    candidate.top >= viewport.top &&
+    candidate.right <= viewport.right &&
+    candidate.bottom <= viewport.bottom
+  )
+}
+
+function visibleArea(candidate: Candidate, viewport: Rect): number {
+  const left = Math.max(candidate.left, viewport.left)
+  const top = Math.max(candidate.top, viewport.top)
+  const right = Math.min(candidate.right, viewport.right)
+  const bottom = Math.min(candidate.bottom, viewport.bottom)
+
+  if (right <= left || bottom <= top) return 0
+  return (right - left) * (bottom - top)
+}
+
+function getScrollParents(el: HTMLElement): Element[] {
+  const parents: Element[] = []
+  let current: Element | null = el.parentElement
+
+  while (current && current !== document.documentElement) {
+    const style = getComputedStyle(current)
+    const overflowY = style.overflowY
+    const overflowX = style.overflowX
+
+    if (
+      (overflowY === 'auto' || overflowY === 'scroll' || overflowX === 'auto' || overflowX === 'scroll') &&
+      (current.scrollHeight > current.clientHeight || current.scrollWidth > current.clientWidth)
+    ) {
+      parents.push(current)
+    }
+
+    current = current.parentElement
+  }
+
+  // Always include document scrolling element
+  if (document.scrollingElement) {
+    parents.push(document.scrollingElement)
+  }
+
+  return parents
+}
+
 const template = document.createElement('template')
 template.innerHTML = `
   <style>
@@ -183,6 +408,7 @@ template.innerHTML = `
 
     /* Panel */
     .panel {
+      margin: 0;
       max-inline-size: min(92vw, 560px);
       background: var(--canvas);
       color: var(--canvas-text);
@@ -371,8 +597,7 @@ export class ColorInput extends HTMLElement {
 
   // popover API
   show(anchor?: HTMLElement | null) {
-    const a = anchor ?? this.#anchor.value ?? this.#internalTrigger
-    if (a) this.#positionPanel(a)
+    if (anchor) this.#anchor.value = anchor
     this.#panel?.showPopover?.();
     this.#startReposition()
   }
@@ -469,8 +694,6 @@ export class ColorInput extends HTMLElement {
       isOpen = isOpen || !el.hasAttribute('hidden')
       this.#open.value = isOpen
       if (isOpen) {
-        const a = this.#anchor.value ?? this.#lastInvoker ?? this.#internalTrigger
-        if (a) this.#positionPanel(a)
         this.#startReposition()
       } else {
         this.#stopReposition()
@@ -531,41 +754,180 @@ export class ColorInput extends HTMLElement {
     this.dispatchEvent(new CustomEvent<ChangeDetail>('change', { detail, bubbles: true }))
   }
 
-  #startReposition() {
-    const fn = () => {
-      const a = this.#anchor.value ?? this.#lastInvoker ?? this.#internalTrigger
-      if (a) this.#positionPanel(a)
-    }
-    this.#onReposition = fn
-    window.addEventListener('resize', fn)
-    window.addEventListener('scroll', fn, true)
-  }
-  #stopReposition() {
-    if (!this.#onReposition) return
-    window.removeEventListener('resize', this.#onReposition)
-    window.removeEventListener('scroll', this.#onReposition, true)
-    this.#onReposition = undefined
-  }
-  #onReposition?: () => void
+  // ──────────────────────────────────────────────────────────────────────────────
+  // Positioning system
+  // ──────────────────────────────────────────────────────────────────────────────
 
-  #positionPanel(anchorEl: HTMLElement) {
-    if (!this.#panel) return
-    const rect = anchorEl.getBoundingClientRect()
-    const panel = this.#panel as HTMLElement
-    const margin = 8
-    const vw = window.innerWidth
-    const vh = window.innerHeight
-    // ensure measured size
-    const w = panel.offsetWidth || 320
-    const h = panel.offsetHeight || 240
-    let left = Math.min(Math.max(rect.left + rect.width / 2 - w / 2, margin), vw - w - margin)
-    let top = rect.bottom + margin
-    if (top + h + margin > vh && rect.top - h - margin >= margin) {
-      top = rect.top - h - margin
+  #lastPlacement: Placement | null = null
+  #lastPanelSize: Size | null = null
+  #cleanup: Array<() => void> = []
+  #rafId: number | null = null
+
+  #startReposition() {
+    if (this.#cleanup.length) return // already started
+    this.#scheduleReposition()
+
+    const anchor = this.#anchor.value ?? this.#lastInvoker ?? this.#internalTrigger
+    if (!anchor || !this.#panel) return
+
+    // ResizeObserver for anchor, panel, and documentElement
+    if (typeof ResizeObserver !== 'undefined') {
+      const ro = new ResizeObserver(() => this.#scheduleReposition())
+      ro.observe(anchor)
+      ro.observe(this.#panel)
+      ro.observe(document.documentElement)
+      this.#cleanup.push(() => ro.disconnect())
+    } else {
+      const onResize = () => this.#scheduleReposition()
+      window.addEventListener('resize', onResize)
+      this.#cleanup.push(() => window.removeEventListener('resize', onResize))
     }
-    panel.style.position = 'fixed'
+
+    // VisualViewport events
+    if (window.visualViewport) {
+      const onVV = () => this.#scheduleReposition()
+      window.visualViewport.addEventListener('resize', onVV)
+      window.visualViewport.addEventListener('scroll', onVV)
+      this.#cleanup.push(() => {
+        window.visualViewport?.removeEventListener('resize', onVV)
+        window.visualViewport?.removeEventListener('scroll', onVV)
+      })
+    }
+
+    // Scroll parents
+    const scrollParents = getScrollParents(anchor)
+    scrollParents.forEach((sp) => {
+      const onScroll = () => this.#scheduleReposition()
+      sp.addEventListener('scroll', onScroll, { passive: true })
+      this.#cleanup.push(() => sp.removeEventListener('scroll', onScroll))
+    })
+
+    // IntersectionObserver for anchor visibility
+    if (typeof IntersectionObserver !== 'undefined') {
+      const io = new IntersectionObserver(() => this.#scheduleReposition(), { threshold: 0 })
+      io.observe(anchor)
+      this.#cleanup.push(() => io.disconnect())
+    }
+  }
+
+  #stopReposition() {
+    this.#cleanup.forEach((fn) => fn())
+    this.#cleanup = []
+    if (this.#rafId !== null) {
+      cancelAnimationFrame(this.#rafId)
+      this.#rafId = null
+    }
+  }
+
+  #scheduleReposition() {
+    if (this.#rafId !== null) return
+    this.#rafId = requestAnimationFrame(() => {
+      this.#rafId = null
+      this.#positionNow()
+    })
+  }
+
+  #positionNow() {
+    if (!this.#panel) return
+    const panel = this.#panel as HTMLElement
+
+    // Read phase
+    const anchorRect = this.#getAnchorRect()
+    const insets = getSafeAreaInsets()
+    const viewport = getViewportClampRect(insets)
+    const size = this.#measurePanel(panel)
+
+    // Compute candidates
+    const candidates = computeCandidates(anchorRect, size)
+
+    // Pick best placement
+    const pick = findFirstFitOrMaxArea(candidates, viewport, this.#lastPlacement)
+    this.#lastPlacement = pick.placement
+
+    // Clamp within viewport
+    const left = Math.round(Math.min(Math.max(pick.left, viewport.left), viewport.right - size.width))
+    const top = Math.round(Math.min(Math.max(pick.top, viewport.top), viewport.bottom - size.height))
+
+    // Enforce max height if needed
+    const maxPanelHeight = viewport.bottom - viewport.top
+    if (size.height > maxPanelHeight) {
+      panel.style.maxHeight = `${maxPanelHeight}px`
+      panel.style.overflow = 'auto'
+    } else if (panel.style.maxHeight) {
+      panel.style.maxHeight = ''
+      panel.style.overflow = ''
+    }
+
+    // Write phase
+    panel.style.position = 'absolute'
     panel.style.left = `${left}px`
     panel.style.top = `${top}px`
+    panel.style.setProperty('--ci-panel-placement', pick.placement)
+    panel.dataset.placement = pick.placement
+  }
+
+  #getAnchorRect(): Rect {
+    const anchor = this.#anchor.value ?? this.#lastInvoker ?? this.#internalTrigger ?? this
+    const scrollX = window.pageXOffset || document.documentElement.scrollLeft
+    const scrollY = window.pageYOffset || document.documentElement.scrollTop
+    
+    if (!anchor.isConnected) {
+      // Fallback to viewport center
+      const vw = window.visualViewport?.width ?? window.innerWidth
+      const vh = window.visualViewport?.height ?? window.innerHeight
+      const cx = vw / 2 + scrollX
+      const cy = vh / 2 + scrollY
+      return { left: cx, top: cy, right: cx, bottom: cy, width: 0, height: 0 }
+    }
+    const rect = anchor.getBoundingClientRect()
+    return {
+      left: rect.left + scrollX,
+      top: rect.top + scrollY,
+      right: rect.right + scrollX,
+      bottom: rect.bottom + scrollY,
+      width: rect.width,
+      height: rect.height,
+    }
+  }
+
+  #measurePanel(panel: HTMLElement): Size {
+    const rect = panel.getBoundingClientRect()
+    if (rect.width > 0 && rect.height > 0) {
+      this.#lastPanelSize = { width: rect.width, height: rect.height }
+      return this.#lastPanelSize
+    }
+
+    // Force layout for measurement
+    const saved = {
+      display: panel.style.display,
+      position: panel.style.position,
+      left: panel.style.left,
+      top: panel.style.top,
+      visibility: panel.style.visibility,
+      maxHeight: panel.style.maxHeight,
+    }
+    panel.style.display = 'block'
+    panel.style.position = 'absolute'
+    panel.style.left = '-99999px'
+    panel.style.top = '0'
+    panel.style.visibility = 'hidden'
+    panel.style.maxHeight = 'none'
+
+    const rect2 = panel.getBoundingClientRect()
+    panel.style.display = saved.display
+    panel.style.position = saved.position
+    panel.style.left = saved.left
+    panel.style.top = saved.top
+    panel.style.visibility = saved.visibility
+    panel.style.maxHeight = saved.maxHeight
+
+    if (rect2.width > 0 && rect2.height > 0) {
+      this.#lastPanelSize = { width: rect2.width, height: rect2.height }
+      return this.#lastPanelSize
+    }
+
+    // Fallback to cached or hardcoded default
+    return this.#lastPanelSize ?? { width: 560, height: 400 }
   }
 
   #renderControls() {
