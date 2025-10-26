@@ -426,7 +426,7 @@ template.innerHTML = `
       align-content: end;
       justify-items: start;
       padding: 0.75rem;
-      gap: 0.5rem;
+      gap: .25lh;
       box-shadow: var(--shadow-inner);
       background: linear-gradient(var(--value) 0 0), var(--checker);
       &:hover .copy-btn, &:focus-within .copy-btn { opacity: 1; }
@@ -451,13 +451,15 @@ template.innerHTML = `
 
     /* Colorspace select + badges */
     .space {
-      align-self: start;
+      appearance: base-select;
+      min-block-size: 1lh;
+      font-size: 12px;
+      margin: 0;
+      padding: 0;
       color: var(--contrast);
-      padding: .25rem .5rem;
-      border-radius: .4rem;
-      border: 1px solid color-mix(in oklab, var(--canvas-text), transparent 70%);
-      outline: none;
       background: transparent;
+      border-radius: 0;
+      border: none;
       &:is(:hover, :focus-visible) { background: color-mix(in oklab, var(--counter) 25%, transparent); }
     }
 
@@ -470,18 +472,17 @@ template.innerHTML = `
       background: transparent;
       &:is(:hover,:focus-visible) { background: color-mix(in oklab, var(--counter) 25%, transparent); }
     }
-    .gamut { font-size: 12px; margin-block-start: .25rem; }
+    .gamut { font-size: 12px; }
 
     /* Controls */
     .controls {
       display: grid;
       gap: 0.5rem;
       padding: 0.75rem;
-      background: color-mix(in oklab, var(--canvas-text), var(--canvas) 94%);
       border-radius: 0 0 var(--radius-3) var(--radius-3);
       .control {
         display: grid;
-        grid-template-columns: min-content 1fr minmax(6ch, 10ch);
+        grid-template-columns: min-content 1fr 4.5ch;
         align-items: center;
         gap: 0.5rem;
       }
@@ -489,9 +490,18 @@ template.innerHTML = `
         font: 500 12px/1.2 ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace; 
       }
       .control input[type="number"] { 
-        max-width: 10ch; font-size: 0.875rem; padding: .25rem .5rem; background: none; 
+        font-size: 0.8rem; padding: .25rem .5rem; background: none; 
         border: 1px solid color-mix(in oklab, var(--canvas-text), transparent 80%); 
         border-radius: 0.25rem; 
+        -moz-appearance: textfield;
+        font-variant: tabular-nums;
+        font-family: monospace;
+    
+        &::-webkit-outer-spin-button,
+        &::-webkit-inner-spin-button {
+          -webkit-appearance: none;
+          margin: 0;
+        }
       }
       .control input[type="range"] {
         width: 100%; height: 1rem; border-radius: 999px; 
@@ -529,8 +539,8 @@ template.innerHTML = `
         <svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M5 22q-.825 0-1.413-.588T3 20V6h2v14h11v2H5Zm4-4q-.825 0-1.413-.588T7 16V4q0-.825.588-1.413T9 2h9q.825 0 1.413.588T20 4v12q0 .825-.588 1.413T18 18H9Z"/></svg>
       </button>
       <select class="space" title="Colorspace"></select>
-      <span class="gamut" part="gamut"></span>
       <output class="info" part="output"></output>
+      <span class="gamut" part="gamut"></span>
     </div>
     <div class="controls" part="controls"></div>
   </div>
