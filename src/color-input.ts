@@ -20,9 +20,18 @@ export interface ChangeDetail { value: string; colorspace: ColorSpace }
 const DEFAULT_VALUE = 'oklch(75% 75% 180)'
 const DEFAULT_SPACE: ColorSpace = 'oklch'
 
+// ──────────────────────────────────────────────────────────────────────────────
+// Channel formatting utilities
+// ──────────────────────────────────────────────────────────────────────────────
+// Convert numeric channel values to strings with space-appropriate precision.
+
+/** Round number to fixed decimals and remove trailing zeros from the string representation. */
 function toFixed(n: number, digits = 0) { return Number(n.toFixed(digits)).toString() }
 
+/** Strip trailing zeros from decimal strings (e.g., "1.500" → "1.5", "2.00" → "2"). */
 function trimZeros(s: string) { return s.replace(/\.0+($|\D)/, '$1').replace(/(\.\d*?)0+($|\D)/, '$1$2') }
+
+/** Format a channel value to appropriate precision for the given color space and channel name. */
 function formatChannel(space: ColorSpace, key: string, val: number) {
   const round = (n: number, d = 0) => Number(n.toFixed(d))
   if (space === 'oklab') {
@@ -47,6 +56,8 @@ function formatChannel(space: ColorSpace, key: string, val: number) {
   return String(round(val, 2))
 }
 
+/** Generate a CSS color string from channel values and color space identifier.
+ * Handles percentage/angle notation and alpha transparency per CSS Color spec. */
 function gencolor(space: ColorSpace, ch: Record<string, string | number>) {
   const L = (ch.L ?? 50) as any
   const A = (ch.A ?? 0) as any
@@ -72,6 +83,8 @@ function gencolor(space: ColorSpace, ch: Record<string, string | number>) {
   }
 }
 
+/** Parse a CSS color string into its component channels for a target color space.
+ * Converts between spaces if necessary, normalizes channel ranges, and handles missing hue. */
 function parseIntoChannels(space: ColorSpace, colorStr: string) {
   let c = new Color(colorStr)
   // Convert to target space if different
@@ -138,8 +151,11 @@ function parseIntoChannels(space: ColorSpace, colorStr: string) {
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
-// Positioning utilities
+// Positioning system: Intelligent popover placement
 // ──────────────────────────────────────────────────────────────────────────────
+// Computes optimal popover position relative to an anchor, respecting viewport
+// bounds, safe areas, and scroll containers. Tries multiple placements and picks
+// the one that maximizes visible area while maintaining placement stability.
 
 const VIEWPORT_MARGIN = 8
 const GUTTER = 8
@@ -174,6 +190,8 @@ interface Candidate {
 
 let cachedInsets: { top: number; right: number; bottom: number; left: number } | null = null
 
+/** Detect CSS safe area insets (for notched/rounded displays) via a probe element.
+ * Caches result after first call. */
 function getSafeAreaInsets(): { top: number; right: number; bottom: number; left: number } {
   if (cachedInsets) return cachedInsets
 
@@ -198,6 +216,7 @@ function getSafeAreaInsets(): { top: number; right: number; bottom: number; left
   return cachedInsets
 }
 
+/** Calculate the usable viewport rectangle after accounting for safe areas and margin. */
 function getViewportClampRect(insets: { top: number; right: number; bottom: number; left: number }): Rect {
   const vw = window.visualViewport?.width ?? window.innerWidth
   const vh = window.visualViewport?.height ?? window.innerHeight
@@ -219,6 +238,7 @@ function getViewportClampRect(insets: { top: number; right: number; bottom: numb
   }
 }
 
+/** Generate all possible placement candidates (bottom-center, top-center, etc.) for a popover of given size. */
 function computeCandidates(anchor: Rect, size: Size): Candidate[] {
   const { width: w, height: h } = size
   const placements: Candidate[] = [
@@ -281,6 +301,8 @@ function computeCandidates(anchor: Rect, size: Size): Candidate[] {
   return placements
 }
 
+/** Select the best placement candidate: prefer the last placement if still valid (stability),
+ * otherwise pick the first that fully fits, or the one with maximum visible area. */
 function findFirstFitOrMaxArea(
   candidates: Candidate[],
   viewport: Rect,
@@ -316,6 +338,7 @@ function findFirstFitOrMaxArea(
   return best
 }
 
+/** Check if a candidate placement fully fits within the viewport bounds. */
 function fitsInside(candidate: Candidate, viewport: Rect): boolean {
   return (
     candidate.left >= viewport.left &&
@@ -325,6 +348,7 @@ function fitsInside(candidate: Candidate, viewport: Rect): boolean {
   )
 }
 
+/** Calculate the visible area (in px²) of a candidate that intersects with the viewport. */
 function visibleArea(candidate: Candidate, viewport: Rect): number {
   const left = Math.max(candidate.left, viewport.left)
   const top = Math.max(candidate.top, viewport.top)
@@ -335,6 +359,7 @@ function visibleArea(candidate: Candidate, viewport: Rect): number {
   return (right - left) * (bottom - top)
 }
 
+/** Walk up the DOM tree to find all scrollable ancestor containers of an element. */
 function getScrollParents(el: HTMLElement): Element[] {
   const parents: Element[] = []
   let current: Element | null = el.parentElement
