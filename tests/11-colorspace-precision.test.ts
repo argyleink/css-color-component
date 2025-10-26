@@ -20,24 +20,24 @@ describe('colorspace conversion precision', () => {
     el.colorspace = 'oklch'
     
     const value = el.value
-    // Should not have excessive decimal places like oklch(53.8987696988% 0.174846879646 239.949946663)
-    // Extract the numbers from the oklch string
-    const match = value.match(/oklch\(([\d.]+)%?\s+([\d.]+)\s+([\d.]+)/)
+    // Should produce oklch with percentage chroma like oklch(54% 29% 240)
+    // Extract the numbers from the oklch string with percentage for chroma
+    const match = value.match(/oklch\(([\d.]+)%\s+([\d.]+)%\s+([\d.]+)/)
     expect(match).toBeTruthy()
     
     if (match) {
       const [, l, c, h] = match
-      // L should have at most 2 decimal places (stored as integer 0-100)
+      // L should be integer 0-100
       expect(l).toMatch(/^\d+$/)
-      // C should have at most 2 decimal places
-      expect(c).toMatch(/^\d+\.?\d{0,2}$/)
-      // H should have at most 0 decimal places (integer)
+      // C should be integer 0-100 (percentage)
+      expect(c).toMatch(/^\d+$/)
+      // H should be integer 0-360
       expect(h).toMatch(/^\d+$/)
     }
   })
 
   it('converting from oklch to hsl produces reasonable precision', () => {
-    el.value = 'oklch(75% 0.3 180)'
+    el.value = 'oklch(75% 30% 180)' // Use new percentage format
     expect(el.colorspace).toBe('oklch')
     
     // Switch to hsl
@@ -82,8 +82,9 @@ describe('colorspace conversion precision', () => {
     el.colorspace = 'lch'
     
     const value = el.value
-    // Extract the numbers from the lch string
-    const match = value.match(/lch\(([\d.]+)%?\s+([\d.]+)\s+([\d.]+)/)
+    // LCH now outputs percentage chroma like oklch
+    // Format: lch(L% C% H)
+    const match = value.match(/lch\(([\d.]+)%\s+([\d.]+)%\s+([\d.]+)/)
     expect(match).toBeTruthy()
     
     if (match) {
@@ -96,7 +97,7 @@ describe('colorspace conversion precision', () => {
   })
 
   it('converting between multiple colorspaces maintains reasonable precision', () => {
-    el.value = 'oklch(75% 0.3 180)'
+    el.value = 'oklch(75% 30% 180)' // Use new percentage format
     
     // Convert through multiple spaces
     el.colorspace = 'hsl'

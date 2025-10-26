@@ -17,7 +17,7 @@ export type ColorSpace =
 
 export interface ChangeDetail { value: string; colorspace: ColorSpace }
 
-const DEFAULT_VALUE = 'oklch(75% .3 180)'
+const DEFAULT_VALUE = 'oklch(75% 75% 180)'
 const DEFAULT_SPACE: ColorSpace = 'oklch'
 
 function toFixed(n: number, digits = 0) { return Number(n.toFixed(digits)).toString() }
@@ -30,13 +30,13 @@ function formatChannel(space: ColorSpace, key: string, val: number) {
     if (key === 'A' || key === 'B') return String(round(val, 2))
   } else if (space === 'oklch') {
     if (key === 'L') return String(round(val, 0))
-    if (key === 'C') return String(round(val, 2))
+    if (key === 'C') return String(round(val, 0)) // 0-100 percentage
     if (key === 'H') return String(round(val, 0))
   } else if (space === 'lab') {
     if (key === 'L') return String(round(val, 0))
     if (key === 'A' || key === 'B') return String(round(val, 0))
   } else if (space === 'lch') {
-    if (key === 'L' || key === 'C' || key === 'H') return String(round(val, 0))
+    if (key === 'L' || key === 'C' || key === 'H') return String(round(val, 0)) // C is 0-100 scale
   } else if (space === 'hsl' || space === 'hwb') {
     if (key === 'H') return String(round(val, 0))
     if (key === 'S' || key === 'L' || key === 'W' || key === 'B') return String(round(val, 0))
@@ -60,9 +60,9 @@ function gencolor(space: ColorSpace, ch: Record<string, string | number>) {
   const ALP = (ch.ALP ?? 100) as any
   switch (space) {
     case 'oklab': return `oklab(${L}% ${A} ${B}${alphaToString(ALP)})`
-    case 'oklch': return `oklch(${L}% ${C} ${H}${alphaToString(ALP)})`
+    case 'oklch': return `oklch(${L}% ${C}% ${H}${alphaToString(ALP)})` // Chroma as percentage
     case 'lab':   return `lab(${L}% ${A} ${B}${alphaToString(ALP)})`
-    case 'lch':   return `lch(${L}% ${C} ${H}${alphaToString(ALP)})`
+    case 'lch':   return `lch(${L}% ${C}% ${H}${alphaToString(ALP)})` // Chroma as percentage
     case 'hsl':   return `hsl(${H} ${S}% ${L}%${alphaToString(ALP)})`
     case 'hwb':   return `hwb(${H} ${W}% ${B}%${alphaToString(ALP)})`
     case 'srgb':  return `rgb(${R}% ${G}% ${B}%${alphaToString(ALP)})`
@@ -92,7 +92,7 @@ function parseIntoChannels(space: ColorSpace, colorStr: string) {
   } else if (s === 'oklch') {
     const [l, cc, h] = c.coords
     ch.L = toFixed(l * 100)
-    ch.C = toFixed(cc, 2)
+    ch.C = toFixed(Math.min(100, cc * 100), 0) // Convert to 0-100%, clamp at 100%
     ch.H = isNaN(h) ? '0' : toFixed(h)
     ch.ALP = toFixed(c.alpha * 100)
   } else if (s === 'lab') {
@@ -104,7 +104,7 @@ function parseIntoChannels(space: ColorSpace, colorStr: string) {
   } else if (s === 'lch') {
     const [l, cc, h] = c.coords
     ch.L = toFixed(l)
-    ch.C = toFixed(cc)
+    ch.C = toFixed(Math.min(100, cc / 1.5), 0) // Normalize 0-150 to 0-100%, clamp at 100%
     ch.H = toFixed(h)
     ch.ALP = toFixed(c.alpha * 100)
   } else if (s === 'hsl') {
@@ -362,6 +362,12 @@ function getScrollParents(el: HTMLElement): Element[] {
   return parents
 }
 
+// ──────────────────────────────────────────────────────────────────────────────
+// Shadow DOM Template
+// ──────────────────────────────────────────────────────────────────────────────
+// Defines the component's internal structure and encapsulated styles.
+// Layout: trigger button + popover panel (preview area + controls).
+
 const template = document.createElement('template')
 template.innerHTML = `
   <style>
@@ -385,7 +391,7 @@ template.innerHTML = `
     }
     :host([hidden]) { display: none; }
 
-    /* Trigger button */
+    /* Trigger button: externally visible chip + label that opens the picker */
     button.trigger {
       all: unset;
       cursor: pointer;
@@ -406,7 +412,7 @@ template.innerHTML = `
       }
     }
 
-    /* Panel */
+    /* Panel: popover container for preview + controls; positioned via Popover API */
     .panel {
       margin: 0;
       max-inline-size: min(92vw, 560px);
@@ -418,10 +424,11 @@ template.innerHTML = `
       &[popover] { border: none; }
     }
 
-    /* Preview area */
+    /* Preview area: visual swatch + colorspace selector + current value output + gamut badge */
     .preview {
       position: relative;
       aspect-ratio: 16 / 9;
+      min-inline-size: 25ch;
       display: grid;
       align-content: end;
       justify-items: start;
@@ -434,10 +441,9 @@ template.innerHTML = `
         position: absolute;
         top: .5rem;
         right: .5rem;
-        /* Match info/gamut colors */
-        background: color-mix(in oklab, var(--counter) 25%, transparent);
         color: var(--contrast);
-        border: none;
+        background: none;
+        border: 1px solid #0000;
         border-radius: 0;
         padding: 0;
         cursor: pointer;
@@ -449,7 +455,7 @@ template.innerHTML = `
       .copy-btn svg { display: block; }
     }
 
-    /* Colorspace select + badges */
+    /* Colorspace select: dropdown for switching color models (rgb, oklch, lab, etc.) */
     .space {
       appearance: base-select;
       min-block-size: 1lh;
@@ -463,6 +469,8 @@ template.innerHTML = `
       &:is(:hover, :focus-visible) { background: color-mix(in oklab, var(--counter) 25%, transparent); }
     }
 
+/* Gamut badge: displays detected color gamut (srgb/p3/rec2020/xyz) */
+/* Info output: shows the current CSS color string */
 .gamut, .info {
       display: inline-flex;
       align-items: center;
@@ -474,7 +482,7 @@ template.innerHTML = `
     }
     .gamut { font-size: 12px; }
 
-    /* Controls */
+    /* Controls: dynamically generated sliders + numeric inputs for each channel in the selected color space */
     .controls {
       display: grid;
       gap: 0.5rem;
@@ -482,16 +490,27 @@ template.innerHTML = `
       border-radius: 0 0 var(--radius-3) var(--radius-3);
       .control {
         display: grid;
-        grid-template-columns: min-content 1fr 4.5ch;
+        grid-template-columns: min-content 1fr 4ch;
         align-items: center;
         gap: 0.5rem;
+      }
+      .control .num-wrapper {
+        position: relative;
+        display: flex;
+        align-items: center;
+      }
+      .control .num-wrapper sup {
+        opacity: 0.5;
+        font-size: 10px;
+        place-self: start;
       }
       .control label { 
         font: 500 12px/1.2 ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace; 
       }
       .control input[type="number"] { 
-        font-size: 0.8rem; padding: .25rem .5rem; background: none; 
-        border: 1px solid color-mix(in oklab, var(--canvas-text), transparent 80%); 
+        text-align: end;
+        font-size: 12px; padding: 0; background: none; 
+        border: 1px solid #0000; 
         border-radius: 0.25rem; 
         -moz-appearance: textfield;
         font-variant: tabular-nums;
@@ -514,7 +533,7 @@ template.innerHTML = `
       .control input[type="range"]::-webkit-slider-thumb {
         cursor: grab; appearance: none; border: 4px solid white;
         height: calc(1rem + 8px); aspect-ratio: 1; border-radius: var(--radius-round);
-        box-shadow: 0 6px 16px rgba(0,0,0,.25), inset 0 1px 2px rgba(0,0,0,.15);
+        box-shadow: 0 0px 1px 1px rgba(0,0,0,.25), inset 0 1px 2px rgba(0,0,0,.15);
       }
       .control input[type="range"]:active::-webkit-slider-thumb { 
         cursor: grabbing; 
@@ -522,7 +541,7 @@ template.innerHTML = `
       .control input[type="range"]::-moz-range-thumb {
         cursor: grab; appearance: none; border: 4px solid white;
         height: calc(1rem + 8px); aspect-ratio: 1; border-radius: var(--radius-round);
-        box-shadow: 0 6px 16px rgba(0,0,0,.25), inset 0 1px 2px rgba(0,0,0,.15);
+        box-shadow: 0 0px 1px 1px rgba(0,0,0,.25), inset 0 1px 2px rgba(0,0,0,.15);
       }
       .control input[type="range"]:active::-moz-range-thumb { 
         cursor: grabbing; 
@@ -540,7 +559,7 @@ template.innerHTML = `
       </button>
       <select class="space" title="Colorspace"></select>
       <output class="info" part="output"></output>
-      <span class="gamut" part="gamut"></span>
+      <span class="gamut" title="Color's gamut" part="gamut"></span>
     </div>
     <div class="controls" part="controls"></div>
   </div>
@@ -550,14 +569,25 @@ template.innerHTML = `
 export class ColorInput extends HTMLElement {
   static get observedAttributes() { return ['value', 'colorspace', 'theme'] }
 
-  // signals
+  // ──────────────────────────────────────────────────────────────────────────────
+  // State: Reactive signals (Preact Signals Core)
+  // ──────────────────────────────────────────────────────────────────────────────
+  // #value: current CSS color string (canonical representation)
+  // #space: selected color space (e.g., 'oklch', 'srgb', 'display-p3')
+  // #theme: UI theme ('auto' | 'light' | 'dark')
+  // #open: popover open/closed state
+  // #anchor: optional external element to anchor positioning to
+  //
+  // Derived signals:
+  // #contrast: computed legible contrast color ('white' | 'black') for preview text
+  // #gamut: computed smallest gamut containing the color ('srgb' | 'p3' | 'rec2020' | 'xyz')
+
   #value = signal<string>(DEFAULT_VALUE)
   #space = signal<ColorSpace>(DEFAULT_SPACE)
   #theme = signal<Theme>('auto')
   #open = signal(false)
   #anchor: Signal<HTMLElement | null> = signal(null)
 
-  // derived
   #contrast = computed(() => contrastColor(this.#value.value))
   #gamut = computed(() => detectGamut(this.#value.value))
 
@@ -618,6 +648,18 @@ export class ColorInput extends HTMLElement {
   setAnchor(el: HTMLElement | null) { this.#anchor.value = el }
   set setColor(v: string) { this.value = v }
   set setAnchorElement(el: HTMLElement | null) { this.setAnchor(el) }
+
+  // ──────────────────────────────────────────────────────────────────────────────
+  // DOM references: Cached shadow DOM elements for efficient updates
+  // ──────────────────────────────────────────────────────────────────────────────
+  // #root: shadow root container
+  // #panel: popover panel container (with Popover API methods)
+  // #controls: container for channel sliders/inputs (dynamically populated)
+  // #spaceSelect: colorspace dropdown in preview
+  // #output: <output> displaying current CSS color string
+  // #chip: color swatch on trigger button
+  // #internalTrigger: built-in trigger button
+  // #lastInvoker: last external button that invoked the picker (for anchoring)
 
   #root: ShadowRoot
   #panel?: HTMLElement & { showPopover?: () => void; hidePopover?: () => void }
@@ -716,7 +758,12 @@ export class ColorInput extends HTMLElement {
       this.#renderControls()
     })
 
-    // Effects
+    // ──────────────────────────────────────────────────────────────────────────────
+    // Reactive effect: Sync signal state → DOM
+    // ──────────────────────────────────────────────────────────────────────────────
+    // Updates chip, output, gamut badge, and CSS custom properties whenever
+    // value, gamut, or contrast signals change.
+
     effect(() => {
       const v = this.#value.value
       const gamut = this.#gamut.value
@@ -940,6 +987,13 @@ export class ColorInput extends HTMLElement {
     return this.#lastPanelSize ?? { width: 560, height: 400 }
   }
 
+  // ──────────────────────────────────────────────────────────────────────────────
+  // Control rendering: Dynamically generate sliders + numeric inputs per color space
+  // ──────────────────────────────────────────────────────────────────────────────
+  // Each space defines its own channels (e.g., H/S/L for HSL, L/C/H for OKLCH).
+  // The `make` helper creates a label + range slider + numeric input trio with
+  // synchronized two-way binding and optional gradient backgrounds.
+
   #renderControls() {
     const space = this.#space.value
     if (!this.#controls) return
@@ -948,6 +1002,9 @@ export class ColorInput extends HTMLElement {
 
     const make = (label: string, key: string, min: number, max: number, step = 1, bg?: string, bgColor?: string) => {
       const wrapHue = key === 'H'
+      const isPercentage = ['L', 'S', 'C', 'W', 'B', 'R', 'G', 'ALP'].includes(key)
+      const isAngle = key === 'H'
+      
       const group = document.createElement('div')
       group.className = 'control'
       const lab = document.createElement('label')
@@ -977,6 +1034,16 @@ export class ColorInput extends HTMLElement {
       num.max = String(max)
       num.step = String(step)
       num.value = String(ch[key] ?? 0)
+      
+      // Wrap number input with unit suffix
+      const numWrapper = document.createElement('div')
+      numWrapper.className = 'num-wrapper'
+      numWrapper.appendChild(num)
+      if (isPercentage || isAngle) {
+        const unit = document.createElement('sup')
+        unit.textContent = isAngle ? '°' : '%'
+        numWrapper.appendChild(unit)
+      }
 
       const apply = () => {
         const next = gencolor(space, ch)
@@ -1004,7 +1071,7 @@ export class ColorInput extends HTMLElement {
 
       range.addEventListener('input', onInput)
       num.addEventListener('input', onInput)
-      group.append(lab, range, num)
+      group.append(lab, range, numWrapper)
       return group
     }
 
@@ -1020,8 +1087,8 @@ export class ColorInput extends HTMLElement {
     } else if (space === 'oklch') {
       this.#controls.append(
         make('L', 'L', 0, 100, 1, 'linear-gradient(in oklab to right, black, white)'),
-        // Chroma: gray → max chroma at current L and H (interpolate in oklch)
-        make('C', 'C', 0, 0.5, 0.01, `linear-gradient(in oklch to right, oklch(${ch.L ?? 0}% 0 ${ch.H ?? 0}), oklch(${ch.L ?? 0}% 0.5 ${ch.H ?? 0}))`),
+        // Chroma: 0-100% (gray → highly saturated)
+        make('C', 'C', 0, 100, 1, `linear-gradient(in oklch to right, oklch(${ch.L ?? 0}% 0% ${ch.H ?? 0}), oklch(${ch.L ?? 0}% 100% ${ch.H ?? 0}))`),
         // Hue: full spectrum (simplified red → red per request)
         make('H', 'H', 0, 360, 1, 'linear-gradient(to right in oklch longer hue, red, red)'),
         make('A', 'ALP', 0, 100, 1)
@@ -1036,8 +1103,8 @@ export class ColorInput extends HTMLElement {
     } else if (space === 'lch') {
       this.#controls.append(
         make('L', 'L', 0, 100, 1, 'linear-gradient(in lab to right, black, white)'),
-        // Chroma: gray → max chroma at current L and H (interpolate in lch)
-        make('C', 'C', 0, 230, 1, `linear-gradient(in lch to right, lch(${ch.L ?? 0}% 0 ${ch.H ?? 0}), lch(${ch.L ?? 0}% 230 ${ch.H ?? 0}))`),
+        // Chroma: 0-100% (gray → highly saturated)
+        make('C', 'C', 0, 100, 1, `linear-gradient(in lch to right, lch(${ch.L ?? 0}% 0% ${ch.H ?? 0}), lch(${ch.L ?? 0}% 100% ${ch.H ?? 0}))`),
         // Hue: full spectrum (simplified red → red per request)
         make('H', 'H', 0, 360, 1, 'linear-gradient(to right in lch longer hue, red, red)'),
         make('A', 'ALP', 0, 100, 1)
