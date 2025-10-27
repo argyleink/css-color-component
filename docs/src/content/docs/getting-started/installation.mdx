@@ -1,0 +1,120 @@
+---
+title: Installation
+description: How to install and set up color-input in your project
+---
+
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+
+## Package Managers
+
+Install `color-input` using your preferred package manager:
+
+<Tabs>
+  <TabItem label="npm">
+    ```sh
+    npm install color-input
+    ```
+  </TabItem>
+  <TabItem label="pnpm">
+    ```sh
+    pnpm add color-input
+    ```
+  </TabItem>
+  <TabItem label="yarn">
+    ```sh
+    yarn add color-input
+    ```
+  </TabItem>
+</Tabs>
+
+## Import the Module
+
+Once installed, import the module in your JavaScript or TypeScript file:
+
+```js
+import 'color-input'
+```
+
+This registers the `<color-input>` custom element globally. You only need to import it once in your application.
+
+:::tip[Framework Usage]
+In React, Vue, Svelte, or other frameworks, import the module in your app's entry point (e.g., `main.js`, `index.js`, or `_app.js`). The custom element will then be available in all components.
+:::
+
+## CDN
+
+For quick prototyping or static sites, you can load `color-input` directly from a CDN:
+
+<Tabs>
+  <TabItem label="esm.sh">
+    ```html
+    <script type="module">
+      import 'https://esm.sh/color-input@latest'
+    </script>
+    ```
+  </TabItem>
+  <TabItem label="unpkg">
+    ```html
+    <script type="module">
+      import 'https://unpkg.com/color-input@latest/dist/index.js'
+    </script>
+    ```
+  </TabItem>
+  <TabItem label="jsDelivr">
+    ```html
+    <script type="module">
+      import 'https://cdn.jsdelivr.net/npm/color-input@latest/dist/index.js'
+    </script>
+    ```
+  </TabItem>
+</Tabs>
+
+:::caution
+For production, pin to a specific version instead of using `@latest`:
+```html
+<script type="module">
+  import 'https://esm.sh/color-input@0.1.0'
+</script>
+```
+:::
+
+## Bundler Setup
+
+### Vite
+
+No additional configuration needed. Import the module and use the custom element:
+
+```js
+import 'color-input'
+```
+
+### Webpack
+
+Works out of the box with modern Webpack configurations. Ensure your build targets ES2019+:
+
+```js
+// webpack.config.js
+module.exports = {
+  target: ['web', 'es2019'],
+  // ...
+}
+```
+
+### TypeScript
+
+Types are included. For full type safety, ensure your `tsconfig.json` includes:
+
+```json
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "ESNext",
+    "lib": ["ES2020", "DOM"]
+  }
+}
+```
+
+## Next Steps
+
+- [Quick Start](/getting-started/quick-start) - Create your first color picker
+- [Concepts](/getting-started/concepts) - Understand color spaces, gamut, and popovers

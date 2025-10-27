@@ -1,0 +1,12 @@
+{
+  "extends": "astro/tsconfigs/strict",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "color-input": ["../src/index.ts"]
+    },
+    "types": ["vite/client"]
+  },
+  "include": [".astro/types.d.ts", "src", "src/content", "astro.config.mjs", "**/*.mdx", "**/*.astro"],
+  "exclude": ["dist"]
+}

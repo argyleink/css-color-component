@@ -1,0 +1,149 @@
+---
+interface Props {
+  value?: string;
+  colorspace?: string;
+  theme?: 'auto' | 'light' | 'dark';
+  showCode?: boolean;
+  description?: string;
+}
+
+const {
+  value = 'oklch(75% 0.3 180)',
+  colorspace = 'oklch',
+  theme = 'auto',
+  showCode = true,
+  description
+} = Astro.props;
+
+const demoId = `demo-${Math.random().toString(36).substr(2, 9)}`;
+---
+
+<div class="demo color-input-demo" data-demo-id={demoId}>
+  {description && <p class="demo-description">{description}</p>}
+  
+  <div class="demo-row">
+    <color-input
+      id={demoId}
+      value={value}
+      colorspace={colorspace}
+      theme={theme}
+    ></color-input>
+    <button type="button" commandfor={demoId} command="toggle-popover">Open Picker</button>
+  </div>
+
+  <dl class="readout" aria-live="polite" aria-atomic="true">
+    <dt>Value</dt>
+    <dd data-readout="value">{value}</dd>
+    <dt>Color Space</dt>
+    <dd data-readout="colorspace">{colorspace}</dd>
+    <dt>Gamut</dt>
+    <dd data-readout="gamut">—</dd>
+    <dt>Contrast Color</dt>
+    <dd>
+      <span class="swatch swatch-sm" data-readout="contrast-swatch"></span>
+      <code data-readout="contrast-color">—</code>
+    </dd>
+  </dl>
+
+  {showCode && (
+    <details class="code-details">
+      <summary class="code-toggle">View Code</summary>
+      <div class="code-content">
+        <pre><code>&lt;color-input
+  value="{value}"
+  colorspace="{colorspace}"
+  theme="{theme}"
+&gt;&lt;/color-input&gt;</code></pre>
+      </div>
+    </details>
+  )}
+</div>
+
+<script>
+  function initDemo(demoId: string) {
+    const container = document.querySelector(`[data-demo-id="${demoId}"]`);
+    if (!container) return;
+
+    const picker = container.querySelector('color-input');
+    if (!picker) return;
+
+    const valueReadout = container.querySelector('[data-readout="value"]');
+    const colorspaceReadout = container.querySelector('[data-readout="colorspace"]');
+    const gamutReadout = container.querySelector('[data-readout="gamut"]');
+    const contrastColorReadout = container.querySelector('[data-readout="contrast-color"]');
+    const contrastSwatch = container.querySelector('[data-readout="contrast-swatch"]') as HTMLElement;
+
+    function updateReadout() {
+      if (valueReadout) valueReadout.textContent = picker.value || '—';
+      if (colorspaceReadout) colorspaceReadout.textContent = picker.colorspace || '—';
+      if (gamutReadout) gamutReadout.textContent = picker.gamut || '—';
+      if (contrastColorReadout) contrastColorReadout.textContent = picker.contrastColor || '—';
+      if (contrastSwatch && picker.contrastColor) {
+        contrastSwatch.style.backgroundColor = picker.contrastColor;
+      }
+    }
+
+    picker.addEventListener('change', updateReadout);
+    
+    // Initial update after a brief delay to ensure the element is upgraded
+    requestAnimationFrame(() => {
+      setTimeout(updateReadout, 100);
+    });
+  }
+
+  // Initialize on load
+  document.addEventListener('DOMContentLoaded', () => {
+    const demos = document.querySelectorAll('.color-input-demo');
+    demos.forEach((demo) => {
+      const demoId = demo.getAttribute('data-demo-id');
+      if (demoId) initDemo(demoId);
+    });
+  });
+
+  // Re-initialize for view transitions
+  document.addEventListener('astro:page-load', () => {
+    const demos = document.querySelectorAll('.color-input-demo');
+    demos.forEach((demo) => {
+      const demoId = demo.getAttribute('data-demo-id');
+      if (demoId) initDemo(demoId);
+    });
+  });
+</script>
+
+<style>
+  .demo-description {
+    margin: 0 0 1rem 0;
+    color: var(--sl-color-gray-2);
+  }
+
+  .code-details {
+    margin-top: 1rem;
+  }
+
+  .code-details[open] .code-toggle::after {
+    content: ' ▲';
+  }
+
+  .code-details:not([open]) .code-toggle::after {
+    content: ' ▼';
+  }
+
+  .code-content {
+    margin-top: 1rem;
+  }
+
+  .code-content pre {
+    margin: 0;
+    padding: 1rem;
+    background: var(--sl-color-bg-inline-code);
+    border-radius: 8px;
+    border: 1px solid var(--sl-color-hairline);
+    overflow-x: auto;
+  }
+
+  .code-content code {
+    font-family: ui-monospace, 'Cascadia Code', 'Source Code Pro', Menlo, Consolas, 'DejaVu Sans Mono', monospace;
+    font-size: 0.875rem;
+    line-height: 1.6;
+  }
+</style>

@@ -1,0 +1,49 @@
+---
+title: Methods
+description: Control the color picker with JavaScript methods
+---
+
+## Overview
+
+The `<color-input>` element provides three methods:
+
+- `show()` - Opens the picker popover
+- `close()` - Closes the picker popover
+- `setAnchor(element)` - Sets a custom anchor for positioning
+
+## show()
+
+Opens the picker popover programmatically:
+
+```js
+const picker = document.querySelector('color-input');
+picker.show();
+```
+
+This is equivalent to clicking the trigger button. An `open` event is fired when the popover opens.
+
+## close()
+
+Closes the picker popover:
+
+```js
+picker.close();
+```
+
+A `close` event is fired when the popover closes.
+
+## setAnchor(element)
+
+Sets a custom anchor element for popover positioning:
+
+```js
+const customAnchor = document.querySelector('#my-anchor');
+picker.setAnchor(customAnchor);
+```
+
+By default, the popover positions relative to the trigger button. Use `setAnchor()` to position relative to a different element.
+
+## Next Steps
+
+- [Events](/api/events) - Listen for open, close, and change events
+- [Properties](/api/properties) - Read and write properties dynamically

@@ -1,0 +1,88 @@
+---
+title: Events
+description: Listen to change, open, and close events from the color picker
+---
+
+import EventLogger from '../../../components/EventLogger.astro';
+
+## Overview
+
+The `<color-input>` element dispatches three custom events:
+
+- **`change`** - Fired when the color value changes
+- **`open`** - Fired when the picker popover opens
+- **`close`** - Fired when the picker popover closes
+
+## change
+
+The `change` event fires whenever the user adjusts the color. The event detail contains the new value, color space, and detected gamut.
+
+### Event Detail
+
+```ts
+interface ChangeDetail {
+  value: string;      // CSS color string, e.g., "oklch(70% 0.2 240)"
+  colorspace: string; // Current color space, e.g., "oklch"
+  gamut: string;      // Detected gamut: "srgb", "p3", "rec2020", or "xyz"
+}
+```
+
+### Example
+
+```js
+const picker = document.querySelector('color-input');
+
+picker.addEventListener('change', (event) => {
+  const { value, colorspace, gamut } = event.detail;
+  console.log(`New color: ${value}`);
+  console.log(`Color space: ${colorspace}`);
+  console.log(`Gamut: ${gamut}`);
+});
+```
+
+### Live Demo
+
+<EventLogger />
+
+## open
+
+The `open` event fires when the picker popover is opened, either by clicking the trigger button or calling the `show()` method.
+
+```js
+picker.addEventListener('open', () => {
+  console.log('Picker opened');
+});
+```
+
+This event has no detail payload.
+
+## close
+
+The `close` event fires when the picker popover is closed, either by pressing Escape, clicking outside, or calling the `close()` method.
+
+```js
+picker.addEventListener('close', () => {
+  console.log('Picker closed');
+});
+```
+
+This event has no detail payload.
+
+## Event Bubbling
+
+All events bubble and can be captured at parent elements:
+
+```js
+document.body.addEventListener('change', (event) => {
+  if (event.target.tagName === 'COLOR-INPUT') {
+    console.log('A color picker changed:', event.detail);
+  }
+});
+```
+
+## Next Steps
+
+- [Attributes](/api/attributes) - Configure the picker with attributes
+- [Properties](/api/properties) - Read and write properties programmatically
+- [Methods](/api/methods) - Control the picker via JavaScript
+

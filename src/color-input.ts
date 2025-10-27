@@ -413,6 +413,10 @@ template.innerHTML = `
       color-scheme: light dark;
       display: inline-block;
       position: relative;
+
+      :focus-visible {
+        outline-offset: 2px;
+      }
     }
     :host([hidden]) { display: none; }
 
@@ -453,7 +457,7 @@ template.innerHTML = `
     .preview {
       position: relative;
       aspect-ratio: 16 / 9;
-      min-inline-size: 25ch;
+      min-inline-size: 28ch;
       display: grid;
       align-content: end;
       justify-items: start;
@@ -462,12 +466,18 @@ template.innerHTML = `
       box-shadow: var(--shadow-inner);
       background: linear-gradient(var(--value) 0 0), var(--checker);
       &:hover .copy-btn, &:focus-within .copy-btn { opacity: 1; }
-    
-    & > *:not(:hover) {opacity:.8}
-      .copy-btn {
+
+      & > *:not(:hover) {opacity:.8}
+      .copy-wrap {
         position: absolute;
         top: .5rem;
         right: .5rem;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: .25rem;
+      }
+      .copy-btn {
         color: var(--contrast);
         background: none;
         border: 1px solid #0000;
@@ -481,16 +491,13 @@ template.innerHTML = `
       }
       .copy-btn svg { display: block; }
       .copy-message {
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
         color: var(--contrast);
         font-size: 14px;
         font-weight: 500;
         opacity: 0;
         pointer-events: none;
         transition: opacity .2s ease;
+        white-space: nowrap;
       }
       .copy-message.show { opacity: 1; }
     }
@@ -499,6 +506,7 @@ template.innerHTML = `
     .space {
       appearance: base-select;
       min-block-size: 1lh;
+      line-height: 1;
       font-size: 12px;
       margin: 0;
       padding: 0;
@@ -511,6 +519,7 @@ template.innerHTML = `
 /* Gamut badge: displays detected color gamut (srgb/p3/rec2020/xyz) */
 /* Info output: shows the current CSS color string */
 .gamut, .info {
+      line-height: 1;
       display: inline-flex;
       align-items: center;
       gap: .5rem;
@@ -542,18 +551,18 @@ template.innerHTML = `
         font-size: 10px;
         place-self: start;
       }
-      .control label { 
-        font: 500 12px/1.2 ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace; 
+      .control label {
+        font: 500 12px/1.2 ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
       }
-      .control input[type="number"] { 
+      .control input[type="number"] {
         text-align: end;
-        font-size: 12px; padding: 0; background: none; 
-        border: 1px solid #0000; 
-        border-radius: 0.25rem; 
+        font-size: 12px; padding: 0; background: none;
+        border: 1px solid var(--canvas);
+        border-radius: 0.25rem;
         -moz-appearance: textfield;
         font-variant: tabular-nums;
         font-family: monospace;
-    
+
         &::-webkit-outer-spin-button,
         &::-webkit-inner-spin-button {
           -webkit-appearance: none;
@@ -561,12 +570,12 @@ template.innerHTML = `
         }
       }
       .control input[type="range"] {
-        width: 100%; height: 1rem; border-radius: 999px; 
-        border: 1px solid #0000;
+        width: 100%; height: 1rem; border-radius: 999px;
+        border: 1px solid var(--canvas);
         background: var(--canvas); box-shadow: var(--shadow-inner); appearance: none;
       }
-      .control input[type="range"].alpha { 
-        background: linear-gradient(to right, #0000, #000), var(--checker); 
+      .control input[type="range"].alpha {
+        background: linear-gradient(to right, #0000, #000), var(--checker);
       }
       /* Slider thumb styles */
       .control input[type="range"]::-webkit-slider-thumb {
@@ -574,16 +583,16 @@ template.innerHTML = `
         height: calc(1rem + 8px); aspect-ratio: 1; border-radius: var(--radius-round);
         box-shadow: 0 0px 1px 1px rgba(0,0,0,.25), inset 0 1px 2px rgba(0,0,0,.15);
       }
-      .control input[type="range"]:active::-webkit-slider-thumb { 
-        cursor: grabbing; 
+      .control input[type="range"]:active::-webkit-slider-thumb {
+        cursor: grabbing;
       }
       .control input[type="range"]::-moz-range-thumb {
         cursor: grab; appearance: none; border: 4px solid white;
         height: calc(1rem + 8px); aspect-ratio: 1; border-radius: var(--radius-round);
         box-shadow: 0 0px 1px 1px rgba(0,0,0,.25), inset 0 1px 2px rgba(0,0,0,.15);
       }
-      .control input[type="range"]:active::-moz-range-thumb { 
-        cursor: grabbing; 
+      .control input[type="range"]:active::-moz-range-thumb {
+        cursor: grabbing;
       }
     }
   </style>
@@ -593,10 +602,12 @@ template.innerHTML = `
   </button>
   <div class="panel" popover="auto" part="panel">
     <div class="preview">
-      <button class="copy-btn" title="Copy color" aria-label="Copy color">
-        <svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M5 22q-.825 0-1.413-.588T3 20V6h2v14h11v2H5Zm4-4q-.825 0-1.413-.588T7 16V4q0-.825.588-1.413T9 2h9q.825 0 1.413.588T20 4v12q0 .825-.588 1.413T18 18H9Z"/></svg>
-      </button>
-      <span class="copy-message" aria-live="polite">Copied!</span>
+      <div class="copy-wrap">
+        <button class="copy-btn" title="Copy color" aria-label="Copy color">
+          <svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M5 22q-.825 0-1.413-.588T3 20V6h2v14h11v2H5Zm4-4q-.825 0-1.413-.588T7 16V4q0-.825.588-1.413T9 2h9q.825 0 1.413.588T20 4v12q0 .825-.588 1.413T18 18H9Z"/></svg>
+        </button>
+        <span class="copy-message" aria-live="polite" role="status">Copied!</span>
+      </div>
       <select class="space" title="Colorspace"></select>
       <output class="info" part="output"></output>
       <span class="gamut" title="Color's gamut" part="gamut"></span>
@@ -977,7 +988,7 @@ export class ColorInput extends HTMLElement {
     const anchor = this.#anchor.value ?? this.#lastInvoker ?? this.#internalTrigger ?? this
     const scrollX = window.pageXOffset || document.documentElement.scrollLeft
     const scrollY = window.pageYOffset || document.documentElement.scrollTop
-    
+
     if (!anchor.isConnected) {
       // Fallback to viewport center
       const vw = window.visualViewport?.width ?? window.innerWidth
@@ -1050,11 +1061,17 @@ export class ColorInput extends HTMLElement {
     const current = parseIntoChannels(space, this.#value.value)
     const ch = current.ch
 
+    // Create reactive channel signals for dynamic backgrounds
+    const channelSignals: Record<string, ReturnType<typeof signal<string>>> = {}
+    Object.keys(ch).forEach(key => {
+      channelSignals[key] = signal(String(ch[key]))
+    })
+
     const make = (label: string, key: string, min: number, max: number, step = 1, bg?: string, bgColor?: string) => {
       const wrapHue = key === 'H'
       const isPercentage = ['L', 'S', 'C', 'W', 'B', 'R', 'G', 'ALP'].includes(key)
       const isAngle = key === 'H'
-      
+
       const group = document.createElement('div')
       group.className = 'control'
       const lab = document.createElement('label')
@@ -1064,6 +1081,7 @@ export class ColorInput extends HTMLElement {
       range.min = String(min)
       range.max = String(max)
       range.step = String(step)
+      range.classList.add(`ch-${key.toLowerCase()}`)
       if (bg) range.style.backgroundImage = bg
       if (bgColor) range.style.backgroundColor = bgColor
       range.value = String(ch[key] ?? 0)
@@ -1083,8 +1101,9 @@ export class ColorInput extends HTMLElement {
       num.min = String(min)
       num.max = String(max)
       num.step = String(step)
+      num.classList.add(`ch-${key.toLowerCase()}`)
       num.value = String(ch[key] ?? 0)
-      
+
       // Wrap number input with unit suffix
       const numWrapper = document.createElement('div')
       numWrapper.className = 'num-wrapper'
@@ -1113,6 +1132,7 @@ export class ColorInput extends HTMLElement {
         }
         const formatted = formatChannel(space, key, val)
         ch[key] = formatted
+        channelSignals[key].value = formatted
         // keep controls in sync
         range.value = String(ch[key])
         num.value = String(ch[key])
@@ -1134,15 +1154,41 @@ export class ColorInput extends HTMLElement {
         make('B', 'B', -0.5, 0.5, 0.01, 'linear-gradient(to right in oklab, oklab(47% -.03 -.32), oklab(96% 0 .25))'),
         make('A', 'ALP', 0, 100, 1)
       )
+      // Use signals to reactively update oklab alpha slider background
+      const alphaRange = this.#controls.querySelector<HTMLInputElement>('input[type="range"].ch-alp')
+      effect(() => {
+        const L = channelSignals.L.value || '50'
+        const A = channelSignals.A.value || '0'
+        const B = channelSignals.B.value || '0'
+        if (alphaRange) {
+          alphaRange.style.background = `linear-gradient(to right in oklab, oklab(${L}% ${A} ${B} / 0%), oklab(${L}% ${A} ${B} / 100%)), var(--checker)`
+        }
+      })
     } else if (space === 'oklch') {
       this.#controls.append(
         make('L', 'L', 0, 100, 1, 'linear-gradient(in oklab to right, black, white)'),
         // Chroma: 0-100% (gray → highly saturated)
-        make('C', 'C', 0, 100, 1, `linear-gradient(in oklch to right, oklch(${ch.L ?? 0}% 0% ${ch.H ?? 0}), oklch(${ch.L ?? 0}% 100% ${ch.H ?? 0}))`),
-        // Hue: full spectrum
-        make('H', 'H', 0, 359, 1, 'linear-gradient(to right in oklch longer hue, oklch(90% 0.4 0), oklch(90% 0.4 0))'),
+        make('C', 'C', 0, 100, 1, `linear-gradient(in oklch to right, oklch(${ch.L ?? 0}% 1% ${ch.H ?? 0}), oklch(${ch.L ?? 0}% 100% ${ch.H ?? 0}))`),
+        // Hue: full spectrum (mirror LCH pattern, but in OKLCH)
+        make('H', 'H', 0, 359, 1, 'linear-gradient(to right in oklch longer hue, oklch(90% 75% 0), oklch(90% 75% 0))'),
         make('A', 'ALP', 0, 100, 1)
       )
+      // Use signals to reactively update OKLCH slider backgrounds
+      const cRange = this.#controls.querySelector<HTMLInputElement>('input[type="range"].ch-c')
+      const alphaRange = this.#controls.querySelector<HTMLInputElement>('input[type="range"].ch-alp')
+      effect(() => {
+        const L = channelSignals.L.value || '0'
+        const C = channelSignals.C.value || '0'
+        const H = channelSignals.H.value || '0'
+        // Update Chroma slider background
+        if (cRange) {
+          cRange.style.backgroundImage = `linear-gradient(in oklch to right, oklch(${L}% 1% ${H}deg), oklch(${L}% 100% ${H}deg))`
+        }
+        // Update Alpha slider background
+        if (alphaRange) {
+          alphaRange.style.background = `linear-gradient(to right in oklch, oklch(${L}% ${C}% ${H} / 0%), oklch(${L}% ${C}% ${H} / 100%)), var(--checker)`
+        }
+      })
     } else if (space === 'lab') {
       this.#controls.append(
         make('L', 'L', 0, 100, 1, 'linear-gradient(in lab to right, black, white)'),
@@ -1150,31 +1196,88 @@ export class ColorInput extends HTMLElement {
         make('B', 'B', -160, 160, 1, 'linear-gradient(to right in oklab, lab(31% 70 -120), lab(96% 0 120))'),
         make('A', 'ALP', 0, 100, 1)
       )
+      // Use signals to reactively update lab alpha slider background
+      const alphaRange = this.#controls.querySelector<HTMLInputElement>('input[type="range"].ch-alp')
+      effect(() => {
+        const L = channelSignals.L.value || '50'
+        const A = channelSignals.A.value || '0'
+        const B = channelSignals.B.value || '0'
+        if (alphaRange) {
+          alphaRange.style.background = `linear-gradient(to right in lab, lab(${L}% ${A} ${B} / 0%), lab(${L}% ${A} ${B} / 100%)), var(--checker)`
+        }
+      })
     } else if (space === 'lch') {
       this.#controls.append(
         make('L', 'L', 0, 100, 1, 'linear-gradient(in lab to right, black, white)'),
         // Chroma: 0-100% (gray → highly saturated)
-        make('C', 'C', 0, 100, 1, `linear-gradient(in lch to right, lch(${ch.L ?? 0}% 0% ${ch.H ?? 0}), lch(${ch.L ?? 0}% 100% ${ch.H ?? 0}))`),
+        make('C', 'C', 0, 100, 1, `linear-gradient(in lch to right, lch(${ch.L ?? 0}% 1% ${ch.H ?? 0}), lch(${ch.L ?? 0}% 100% ${ch.H ?? 0}))`),
         // Hue: full spectrum
-        make('H', 'H', 0, 359, 1, 'linear-gradient(to right in lch longer hue, oklch(90% 0.4 0), oklch(90% 0.4 0))'),
+        make('H', 'H', 0, 359, 1, 'linear-gradient(to right in lch longer hue, lch(90% 75% 0), lch(90% 75% 0))'),
         make('A', 'ALP', 0, 100, 1)
       )
+      // Use signals to reactively update LCH slider backgrounds
+      const cRange = this.#controls.querySelector<HTMLInputElement>('input[type="range"].ch-c')
+      const alphaRange = this.#controls.querySelector<HTMLInputElement>('input[type="range"].ch-alp')
+      effect(() => {
+        const L = channelSignals.L.value || '50'
+        const C = channelSignals.C.value || '0'
+        const H = channelSignals.H.value || '0'
+        // Update Chroma slider background
+        if (cRange) {
+          cRange.style.backgroundImage = `linear-gradient(in lch to right, lch(${L}% 1% ${H}), lch(${L}% 100% ${H}))`
+        }
+        // Update Alpha slider background
+        if (alphaRange) {
+          alphaRange.style.background = `linear-gradient(to right in lch, lch(${L}% ${C}% ${H} / 0%), lch(${L}% ${C}% ${H} / 100%)), var(--checker)`
+        }
+      })
     } else if (space === 'hsl') {
       this.#controls.append(
-        make('H', 'H', 0, 359, 1, 'linear-gradient(to right in hsl longer hue, red, red)'),
+        make('H', 'H', 0, 359, 1, 'linear-gradient(to right in hsl longer hue, hsl(0 100% 50%), hsl(360 100% 50%))'),
         // Saturation: gray → fully saturated at current H and L (interpolate in hsl with full context)
         make('S', 'S', 0, 100, 1, `linear-gradient(in hsl to right, hsl(${ch.H ?? 0} 0% ${ch.L ?? 50}% / 100%), hsl(${ch.H ?? 0} 100% ${ch.L ?? 50}% / 100%))`),
         // Lightness: black → white at current H/S (interpolate in oklab)
         make('L', 'L', 0, 100, 1, `linear-gradient(in oklab to right, hsl(${ch.H ?? 0} ${ch.S ?? 100}% 0%), hsl(${ch.H ?? 0} ${ch.S ?? 100}% 100%))`),
         make('A', 'ALP', 0, 100, 1)
       )
+      // Use signals to reactively update HSL slider backgrounds
+      const sRange = this.#controls.querySelector<HTMLInputElement>('input[type="range"].ch-s')
+      const lRange = this.#controls.querySelector<HTMLInputElement>('input[type="range"].ch-l')
+      const alphaRange = this.#controls.querySelector<HTMLInputElement>('input[type="range"].ch-alp')
+      effect(() => {
+        const H = channelSignals.H.value || '0'
+        const S = channelSignals.S.value || '100'
+        const L = channelSignals.L.value || '50'
+        // Update Saturation slider: gray to fully saturated at current H and L
+        if (sRange) {
+          sRange.style.backgroundImage = `linear-gradient(in hsl to right, hsl(${H} 0% ${L}% / 100%), hsl(${H} 100% ${L}% / 100%))`
+        }
+        // Update Lightness slider: black to white at current H and S
+        if (lRange) {
+          lRange.style.backgroundImage = `linear-gradient(in oklab to right, hsl(${H} ${S}% 0%), hsl(${H} ${S}% 100%))`
+        }
+        // Update Alpha slider: transparent to current color
+        if (alphaRange) {
+          alphaRange.style.background = `linear-gradient(to right in hsl, hsl(${H} ${S}% ${L}% / 0%), hsl(${H} ${S}% ${L}% / 100%)), var(--checker)`
+        }
+      })
     } else if (space === 'hwb') {
       this.#controls.append(
-        make('H', 'H', 0, 359, 1, 'linear-gradient(to right in hsl longer hue, red, red)'),
+        make('H', 'H', 0, 359, 1, 'linear-gradient(to right in hsl longer hue, hsl(0 100% 50%), hsl(360 100% 50%))'),
         make('W', 'W', 0, 100, 1, 'linear-gradient(to right in oklab, #fff0, #fff)', 'black'),
         make('B', 'B', 0, 100, 1, 'linear-gradient(to right in oklab, #0000, #000)', 'white'),
         make('A', 'ALP', 0, 100, 1)
       )
+      // Use signals to reactively update HWB alpha slider background
+      const alphaRange = this.#controls.querySelector<HTMLInputElement>('input[type="range"].ch-alp')
+      effect(() => {
+        const H = channelSignals.H.value || '0'
+        const W = channelSignals.W.value || '0'
+        const B = channelSignals.B.value || '0'
+        if (alphaRange) {
+          alphaRange.style.background = `linear-gradient(to right in hwb, hwb(${H} ${W}% ${B}% / 0%), hwb(${H} ${W}% ${B}% / 100%)), var(--checker)`
+        }
+      })
     } else if (space === 'srgb') {
       this.#controls.append(
         make('R', 'R', 0, 100, 1, 'linear-gradient(to right in oklab, #f000, #f00)', 'black'),
@@ -1182,6 +1285,16 @@ export class ColorInput extends HTMLElement {
         make('B', 'B', 0, 100, 1, 'linear-gradient(to right in oklab, #00f0, #00f)', 'black'),
         make('A', 'ALP', 0, 100, 1)
       )
+      // Use signals to reactively update sRGB alpha slider background
+      const alphaRange = this.#controls.querySelector<HTMLInputElement>('input[type="range"].ch-alp')
+      effect(() => {
+        const R = channelSignals.R.value || '0'
+        const G = channelSignals.G.value || '0'
+        const B = channelSignals.B.value || '0'
+        if (alphaRange) {
+          alphaRange.style.background = `linear-gradient(to right in srgb, rgb(${R}% ${G}% ${B}% / 0%), rgb(${R}% ${G}% ${B}% / 100%)), var(--checker)`
+        }
+      })
     } else if (isRGBLike(space)) {
       this.#controls.append(
         make('R', 'R', 0, 100, 1, 'linear-gradient(to right in oklab, #f000, #f00)', 'black'),
@@ -1189,6 +1302,18 @@ export class ColorInput extends HTMLElement {
         make('B', 'B', 0, 100, 1, 'linear-gradient(to right in oklab, #00f0, #00f)', 'black'),
         make('A', 'ALP', 0, 100, 1)
       )
+      // Use signals to reactively update RGB-like alpha slider background
+      const alphaRange = this.#controls.querySelector<HTMLInputElement>('input[type="range"].ch-alp')
+      effect(() => {
+        const R = channelSignals.R.value || '0'
+        const G = channelSignals.G.value || '0'
+        const B = channelSignals.B.value || '0'
+        if (alphaRange) {
+          const c0 = gencolor(space, { ...ch, R, G, B, ALP: '0' })
+          const c1 = gencolor(space, { ...ch, R, G, B, ALP: '100' })
+          alphaRange.style.background = `linear-gradient(to right, ${c0}, ${c1}), var(--checker)`
+        }
+      })
     }
   }
 }

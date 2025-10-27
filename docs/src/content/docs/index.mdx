@@ -1,0 +1,117 @@
+---
+title: color-input
+description: A modern color picker web component with wide-gamut support, multiple color spaces, and Shadow DOM encapsulation
+template: splash
+hero:
+  title: color-input
+  tagline: A modern color picker web component with wide-gamut support
+  actions:
+    - text: Get Started
+      link: /getting-started/installation
+      icon: right-arrow
+      variant: primary
+    - text: View API
+      link: /api/attributes
+      icon: external
+      variant: minimal
+---
+
+import ColorInputDemo from '../../components/ColorInputDemo.astro';
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+## Features
+
+<CardGrid>
+  <Card title="Wide-Gamut Colors" icon="star">
+    Support for sRGB, Display P3, Rec2020, and more. Automatic gamut detection shows you which color space contains your color.
+  </Card>
+  <Card title="Multiple Color Spaces" icon="palette">
+    Choose from sRGB, HSL, HWB, LAB, LCH, OKLCH, OKLAB, and wide-gamut RGB spaces. Convert between them seamlessly.
+  </Card>
+  <Card title="Popover UI" icon="open-book">
+    Built-in popover with intelligent positioning. Respects viewport boundaries and safe areas automatically.
+  </Card>
+  <Card title="Signals & Reactivity" icon="rocket">
+    Powered by Preact Signals for efficient, fine-grained reactivity. Shadow DOM encapsulation keeps styles isolated.
+  </Card>
+  <Card title="CSS Parts" icon="puzzle">
+    Customize every part of the picker with `::part()` selectors. Style the trigger, panel, sliders, and more.
+  </Card>
+  <Card title="Small Bundle" icon="document">
+    Tree-shakeable ES modules. Color math by colorjs.io. No framework dependencies.
+  </Card>
+</CardGrid>
+
+## Try it out
+
+<ColorInputDemo 
+  value="oklch(75% 0.3 180)" 
+  colorspace="oklch"
+  description="Interact with the color picker below. The readout updates as you adjust the color."
+/>
+
+:::tip[Why OKLCH?]
+OKLCH provides perceptually uniform lightness and chroma, making it ideal for creating accessible color scales and harmonious palettes.
+:::
+
+## Installation
+
+<Tabs>
+  <TabItem label="npm">
+    ```sh
+    npm install color-input
+    ```
+  </TabItem>
+  <TabItem label="pnpm">
+    ```sh
+    pnpm add color-input
+    ```
+  </TabItem>
+  <TabItem label="CDN">
+    ```html
+    <script type="module">
+      import 'https://esm.sh/color-input@latest'
+    </script>
+    ```
+  </TabItem>
+</Tabs>
+
+## Quick Start
+
+<Tabs>
+  <TabItem label="Usage">
+    ```html
+    <script type="module">
+      import 'color-input'
+    </script>
+
+    <color-input 
+      value="oklch(75% 0.3 180)" 
+      colorspace="oklch"
+    ></color-input>
+    ```
+  </TabItem>
+  <TabItem label="Result">
+    <ColorInputDemo 
+      value="oklch(75% 0.3 180)" 
+      colorspace="oklch"
+      showCode={false}
+    />
+  </TabItem>
+</Tabs>
+
+:::note
+The custom element auto-registers when you import the module. Use it in any HTML document or framework.
+:::
+
+:::caution[Browser Support]
+The Popover API is required. Modern browsers (Chrome 114+, Safari 17+, Firefox 125+) support it natively.
+:::
+
+## Next Steps
+
+- [Installation Guide](/getting-started/installation) - Detailed setup for different environments
+- [Quick Start Tutorial](/getting-started/quick-start) - Your first color picker in 5 minutes
+- [API Reference](/api/attributes) - Explore all attributes, properties, methods, and events
+- [Color Spaces Guide](/color-spaces/overview) - Learn which color space to use when

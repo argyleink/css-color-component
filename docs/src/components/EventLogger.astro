@@ -1,0 +1,121 @@
+---
+interface Props {
+  value?: string;
+  colorspace?: string;
+}
+
+const {
+  value = 'oklch(70% 0.2 260)',
+  colorspace = 'oklch'
+} = Astro.props;
+
+const loggerId = `logger-${Math.random().toString(36).substr(2, 9)}`;
+---
+
+<div class="demo event-logger-demo" data-logger-id={loggerId}>
+  <div class="demo-row">
+    <color-input
+      id={`picker-${loggerId}`}
+      value={value}
+      colorspace={colorspace}
+    ></color-input>
+    <button type="button" data-action="clear-log" class="code-toggle">Clear Log</button>
+  </div>
+
+  <div class="event-log" aria-live="polite" aria-label="Event log" data-log-container></div>
+</div>
+
+<script>
+  interface LogEntry {
+    time: string;
+    type: string;
+    detail?: any;
+  }
+
+  function initEventLogger(loggerId: string) {
+    const container = document.querySelector(`[data-logger-id="${loggerId}"]`);
+    if (!container) return;
+
+    const picker = container.querySelector('color-input');
+    const logContainer = container.querySelector('[data-log-container]');
+    const clearButton = container.querySelector('[data-action="clear-log"]');
+
+    if (!picker || !logContainer) return;
+
+    let logs: LogEntry[] = [];
+    const MAX_LOGS = 50;
+
+    function addLog(type: string, detail?: any) {
+      const entry: LogEntry = {
+        time: new Date().toISOString(),
+        type,
+        detail
+      };
+
+      logs.unshift(entry);
+      if (logs.length > MAX_LOGS) logs = logs.slice(0, MAX_LOGS);
+
+      renderLogs();
+    }
+
+    function renderLogs() {
+      if (!logContainer) return;
+
+      if (logs.length === 0) {
+        logContainer.innerHTML = '<p style="opacity: 0.5; font-style: italic;">No events yet. Interact with the picker to see events.</p>';
+        return;
+      }
+
+      logContainer.innerHTML = logs.map((log) => {
+        const timeStr = new Date(log.time).toLocaleTimeString();
+        let detailStr = '';
+        
+        if (log.type === 'change' && log.detail) {
+          detailStr = ` → <strong>${log.detail.value}</strong> (${log.detail.colorspace}, ${log.detail.gamut})`;
+        }
+
+        return `<div class="event-log-item">
+          <span class="event-log-time">${timeStr}</span>
+          <span class="event-log-type">${log.type}</span>${detailStr}
+        </div>`;
+      }).join('');
+    }
+
+    picker.addEventListener('change', (e: Event) => {
+      const customEvent = e as CustomEvent;
+      addLog('change', customEvent.detail);
+    });
+
+    picker.addEventListener('open', () => {
+      addLog('open');
+    });
+
+    picker.addEventListener('close', () => {
+      addLog('close');
+    });
+
+    clearButton?.addEventListener('click', () => {
+      logs = [];
+      renderLogs();
+    });
+
+    // Initial render
+    renderLogs();
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    const loggers = document.querySelectorAll('.event-logger-demo');
+    loggers.forEach((logger) => {
+      const loggerId = logger.getAttribute('data-logger-id');
+      if (loggerId) initEventLogger(loggerId);
+    });
+  });
+
+  document.addEventListener('astro:page-load', () => {
+    const loggers = document.querySelectorAll('.event-logger-demo');
+    loggers.forEach((logger) => {
+      const loggerId = logger.getAttribute('data-logger-id');
+      if (loggerId) initEventLogger(loggerId);
+    });
+  });
+</script>

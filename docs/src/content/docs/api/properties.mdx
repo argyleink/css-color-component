@@ -1,0 +1,103 @@
+---
+title: Properties
+description: Read and write color-input properties programmatically
+---
+
+import ColorInputDemo from '../../../components/ColorInputDemo.astro';
+
+## Overview
+
+The `<color-input>` element exposes five properties:
+
+**Read/Write:**
+- `value` - Current color as a CSS string
+- `colorspace` - Current color space
+- `theme` - Visual theme (auto|light|dark)
+
+**Read-Only:**
+- `gamut` - Detected gamut (srgb|p3|rec2020|xyz)
+- `contrastColor` - Recommended text color for contrast
+
+## value
+
+Get or set the current color value:
+
+```js
+const picker = document.querySelector('color-input');
+
+// Read
+console.log(picker.value); // "oklch(70% 0.2 240)"
+
+// Write
+picker.value = 'oklch(80% 0.15 180)';
+```
+
+Setting `value` triggers internal conversion and updates the UI. A `change` event is **not** fired when you set the property programmatically.
+
+<ColorInputDemo value="oklch(70% 0.2 240)" colorspace="oklch" />
+
+## colorspace
+
+Get or set the color space for editing:
+
+```js
+// Read
+console.log(picker.colorspace); // "oklch"
+
+// Write
+picker.colorspace = 'hsl';
+```
+
+Changing the color space converts the current color to the new space and rebuilds the control UI.
+
+## theme
+
+Get or set the visual theme:
+
+```js
+// Read
+console.log(picker.theme); // "auto"
+
+// Write
+picker.theme = 'dark';
+```
+
+Valid values: `'auto'`, `'light'`, `'dark'`
+
+## gamut (read-only)
+
+The smallest gamut that contains the current color:
+
+```js
+console.log(picker.gamut); // "srgb" | "p3" | "rec2020" | "xyz"
+```
+
+This property is computed automatically when the color changes. It helps you understand display compatibility.
+
+## contrastColor (read-only)
+
+The recommended text color (white or black) for maximum contrast against the current color:
+
+```js
+console.log(picker.contrastColor); // "white" or "black"
+```
+
+This is useful for overlaying text on the selected color. The component uses WCAG contrast calculations internally.
+
+## Property Reflection
+
+All read/write properties reflect to attributes:
+
+```js
+picker.colorspace = 'hsl';
+console.log(picker.getAttribute('colorspace')); // "hsl"
+
+picker.setAttribute('theme', 'dark');
+console.log(picker.theme); // "dark"
+```
+
+## Next Steps
+
+- [Methods](/api/methods) - Control the picker with JavaScript methods
+- [Events](/api/events) - Listen for color changes
+- [Attributes](/api/attributes) - Configure via HTML attributes

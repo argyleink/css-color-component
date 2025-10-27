@@ -1,0 +1,21 @@
+---
+// Custom Head component to load color-input on the client side only
+// We can't import it here because it uses browser APIs (document)
+---
+
+<script>
+  // Load the color-input web component on the client side only
+  // This avoids SSR issues with document/window not being defined
+  import('color-input').catch(err => {
+    console.error('Failed to load color-input:', err);
+  });
+
+  // HMR support: reload when color-input module changes
+  if (import.meta.hot) {
+    import.meta.hot.accept('color-input', (newModule) => {
+      console.log('color-input updated via HMR');
+      // Force reload the page to re-register the custom element
+      window.location.reload();
+    });
+  }
+</script>

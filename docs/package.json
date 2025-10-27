@@ -1,0 +1,23 @@
+{
+  "name": "color-input-docs",
+  "private": true,
+  "type": "module",
+  "version": "0.0.1",
+  "scripts": {
+    "dev": "astro dev",
+    "start": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "check": "astro check",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "astro": "astro"
+  },
+  "dependencies": {
+    "@astrojs/mdx": "^4.3.8",
+    "@astrojs/starlight": "^0.36.1",
+    "@preact/signals-core": "^1.6.0",
+    "astro": "^5.6.1",
+    "colorjs.io": "^0.5.2",
+    "sharp": "^0.34.2"
+  }
+}

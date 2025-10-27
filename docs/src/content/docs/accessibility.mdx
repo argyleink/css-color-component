@@ -1,0 +1,215 @@
+---
+title: Accessibility
+description: Keyboard support, ARIA, screen readers, and inclusive design
+---
+
+import ColorInputDemo from '../../components/ColorInputDemo.astro';
+
+## Overview
+
+The `<color-input>` component is built with accessibility as a core requirement, following WAI-ARIA Authoring Practices Guide (APG) patterns.
+
+## Keyboard Support
+
+All functionality is accessible via keyboard:
+
+### Opening/Closing the Picker
+
+- **Enter** or **Space** on the trigger button - Opens the picker
+- **Escape** - Closes the picker and returns focus to the trigger
+- **Tab** - Navigates between controls when open
+
+### Adjusting Colors
+
+- **Arrow Up/Down** - Increment/decrement value by 1 unit
+- **Shift + Arrow Up/Down** - Increment/decrement by 10 units
+- **Home** - Set to minimum value
+- **End** - Set to maximum value
+- **Tab** - Move between channel controls
+
+<ColorInputDemo value="oklch(70% 0.2 240)" colorspace="oklch" description="Try keyboard navigation: Tab to focus, Enter to open, Arrow keys to adjust sliders, Escape to close." />
+
+:::tip[Keyboard Testing]
+Test with keyboard only (no mouse). All features should be fully functional. Tab order should be logical and focus rings clearly visible.
+:::
+
+## Screen Reader Compatibility
+
+### Semantic HTML
+
+The component uses native HTML elements with proper semantics:
+
+- `<button>` for the trigger
+- `<input type="range">` for sliders
+- `<input type="number">` for numeric inputs
+- Proper labeling via `aria-label` and `<label>` elements
+
+### ARIA Attributes
+
+- `role="group"` for related controls
+- `aria-label` for control purpose (e.g., "Lightness slider")
+- `aria-valuenow`, `aria-valuemin`, `aria-valuemax` on sliders
+- `aria-live="polite"` for value readouts
+- `aria-atomic="true"` for complete announcements
+
+### Announcements
+
+Key changes are announced:
+
+```js
+picker.addEventListener('change', (e) => {
+  // Screen readers announce: "Color changed to oklch 70% 0.2 240"
+  console.log(`Color: ${e.detail.value}`);
+});
+```
+
+## Focus Management
+
+### Focus Rings
+
+All interactive elements have visible focus indicators:
+
+```css
+/* Visible on keyboard focus, hidden on mouse click */
+:focus-visible {
+  outline: 2px solid var(--accent-color);
+  outline-offset: 2px;
+}
+```
+
+### Focus Trap
+
+When the picker is open:
+- Focus moves into the popover
+- Tab cycles through controls within the popover
+- Escape closes and returns focus to the trigger
+
+### Focus Restoration
+
+Focus returns to the trigger button when the picker closes, ensuring users don't lose their place.
+
+## Contrast & Color
+
+### contrastColor Property
+
+The `contrastColor` property provides the recommended text color (white or black) for maximum contrast:
+
+```js
+const picker = document.querySelector('color-input');
+
+picker.addEventListener('change', (e) => {
+  const textColor = picker.contrastColor; // "white" or "black"
+  document.body.style.background = e.detail.value;
+  document.body.style.color = textColor;
+});
+```
+
+### WCAG Compliance
+
+The component calculates contrast using WCAG 2.1 formulas. Use this for:
+- Overlaying text on selected colors
+- Ensuring readable UI elements
+- Meeting AA or AAA contrast requirements
+
+## Touch & Mobile
+
+### Hit Target Sizing
+
+All interactive elements meet or exceed minimum hit targets:
+
+- **Mobile**: ≥44px × 44px
+- **Desktop**: ≥24px × 24px
+
+```css
+/* Enforced via CSS */
+button, [role="button"], input[type="range"] {
+  min-width: 44px;
+  min-height: 44px;
+  touch-action: manipulation;
+}
+
+@media (min-width: 768px) {
+  button, [role="button"] {
+    min-width: 24px;
+    min-height: 24px;
+  }
+}
+```
+
+### Touch Affordances
+
+- `touch-action: manipulation` prevents double-tap zoom
+- Generous padding expands clickable areas
+- No hover-only interactions
+
+## Reduced Motion
+
+Respects `prefers-reduced-motion` for users sensitive to motion:
+
+```css
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+```
+
+Animations are minimized or removed entirely when this preference is set.
+
+## Best Practices
+
+:::tip[Always Provide Labels]
+Even though the component has built-in labels, provide context in your UI:
+
+```html
+<label for="bg-color">Background Color</label>
+<color-input id="bg-color" value="oklch(70% 0.2 240)"></color-input>
+```
+:::
+
+:::tip[Announce Dynamic Changes]
+Use `aria-live` regions when displaying derived values:
+
+```html
+<div aria-live="polite">
+  Current color: <code id="color-value">oklch(70% 0.2 240)</code>
+</div>
+```
+:::
+
+:::caution[Color Alone Is Not Enough]
+Never rely on color alone to convey information. Always provide text labels or patterns:
+
+```html
+<!-- Bad -->
+<color-input></color-input>
+
+<!-- Good -->
+<label>Theme Color</label>
+<color-input aria-label="Theme color picker"></color-input>
+```
+:::
+
+## Testing Checklist
+
+- ☐ All features work with keyboard only
+- ☐ Screen reader announces changes properly  
+- ☐ Focus indicators are visible
+- ☐ Hit targets meet minimum sizes
+- ☐ Color contrast meets WCAG AA (4.5:1 for text)
+- ☐ Works with reduced motion enabled
+- ☐ Tab order is logical
+- ☐ Popover closes with Escape
+
+## Resources
+
+- [WAI-ARIA APG](https://www.w3.org/WAI/ARIA/apg/)
+- [WCAG 2.1 Guidelines](https://www.w3.org/WAI/WCAG21/quickref/)
+- [WebAIM Contrast Checker](https://webaim.org/resources/contrastchecker/)
+
+## Next Steps
+
+- [Keyboard Shortcuts](/recipes/keyboard-shortcuts) - Complete keyboard reference
+- [Properties](/api/properties) - Read `contrastColor` and `gamut`
+- [Events](/api/events) - Listen for changes to update your UI
