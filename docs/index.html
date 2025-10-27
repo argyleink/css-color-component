@@ -59,8 +59,8 @@ import 'color-input/dist/index.js'
             <color-input id="evt"></color-input>
           </div>
           <pre><code>picker.addEventListener('change', (e) =&gt; {
-  const { value, colorspace } = e.detail
-  console.log(value, colorspace)
+  const { value, colorspace, gamut } = e.detail
+  console.log(value, colorspace, gamut)
 })
 
 picker.addEventListener('open', () =&gt; console.log('open'))
@@ -70,7 +70,7 @@ picker.addEventListener('close', () =&gt; console.log('close'))</code></pre>
             el.addEventListener('change', e => {
               el.nextElementSibling?.remove?.()
               const p = document.createElement('p')
-              p.textContent = `change: ${e.detail.value} (${e.detail.colorspace})`
+              p.textContent = `change: ${e.detail.value} (${e.detail.colorspace}, ${e.detail.gamut})`
               el.parentElement?.appendChild(p)
             })
           </script>
@@ -84,6 +84,28 @@ picker.addEventListener('close', () =&gt; console.log('close'))</code></pre>
             <li>Methods: <code>show()</code>, <code>close()</code>, <code>setAnchor(element)</code></li>
             <li>Events: <code>change</code>, <code>open</code>, <code>close</code></li>
           </ul>
+        </div>
+
+        <div class="card">
+          <h3>CSS Parts</h3>
+          <p>Style internal elements using <code>::part()</code>:</p>
+          <ul>
+            <li><code>::part(trigger)</code> – The button that opens the picker</li>
+            <li><code>::part(chip)</code> – Color swatch inside trigger button</li>
+            <li><code>::part(label)</code> – Text label inside trigger button</li>
+            <li><code>::part(panel)</code> – Popover container</li>
+            <li><code>::part(output)</code> – CSS color string output in preview area</li>
+            <li><code>::part(gamut)</code> – Gamut badge (srgb/p3/rec2020/xyz)</li>
+            <li><code>::part(controls)</code> – Container for channel sliders/inputs</li>
+          </ul>
+          <pre><code>color-input::part(trigger) {
+  border: 2px solid blue;
+  border-radius: 8px;
+}
+
+color-input::part(chip) {
+  box-shadow: 0 0 0 2px white;
+}</code></pre>
         </div>
       </section>
 

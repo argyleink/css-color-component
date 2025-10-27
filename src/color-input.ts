@@ -15,7 +15,7 @@ export type ColorSpace =
   | 'srgb' | 'hsl' | 'hwb' | 'lab' | 'lch' | 'oklab' | 'oklch'
   | 'srgb-linear' | 'display-p3' | 'rec2020' | 'a98-rgb' | 'prophoto' | 'xyz' | 'xyz-d50' | 'xyz-d65'
 
-export interface ChangeDetail { value: string; colorspace: ColorSpace }
+export interface ChangeDetail { value: string; colorspace: ColorSpace; gamut: string }
 
 const DEFAULT_VALUE = 'oklch(75% 75% 180)'
 const DEFAULT_SPACE: ColorSpace = 'oklch'
@@ -446,7 +446,7 @@ template.innerHTML = `
       box-shadow: var(--shadow-elev);
       border-radius: var(--radius-3);
       padding: 0;
-      &[popover] { border: none; }
+      border: 1px solid #0000;
     }
 
     /* Preview area: visual swatch + colorspace selector + current value output + gamut badge */
@@ -462,6 +462,8 @@ template.innerHTML = `
       box-shadow: var(--shadow-inner);
       background: linear-gradient(var(--value) 0 0), var(--checker);
       &:hover .copy-btn, &:focus-within .copy-btn { opacity: 1; }
+    
+    & > *:not(:hover) {opacity:.8}
       .copy-btn {
         position: absolute;
         top: .5rem;
@@ -478,6 +480,19 @@ template.innerHTML = `
         align-items: center;
       }
       .copy-btn svg { display: block; }
+      .copy-message {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        color: var(--contrast);
+        font-size: 14px;
+        font-weight: 500;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity .2s ease;
+      }
+      .copy-message.show { opacity: 1; }
     }
 
     /* Colorspace select: dropdown for switching color models (rgb, oklch, lab, etc.) */
@@ -491,7 +506,6 @@ template.innerHTML = `
       background: transparent;
       border-radius: 0;
       border: none;
-      &:is(:hover, :focus-visible) { background: color-mix(in oklab, var(--counter) 25%, transparent); }
     }
 
 /* Gamut badge: displays detected color gamut (srgb/p3/rec2020/xyz) */
@@ -503,7 +517,6 @@ template.innerHTML = `
       color: var(--contrast);
       /* No padding/radius; background only on hover/focus */
       background: transparent;
-      &:is(:hover,:focus-visible) { background: color-mix(in oklab, var(--counter) 25%, transparent); }
     }
     .gamut { font-size: 12px; }
 
@@ -549,6 +562,7 @@ template.innerHTML = `
       }
       .control input[type="range"] {
         width: 100%; height: 1rem; border-radius: 999px; 
+        border: 1px solid #0000;
         background: var(--canvas); box-shadow: var(--shadow-inner); appearance: none;
       }
       .control input[type="range"].alpha { 
@@ -582,6 +596,7 @@ template.innerHTML = `
       <button class="copy-btn" title="Copy color" aria-label="Copy color">
         <svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M5 22q-.825 0-1.413-.588T3 20V6h2v14h11v2H5Zm4-4q-.825 0-1.413-.588T7 16V4q0-.825.588-1.413T9 2h9q.825 0 1.413.588T20 4v12q0 .825-.588 1.413T18 18H9Z"/></svg>
       </button>
+      <span class="copy-message" aria-live="polite">Copied!</span>
       <select class="space" title="Colorspace"></select>
       <output class="info" part="output"></output>
       <span class="gamut" title="Color's gamut" part="gamut"></span>
@@ -711,9 +726,19 @@ export class ColorInput extends HTMLElement {
     this.#chip = this.#root.querySelector('.chip') as HTMLElement
     // Copy to clipboard from preview button
     const copyBtn = this.#root.querySelector<HTMLButtonElement>('button.copy-btn')
-    if (copyBtn) {
+    const copyMessage = this.#root.querySelector<HTMLElement>('.copy-message')
+    if (copyBtn && copyMessage) {
+      let copyTimeout: number | null = null
       copyBtn.addEventListener('click', async () => {
-        try { await navigator.clipboard.writeText(this.#value.value) } catch {}
+        try {
+          await navigator.clipboard.writeText(this.#value.value)
+          copyMessage.classList.add('show')
+          if (copyTimeout !== null) clearTimeout(copyTimeout)
+          copyTimeout = window.setTimeout(() => {
+            copyMessage.classList.remove('show')
+            copyTimeout = null
+          }, 3000)
+        } catch {}
       })
     }
 
@@ -832,7 +857,7 @@ export class ColorInput extends HTMLElement {
   }
 
   #emitChange() {
-    const detail: ChangeDetail = { value: this.#value.value, colorspace: this.#space.value }
+    const detail: ChangeDetail = { value: this.#value.value, colorspace: this.#space.value, gamut: this.#gamut.value }
     this.dispatchEvent(new CustomEvent<ChangeDetail>('change', { detail, bubbles: true }))
   }
 
@@ -1114,8 +1139,8 @@ export class ColorInput extends HTMLElement {
         make('L', 'L', 0, 100, 1, 'linear-gradient(in oklab to right, black, white)'),
         // Chroma: 0-100% (gray → highly saturated)
         make('C', 'C', 0, 100, 1, `linear-gradient(in oklch to right, oklch(${ch.L ?? 0}% 0% ${ch.H ?? 0}), oklch(${ch.L ?? 0}% 100% ${ch.H ?? 0}))`),
-        // Hue: full spectrum (simplified red → red per request)
-        make('H', 'H', 0, 360, 1, 'linear-gradient(to right in oklch longer hue, red, red)'),
+        // Hue: full spectrum
+        make('H', 'H', 0, 359, 1, 'linear-gradient(to right in oklch longer hue, oklch(90% 0.4 0), oklch(90% 0.4 0))'),
         make('A', 'ALP', 0, 100, 1)
       )
     } else if (space === 'lab') {
@@ -1130,13 +1155,13 @@ export class ColorInput extends HTMLElement {
         make('L', 'L', 0, 100, 1, 'linear-gradient(in lab to right, black, white)'),
         // Chroma: 0-100% (gray → highly saturated)
         make('C', 'C', 0, 100, 1, `linear-gradient(in lch to right, lch(${ch.L ?? 0}% 0% ${ch.H ?? 0}), lch(${ch.L ?? 0}% 100% ${ch.H ?? 0}))`),
-        // Hue: full spectrum (simplified red → red per request)
-        make('H', 'H', 0, 360, 1, 'linear-gradient(to right in lch longer hue, red, red)'),
+        // Hue: full spectrum
+        make('H', 'H', 0, 359, 1, 'linear-gradient(to right in lch longer hue, oklch(90% 0.4 0), oklch(90% 0.4 0))'),
         make('A', 'ALP', 0, 100, 1)
       )
     } else if (space === 'hsl') {
       this.#controls.append(
-        make('H', 'H', 0, 360, 1, 'linear-gradient(to right in hsl longer hue, red, red)'),
+        make('H', 'H', 0, 359, 1, 'linear-gradient(to right in hsl longer hue, red, red)'),
         // Saturation: gray → fully saturated at current H and L (interpolate in hsl with full context)
         make('S', 'S', 0, 100, 1, `linear-gradient(in hsl to right, hsl(${ch.H ?? 0} 0% ${ch.L ?? 50}% / 100%), hsl(${ch.H ?? 0} 100% ${ch.L ?? 50}% / 100%))`),
         // Lightness: black → white at current H/S (interpolate in oklab)
@@ -1145,7 +1170,7 @@ export class ColorInput extends HTMLElement {
       )
     } else if (space === 'hwb') {
       this.#controls.append(
-        make('H', 'H', 0, 360, 1, 'linear-gradient(to right in hsl longer hue, red, red)'),
+        make('H', 'H', 0, 359, 1, 'linear-gradient(to right in hsl longer hue, red, red)'),
         make('W', 'W', 0, 100, 1, 'linear-gradient(to right in oklab, #fff0, #fff)', 'black'),
         make('B', 'B', 0, 100, 1, 'linear-gradient(to right in oklab, #0000, #000)', 'white'),
         make('A', 'ALP', 0, 100, 1)
