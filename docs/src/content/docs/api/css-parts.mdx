@@ -249,6 +249,108 @@ Here are three complete examples showing different styling approaches:
   </TabItem>
 </Tabs>
 
+### Example 4: Circle Swatch (Classic)
+
+<Tabs>
+  <TabItem label="Result">
+    <div class="demo">
+      <style>{`
+        .circle-swatch::part(trigger) {
+          width: 48px;
+          height: 48px;
+          min-width: 48px;
+          padding: 0;
+          border: 3px solid white;
+          border-radius: 50%;
+          background: transparent;
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15), inset 0 0 0 1px rgba(0, 0, 0, 0.1);
+          cursor: pointer;
+          transition: transform 0.15s ease, box-shadow 0.15s ease;
+          overflow: hidden;
+        }
+        .circle-swatch::part(trigger):hover {
+          transform: scale(1.1);
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2), inset 0 0 0 1px rgba(0, 0, 0, 0.1);
+        }
+        .circle-swatch::part(trigger):active {
+          transform: scale(1.05);
+        }
+        .circle-swatch::part(chip) {
+          width: 100%;
+          height: 100%;
+          border: none;
+          border-radius: 0;
+        }
+        .circle-swatch::part(label) {
+          display: none;
+        }
+      `}</style>
+      <div class="demo-row">
+        <color-input class="circle-swatch" value="#ef4444" colorspace="srgb"></color-input>
+        <color-input class="circle-swatch" value="#f59e0b" colorspace="srgb"></color-input>
+        <color-input class="circle-swatch" value="#10b981" colorspace="srgb"></color-input>
+        <color-input class="circle-swatch" value="#3b82f6" colorspace="srgb"></color-input>
+        <color-input class="circle-swatch" value="#8b5cf6" colorspace="srgb"></color-input>
+      </div>
+    </div>
+  </TabItem>
+  <TabItem label="CSS">
+    ```css
+    .circle-swatch::part(trigger) {
+      width: 48px;
+      height: 48px;
+      min-width: 48px;
+      padding: 0;
+      border: 3px solid white;
+      border-radius: 50%;
+      background: transparent;
+      box-shadow: 
+        0 2px 8px rgba(0, 0, 0, 0.15),
+        inset 0 0 0 1px rgba(0, 0, 0, 0.1);
+      cursor: pointer;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+      overflow: hidden;
+    }
+
+    .circle-swatch::part(trigger):hover {
+      transform: scale(1.1);
+      box-shadow: 
+        0 4px 12px rgba(0, 0, 0, 0.2),
+        inset 0 0 0 1px rgba(0, 0, 0, 0.1);
+    }
+
+    .circle-swatch::part(trigger):active {
+      transform: scale(1.05);
+    }
+
+    .circle-swatch::part(chip) {
+      width: 100%;
+      height: 100%;
+      border: none;
+      border-radius: 0;
+    }
+
+    /* Hide the label for a pure swatch look */
+    .circle-swatch::part(label) {
+      display: none;
+    }
+    ```
+  </TabItem>
+  <TabItem label="HTML">
+    ```html
+    <color-input class="circle-swatch" value="#ef4444"></color-input>
+    <color-input class="circle-swatch" value="#f59e0b"></color-input>
+    <color-input class="circle-swatch" value="#10b981"></color-input>
+    <color-input class="circle-swatch" value="#3b82f6"></color-input>
+    <color-input class="circle-swatch" value="#8b5cf6"></color-input>
+    ```
+  </TabItem>
+</Tabs>
+
+:::tip[Perfect for Color Palettes]
+The circle swatch style is ideal for displaying color palettes, design system tokens, or any UI where you need compact, visual color selection.
+:::
+
 ## Parts Reference
 
 | Part | Description |

@@ -1076,6 +1076,30 @@ export class ColorInput extends HTMLElement {
       group.className = 'control'
       const lab = document.createElement('label')
       lab.textContent = label
+      // Add title attribute with full channel name
+      const titleMap: Record<string, string> = {
+        'L': 'Lightness',
+        'C': 'Chroma',
+        'H': 'Hue',
+        'S': 'Saturation',
+        'A': 'A (green-red axis)',
+        'W': 'Whiteness',
+        'R': 'Red',
+        'G': 'Green',
+        'ALP': 'Alpha'
+      }
+      // B channel is context-dependent
+      if (key === 'B') {
+        if (space === 'oklab' || space === 'lab') {
+          lab.title = 'B (blue-yellow axis)'
+        } else if (space === 'hwb') {
+          lab.title = 'Blackness'
+        } else {
+          lab.title = 'Blue'
+        }
+      } else if (titleMap[key]) {
+        lab.title = titleMap[key]
+      }
       const range = document.createElement('input')
       range.type = 'range'
       range.min = String(min)

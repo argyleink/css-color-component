@@ -43,7 +43,42 @@ The `value` attribute sets the color using standard CSS color syntax. It can be 
     <color-input value="rgb(20% 40% 80%)" colorspace="srgb"></color-input>
     ```
   </TabItem>
+  <TabItem label="Display P3">
+    <ColorInputDemo value="color(display-p3 0.3 0.7 0.95)" colorspace="display-p3" />
+    ```html
+    <color-input value="color(display-p3 0.3 0.7 0.95)" colorspace="display-p3"></color-input>
+    ```
+  </TabItem>
 </Tabs>
+
+### Common Color Formats
+
+The component accepts many CSS color formats:
+
+<div class="demo-grid">
+  <div>
+    <strong>Hex Colors</strong>
+    <ColorInputDemo value="#3b82f6" colorspace="srgb" showCode={false} />
+    <ColorInputDemo value="#10b981" colorspace="srgb" showCode={false} />
+    <ColorInputDemo value="#f59e0b" colorspace="srgb" showCode={false} />
+  </div>
+  <div>
+    <strong>RGB Colors</strong>
+    <ColorInputDemo value="rgb(239, 68, 68)" colorspace="srgb" showCode={false} />
+    <ColorInputDemo value="rgb(168, 85, 247)" colorspace="srgb" showCode={false} />
+    <ColorInputDemo value="rgba(236, 72, 153, 0.8)" colorspace="srgb" showCode={false} />
+  </div>
+</div>
+
+```html
+<!-- Hex -->
+<color-input value="#3b82f6" colorspace="srgb"></color-input>
+<color-input value="#10b981" colorspace="srgb"></color-input>
+
+<!-- RGB -->
+<color-input value="rgb(239, 68, 68)" colorspace="srgb"></color-input>
+<color-input value="rgba(236, 72, 153, 0.8)" colorspace="srgb"></color-input>
+```
 
 :::tip
 If `value` is omitted, it defaults to `oklch(75% 75% 180)` (a vibrant cyan).
