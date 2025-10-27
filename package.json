@@ -39,6 +39,7 @@
     "colorjs.io": "^0.5.2"
   },
   "devDependencies": {
+    "@astrojs/netlify": "^6.6.0",
     "@types/jsdom": "^21.1.7",
     "autoprefixer": "^10.4.19",
     "jsdom": "^24.1.0",
