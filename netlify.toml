@@ -1,0 +1,16 @@
+[build]
+  base = "docs"
+  command = "npm run build"
+  publish = "dist"
+
+[[plugins]]
+  package = "@astrojs/netlify"
+
+[build.environment]
+  NODE_VERSION = "18"
+
+# Redirect root to docs site (optional - remove if you want different root behavior)
+# [[redirects]]
+#   from = "/"
+#   to = "/docs"
+#   status = 301
