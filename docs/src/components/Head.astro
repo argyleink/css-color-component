@@ -6,7 +6,7 @@
 <script>
   // Load the color-input web component on the client side only
   // This avoids SSR issues with document/window not being defined
-  import('color-input').catch(err => {
+  const colorInputModule = import('color-input').catch(err => {
     console.error('Failed to load color-input:', err);
   });
 
@@ -18,4 +18,61 @@
       window.location.reload();
     });
   }
+
+  // Track which color-input elements should auto-sync with page theme
+  const autoSyncElements = new WeakSet<HTMLElement>();
+
+  // Sync Starlight theme changes with color-input components
+  function syncThemeToColorInputs() {
+    const theme = document.documentElement.getAttribute('data-theme') || 'auto';
+    const colorInputs = document.querySelectorAll('color-input');
+
+    colorInputs.forEach((input: any) => {
+      const initialTheme = input.getAttribute('theme');
+
+      // Mark elements that start with 'auto' or no theme for auto-syncing
+      if (!autoSyncElements.has(input)) {
+        if (!initialTheme || initialTheme === 'auto') {
+          autoSyncElements.add(input);
+        }
+      }
+
+      // Only sync elements marked for auto-syncing
+      if (autoSyncElements.has(input)) {
+        input.theme = theme === 'light' || theme === 'dark' ? theme : 'auto';
+      }
+    });
+  }
+
+  // Watch for theme changes on the root element
+  const themeObserver = new MutationObserver((mutations) => {
+    mutations.forEach((mutation) => {
+      if (mutation.type === 'attributes' && mutation.attributeName === 'data-theme') {
+        syncThemeToColorInputs();
+      }
+    });
+  });
+
+  // Initialize theme sync after custom element is defined
+  async function initializeThemeSync() {
+    // Wait for the custom element to be defined
+    await colorInputModule;
+    await customElements.whenDefined('color-input');
+
+    // Now set up the observer and do initial sync
+    themeObserver.observe(document.documentElement, { attributes: true });
+    syncThemeToColorInputs();
+  }
+
+  // Start observing when DOM is ready
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializeThemeSync);
+  } else {
+    initializeThemeSync();
+  }
+
+  // Also sync on Astro view transitions
+  document.addEventListener('astro:page-load', () => {
+    customElements.whenDefined('color-input').then(syncThemeToColorInputs);
+  });
 </script>

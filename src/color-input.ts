@@ -870,6 +870,13 @@ export class ColorInput extends HTMLElement {
       if (preview) preview.style.setProperty('--value', v)
     })
 
+    // Update color-scheme based on theme
+    effect(() => {
+      const theme = this.#theme.value
+      const colorScheme = theme === 'auto' ? 'light dark' : theme
+      this.style.setProperty('color-scheme', colorScheme)
+    })
+
     // Defaults
     if (!this.hasAttribute('value')) this.setAttribute('value', DEFAULT_VALUE)
     if (!this.hasAttribute('colorspace')) this.setAttribute('colorspace', DEFAULT_SPACE)
