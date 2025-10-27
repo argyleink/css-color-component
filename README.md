@@ -5,7 +5,6 @@ A standalone web component color picker using colorjs.io and preact signals.
 - One script import, one custom element tag
 - Colorspaces: srgb, hsl, hwb, lab, lch, oklch, oklab and wide-gamut RGB-like spaces
 - Popover UI with automatic positioning; Shadow DOM encapsulation
-- Open Props styling compiled away with PostCSS
 
 ## Install
 
@@ -21,7 +20,8 @@ npm i color-input
   import 'color-input/dist/index.js'
 </script>
 
-<color-input value="oklch(75% .3 180)" colorspace="oklch"></color-input>
+<color-input value="hotpink"></color-input>
+<color-input value="oklch(75% 50% 180)" colorspace="oklch"></color-input>
 ```
 
 ## API
