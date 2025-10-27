@@ -12,7 +12,7 @@ import {
 
 export type Theme = 'auto' | 'light' | 'dark'
 export type ColorSpace =
-  | 'srgb' | 'hsl' | 'hwb' | 'lab' | 'lch' | 'oklab' | 'oklch'
+  | 'srgb' | 'hex' | 'hsl' | 'hwb' | 'lab' | 'lch' | 'oklab' | 'oklch'
   | 'srgb-linear' | 'display-p3' | 'rec2020' | 'a98-rgb' | 'prophoto' | 'xyz' | 'xyz-d50' | 'xyz-d65'
 
 export interface ChangeDetail { value: string; colorspace: ColorSpace; gamut: string }
@@ -49,7 +49,7 @@ function formatChannel(space: ColorSpace, key: string, val: number) {
   } else if (space === 'hsl' || space === 'hwb') {
     if (key === 'H') return String(round(val, 0))
     if (key === 'S' || key === 'L' || key === 'W' || key === 'B') return String(round(val, 0))
-  } else if (space === 'srgb' || isRGBLike(space)) {
+  } else if (space === 'srgb' || space === 'hex' || isRGBLike(space)) {
     if (key === 'R' || key === 'G' || key === 'B') return String(round(val, 0))
   }
   if (key === 'ALP') return String(round(val, 0))
@@ -77,6 +77,23 @@ function gencolor(space: ColorSpace, ch: Record<string, string | number>) {
     case 'hsl':   return `hsl(${H} ${S}% ${L}%${alphaToString(ALP)})`
     case 'hwb':   return `hwb(${H} ${W}% ${B}%${alphaToString(ALP)})`
     case 'srgb':  return `rgb(${R}% ${G}% ${B}%${alphaToString(ALP)})`
+    case 'hex': {
+      // Convert percentage to 0-255 range
+      const r = Math.round(Number(R) * 2.55)
+      const g = Math.round(Number(G) * 2.55)
+      const b = Math.round(Number(B) * 2.55)
+      const a = Number(ALP)
+      // Format as hex
+      const rh = r.toString(16).padStart(2, '0')
+      const gh = g.toString(16).padStart(2, '0')
+      const bh = b.toString(16).padStart(2, '0')
+      if (a < 100) {
+        const alpha = Math.round((a / 100) * 255)
+        const ah = alpha.toString(16).padStart(2, '0')
+        return `#${rh}${gh}${bh}${ah}`
+      }
+      return `#${rh}${gh}${bh}`
+    }
     default:
       if (isRGBLike(space)) return rgbColor(space, R, G, B, ALP)
       return DEFAULT_VALUE
@@ -87,8 +104,10 @@ function gencolor(space: ColorSpace, ch: Record<string, string | number>) {
  * Converts between spaces if necessary, normalizes channel ranges, and handles missing hue. */
 function parseIntoChannels(space: ColorSpace, colorStr: string) {
   let c = new Color(colorStr)
+  // Hex is internally sRGB
+  const actualSpace = space === 'hex' ? 'srgb' : space
   // Convert to target space if different
-  const targetId = getColorJSSpaceID(space)
+  const targetId = getColorJSSpaceID(actualSpace)
   if (c.space.id !== targetId) {
     c = c.to(targetId)
   }
@@ -134,7 +153,7 @@ function parseIntoChannels(space: ColorSpace, colorStr: string) {
     ch.W = toFixed(w > 1 ? w : w * 100)
     ch.B = toFixed(b > 1 ? b : b * 100)
     ch.ALP = toFixed(c.alpha * 100)
-  } else if (s === 'srgb') {
+  } else if (s === 'srgb' || s === 'hex') {
     const [r, g, b] = c.toGamut({ space: 'srgb', method: 'clip' }).coords
     ch.R = toFixed(r * 100)
     ch.G = toFixed(g * 100)
@@ -506,8 +525,9 @@ template.innerHTML = `
     .space {
       appearance: base-select;
       min-block-size: 1lh;
-      line-height: 1;
+      line-height: 1.1;
       font-size: 12px;
+      font-weight: bold;
       margin: 0;
       padding: 0;
       color: var(--contrast);
@@ -515,19 +535,22 @@ template.innerHTML = `
       border-radius: 0;
       border: none;
     }
+    .space::picker-icon {
+      content: "›";
+      transform: rotate(90deg) scale(1.5);
+    }
 
 /* Gamut badge: displays detected color gamut (srgb/p3/rec2020/xyz) */
 /* Info output: shows the current CSS color string */
 .gamut, .info {
-      line-height: 1;
-      display: inline-flex;
-      align-items: center;
-      gap: .5rem;
+      line-height: 1.1;
+      text-box: cap alphabetic;
+      display: block;
       color: var(--contrast);
       /* No padding/radius; background only on hover/focus */
       background: transparent;
     }
-    .gamut { font-size: 12px; }
+    .gamut { font-size: 12px; text-box: ex alphabetic; }
 
     /* Controls: dynamically generated sliders + numeric inputs for each channel in the selected color space */
     .controls {
@@ -648,7 +671,9 @@ export class ColorInput extends HTMLElement {
     try {
       const parsed = new Color(v)
       const sid = reverseColorJSSpaceID(parsed.space.id) as string
-      this.#space.value = (sid === 'rgb' ? 'srgb' : (sid as ColorSpace))
+      // Detect hex format
+      const isHex = typeof v === 'string' && v.trim().startsWith('#')
+      this.#space.value = isHex ? 'hex' : (sid === 'rgb' ? 'srgb' : (sid as ColorSpace))
       this.#value.value = v
       this.setAttribute('value', v)
       this.setAttribute('colorspace', this.#space.value)
@@ -664,12 +689,17 @@ export class ColorInput extends HTMLElement {
     // convert current value to target space to preserve color
     try {
       const current = new Color(this.#value.value)
-      const converted = current.to(getColorJSSpaceID(next)).toGamut()
+      // Hex is internally sRGB for conversion purposes
+      const targetSpace = next === 'hex' ? 'srgb' : next
+      const converted = current.to(getColorJSSpaceID(targetSpace)).toGamut()
       // Parse and regenerate using our formatters for proper precision
       const tempStr = converted.toString({ precision: 12 })
       const parsed = parseIntoChannels(next, tempStr)
-      this.#value.value = gencolor(next, parsed.ch)
-      this.setAttribute('value', this.#value.value)
+      const newValue = gencolor(next, parsed.ch)
+      // Update value signal (this triggers gamut recomputation)
+      this.#value.value = newValue
+      this.setAttribute('value', newValue)
+      // gamut signal is computed and will update automatically
       this.#emitChange()
     } catch {}
   }
@@ -756,6 +786,7 @@ export class ColorInput extends HTMLElement {
     // init space options
     this.#spaceSelect.innerHTML = `
       <optgroup label="Standard">
+        <option value="hex">hex</option>
         <option value="srgb">rgb</option>
         <option value="srgb-linear">srgb-linear</option>
         <option value="hsl">hsl</option>
@@ -853,8 +884,10 @@ export class ColorInput extends HTMLElement {
       try {
         const parsed = new Color(value)
         const sid = reverseColorJSSpaceID(parsed.space.id) as string
+        // Detect hex format
+        const isHex = typeof value === 'string' && value.trim().startsWith('#')
         this.#value.value = value
-        this.#space.value = (sid === 'rgb' ? 'srgb' : (sid as ColorSpace))
+        this.#space.value = isHex ? 'hex' : (sid === 'rgb' ? 'srgb' : (sid as ColorSpace))
         if (this.#spaceSelect) this.#spaceSelect.value = this.#space.value
       } catch {}
     }
@@ -1142,6 +1175,8 @@ export class ColorInput extends HTMLElement {
         const next = gencolor(space, ch)
         this.#value.value = next
         this.setAttribute('value', next)
+        // Don't update colorspace attribute during slider changes - preserve current space
+        // this.setAttribute('colorspace', space) // removed to prevent space changes
         this.#emitChange()
       }
 
@@ -1302,14 +1337,14 @@ export class ColorInput extends HTMLElement {
           alphaRange.style.background = `linear-gradient(to right in hwb, hwb(${H} ${W}% ${B}% / 0%), hwb(${H} ${W}% ${B}% / 100%)), var(--checker)`
         }
       })
-    } else if (space === 'srgb') {
+    } else if (space === 'srgb' || space === 'hex') {
       this.#controls.append(
         make('R', 'R', 0, 100, 1, 'linear-gradient(to right in oklab, #f000, #f00)', 'black'),
         make('G', 'G', 0, 100, 1, 'linear-gradient(to right in oklab, #0f00, #0f0)', 'black'),
         make('B', 'B', 0, 100, 1, 'linear-gradient(to right in oklab, #00f0, #00f)', 'black'),
         make('A', 'ALP', 0, 100, 1)
       )
-      // Use signals to reactively update sRGB alpha slider background
+      // Use signals to reactively update sRGB/hex alpha slider background
       const alphaRange = this.#controls.querySelector<HTMLInputElement>('input[type="range"].ch-alp')
       effect(() => {
         const R = channelSignals.R.value || '0'
