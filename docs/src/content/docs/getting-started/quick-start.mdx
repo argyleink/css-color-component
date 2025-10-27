@@ -53,31 +53,36 @@ picker.addEventListener('change', (event) => {
 
 ## Opening the Picker Programmatically
 
-You can control the popover via the Popover API button command:
-
-```html
-<color-input id="picker"></color-input>
-<button commandfor="picker" command="toggle-popover">Toggle Picker</button>
-```
-
-<div class="demo">
-  <div class="demo-row">
-    <color-input id="demo-picker" value="oklch(60% 0.15 320)" colorspace="oklch"></color-input>
-    <button commandfor="demo-picker" command="toggle-popover">Toggle Picker</button>
-  </div>
-</div>
-
-Or use the `show()` and `close()` methods:
+Use the `show()` and `close()` methods to control the picker:
 
 ```js
 const picker = document.querySelector('color-input');
 
-// Open
+// Open the picker
 picker.show();
 
-// Close
+// Close the picker
 picker.close();
 ```
+
+<div class="demo">
+  <color-input id="demo-picker" value="oklch(60% 0.15 320)" colorspace="oklch"></color-input>
+  <div class="demo-controls">
+    <button type="button" id="demo-show-btn">Show Picker</button>
+    <button type="button" id="demo-hide-btn">Hide Picker</button>
+  </div>
+</div>
+
+<script>{`
+  const demoPicker = document.querySelector('#demo-picker');
+  const demoShowBtn = document.querySelector('#demo-show-btn');
+  const demoHideBtn = document.querySelector('#demo-hide-btn');
+
+  if (demoPicker && demoShowBtn && demoHideBtn) {
+    demoShowBtn.addEventListener('click', () => demoPicker.show(demoShowBtn));
+    demoHideBtn.addEventListener('click', () => demoPicker.close());
+  }
+`}</script>
 
 ## Changing Color Spaces
 

@@ -57,18 +57,35 @@ The color picker UI appears in a **popover**-a native browser overlay that:
 
 ### Opening the Picker
 
-Three ways to open:
+Two ways to open:
 
-1. **Click the trigger button**
-2. **Use the Popover API button command:**
-   ```html
-   <color-input id="picker"></color-input>
-   <button commandfor="picker" command="toggle-popover">Open</button>
-   ```
-3. **Call the `show()` method:**
+1. **Click the trigger button** (the built-in chip)
+2. **Call the `show()` method programmatically:**
    ```js
+   const picker = document.querySelector('color-input');
    picker.show();
    ```
+
+#### Programmatic Control Example
+
+<div class="demo">
+  <color-input id="programmatic-demo" value="oklch(65% 0.2 240)" colorspace="oklch"></color-input>
+  <div class="demo-controls">
+    <button type="button" id="show-btn">Show Picker</button>
+    <button type="button" id="hide-btn">Hide Picker</button>
+  </div>
+</div>
+
+<script>{`
+  const picker = document.querySelector('#programmatic-demo');
+  const showBtn = document.querySelector('#show-btn');
+  const hideBtn = document.querySelector('#hide-btn');
+
+  if (picker && showBtn && hideBtn) {
+    showBtn.addEventListener('click', () => picker.show(showBtn));
+    hideBtn.addEventListener('click', () => picker.close());
+  }
+`}</script>
 
 ### Closing the Picker
 

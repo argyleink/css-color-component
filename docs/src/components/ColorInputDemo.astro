@@ -1,4 +1,6 @@
 ---
+import { Code } from '@astrojs/starlight/components';
+
 interface Props {
   value?: string;
   colorspace?: string;
@@ -16,6 +18,11 @@ const {
 } = Astro.props;
 
 const demoId = `demo-${Math.random().toString(36).substr(2, 9)}`;
+const codeSnippet = `<color-input
+  value="${value}"
+  colorspace="${colorspace}"
+  theme="${theme}"
+></color-input>`;
 ---
 
 <div class="demo color-input-demo" data-demo-id={demoId}>
@@ -28,7 +35,6 @@ const demoId = `demo-${Math.random().toString(36).substr(2, 9)}`;
       colorspace={colorspace}
       theme={theme}
     ></color-input>
-    <button type="button" commandfor={demoId} command="toggle-popover">Open Picker</button>
   </div>
 
   <dl class="readout" aria-live="polite" aria-atomic="true">
@@ -49,11 +55,7 @@ const demoId = `demo-${Math.random().toString(36).substr(2, 9)}`;
     <details class="code-details">
       <summary class="code-toggle">View Code</summary>
       <div class="code-content">
-        <pre><code>&lt;color-input
-  value="{value}"
-  colorspace="{colorspace}"
-  theme="{theme}"
-&gt;&lt;/color-input&gt;</code></pre>
+        <Code code={codeSnippet} lang="html" />
       </div>
     </details>
   )}
@@ -120,30 +122,16 @@ const demoId = `demo-${Math.random().toString(36).substr(2, 9)}`;
     margin-top: 1rem;
   }
 
-  .code-details[open] .code-toggle::after {
-    content: ' ▲';
-  }
-
-  .code-details:not([open]) .code-toggle::after {
-    content: ' ▼';
+  .code-toggle {
+    cursor: pointer;
+    user-select: none;
   }
 
   .code-content {
     margin-top: 1rem;
   }
 
-  .code-content pre {
+  .code-content :global(pre) {
     margin: 0;
-    padding: 1rem;
-    background: var(--sl-color-bg-inline-code);
-    border-radius: 8px;
-    border: 1px solid var(--sl-color-hairline);
-    overflow-x: auto;
-  }
-
-  .code-content code {
-    font-family: ui-monospace, 'Cascadia Code', 'Source Code Pro', Menlo, Consolas, 'DejaVu Sans Mono', monospace;
-    font-size: 0.875rem;
-    line-height: 1.6;
   }
 </style>

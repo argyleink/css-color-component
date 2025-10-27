@@ -22,6 +22,43 @@
   flex-wrap: wrap;
 }
 
+.demo-controls {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.demo-controls button {
+  padding: 0.5rem 1rem;
+  background: var(--sl-color-bg-nav);
+  border: 1px solid var(--sl-color-hairline);
+  border-radius: 8px;
+  color: var(--sl-color-text);
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.1s ease;
+}
+
+.demo-controls button:hover {
+  background: var(--sl-color-bg-sidebar);
+}
+
+.demo-controls button:active {
+  transform: scale(0.98);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .demo-controls button {
+    transition: none;
+  }
+
+  .demo-controls button:active {
+    transform: none;
+  }
+}
+
 .demo-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
