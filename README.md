@@ -8,30 +8,14 @@ A standalone web component color picker using [colorjs.io](http://colorjs.io/) a
 
 > Consider this as a beta or alpha build, needing battle testing, contributions and possibly a couple more features before being production ready
 
-## Install
-
-### Via CDN
-
-```html
-<script src="https://cdn.jsdelivr.net/gh/argyleink/css-color-component@cdn-latest/dist/color-input.min.js"></script>
-```
-
-The CDN build is automatically published on every release via GitHub Actions.
-
 ## Usage
 
 ### With CDN
 
 ```html
-<!DOCTYPE html>
-<html>
-<head>
-  <script src="https://cdn.jsdelivr.net/gh/argyleink/css-color-component@cdn-latest/dist/color-input.min.js"></script>
-</head>
-<body>
-  <color-input value="oklch(75% 75% 180)" colorspace="oklch"></color-input>
-</body>
-</html>
+<script src="https://cdn.jsdelivr.net/gh/argyleink/css-color-component@cdn-latest/dist/color-input.min.js"></script>
+
+<color-input value="oklch(75% 75% 180)"></color-input>
 ```
 
 ## API
