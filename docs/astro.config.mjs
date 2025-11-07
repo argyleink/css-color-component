@@ -11,7 +11,7 @@ export default defineConfig({
     starlight({
       title: 'color-input',
       tagline: 'A modern color picker web component with wide-gamut support',
-      social: [{ icon: 'github', label: 'GitHub', href: 'https://github.com/your-org/css-color-component' }],
+      social: [{ icon: 'github', label: 'GitHub', href: 'https://github.com/argyleink/css-color-component' }],
       customCss: ['./src/styles/custom.css', './src/styles/demos.css'],
       head: [
         { tag: 'meta', attrs: { name: 'viewport', content: 'width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover' } }
