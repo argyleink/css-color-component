@@ -1,0 +1,93 @@
+name: Publish to CDN
+
+on:
+  release:
+    types: [published]
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests
+        run: npm test
+
+      - name: Build production bundle
+        run: npm run build:prod
+
+      - name: Get version from package.json
+        id: package-version
+        run: echo "version=$(node -p "require('./package.json').version")" >> $GITHUB_OUTPUT
+
+      - name: Commit built files
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add -f dist/color-input.min.js dist/index.js
+          git diff --staged --quiet || git commit -m "build: publish v${{ steps.package-version.outputs.version }} to CDN"
+
+      - name: Create/Update CDN tag
+        run: |
+          git tag -f cdn-latest
+          git push origin cdn-latest -f
+
+          # Also create version-specific tag if this is a release
+          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            TAG_NAME=${GITHUB_REF#refs/tags/}
+            git tag -f "cdn-$TAG_NAME"
+            git push origin "cdn-$TAG_NAME" -f
+          fi
+
+      - name: Upload release assets
+        if: github.event_name == 'release'
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: ./dist/color-input.min.js
+          asset_name: color-input.min.js
+          asset_content_type: application/javascript
+
+      - name: Display CDN URLs
+        run: |
+          echo "### 🚀 Published to CDN!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Latest version:**" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "https://cdn.jsdelivr.net/gh/${{ github.repository }}@cdn-latest/dist/color-input.min.js" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            TAG_NAME=${GITHUB_REF#refs/tags/}
+            echo "**Version-specific:**" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            echo "https://cdn.jsdelivr.net/gh/${{ github.repository }}@cdn-$TAG_NAME/dist/color-input.min.js" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Usage:**" >> $GITHUB_STEP_SUMMARY
+          echo '```html' >> $GITHUB_STEP_SUMMARY
+          echo '<script src="https://cdn.jsdelivr.net/gh/${{ github.repository }}@cdn-latest/dist/color-input.min.js"></script>' >> $GITHUB_STEP_SUMMARY
+          echo '<color-input value="oklch(75% 75% 180)" colorspace="oklch"></color-input>' >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
