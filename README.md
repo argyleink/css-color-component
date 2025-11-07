@@ -8,13 +8,6 @@ A standalone web component color picker using colorjs.io and preact signals.
 
 ## Install
 
-### Via npm
-
-```sh
-npm i color-input
-# or pnpm add color-input
-```
-
 ### Via CDN
 
 ```html
@@ -24,17 +17,6 @@ npm i color-input
 The CDN build is automatically published on every release via GitHub Actions.
 
 ## Usage
-
-### With npm
-
-```html
-<script type="module">
-  import 'color-input/dist/index.js'
-</script>
-
-<color-input value="hotpink"></color-input>
-<color-input value="oklch(75% 50% 180)" colorspace="oklch"></color-input>
-```
 
 ### With CDN
 
