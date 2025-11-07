@@ -20,63 +20,11 @@ export default defineConfig({
         Head: './src/components/Head.astro'
       },
       sidebar: [
-        { label: 'Overview', items: [{ label: 'Introduction', slug: 'index' }] },
-        {
-          label: 'Getting Started',
-          items: [
-            { label: 'Installation', slug: 'getting-started/installation' },
-            { label: 'Quick Start', slug: 'getting-started/quick-start' },
-            { label: 'Concepts', slug: 'getting-started/concepts' }
-          ]
-        },
-        {
-          label: 'API',
-          items: [
-            { label: 'Attributes', slug: 'api/attributes' },
-            { label: 'Properties', slug: 'api/properties' },
-            { label: 'Methods', slug: 'api/methods' },
-            { label: 'Events', slug: 'api/events' },
-            { label: 'CSS Parts', slug: 'api/css-parts' }
-          ]
-        },
-        {
-          label: 'Color Spaces',
-          items: [
-            { label: 'Overview', slug: 'color-spaces/overview' },
-            { label: 'sRGB, HSL, HWB', slug: 'color-spaces/srgb-hsl-hwb' },
-            { label: 'LAB, LCH', slug: 'color-spaces/lab-lch' },
-            { label: 'OKLCH, OKLAB', slug: 'color-spaces/oklch-oklab' },
-            { label: 'Wide Gamut', slug: 'color-spaces/wide-gamut' }
-          ]
-        },
-        {
-          label: 'Styling',
-          items: [
-            { label: 'Theming', slug: 'styling/theming' },
-            { label: 'Customization', slug: 'styling/customization' },
-            { label: 'Integration', slug: 'styling/integration' }
-          ]
-        },
-        {
-          label: 'Recipes',
-          items: [
-            { label: 'Form Integration', slug: 'recipes/form-integration' },
-            { label: 'Programmatic Control', slug: 'recipes/programmatic-control' },
-            { label: 'Anchor Positioning', slug: 'recipes/anchor-positioning' },
-            { label: 'Keyboard Shortcuts', slug: 'recipes/keyboard-shortcuts' },
-            { label: 'Advanced Patterns', slug: 'recipes/advanced-patterns' }
-          ]
-        },
-        { label: 'Accessibility', items: [{ label: 'Accessibility', slug: 'accessibility' }] },
-        {
-          label: 'Advanced',
-          items: [
-            { label: 'Architecture', slug: 'advanced/architecture' },
-            { label: 'Positioning System', slug: 'advanced/positioning-system' },
-            { label: 'Gamut Detection', slug: 'advanced/gamut-detection' },
-            { label: 'Performance', slug: 'advanced/performance' }
-          ]
-        }
+        { label: 'Home', slug: 'index' },
+        { label: 'API Reference', slug: 'api' },
+        { label: 'Styling', slug: 'styling' },
+        { label: 'Color Spaces', slug: 'color-spaces' },
+        { label: 'Advanced', slug: 'advanced' }
       ]
     }),
     mdx()

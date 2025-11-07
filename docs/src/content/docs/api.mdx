@@ -1,0 +1,370 @@
+---
+title: API Reference
+description: Complete API documentation for color-input attributes, properties, methods, events, and CSS parts
+---
+
+import ColorInputDemo from '../../components/ColorInputDemo.astro';
+import EventLogger from '../../components/EventLogger.astro';
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+
+## Attributes
+
+The `<color-input>` element accepts three HTML attributes:
+
+### value
+
+The `value` attribute sets the color using standard CSS color syntax.
+
+```html
+<color-input value="oklch(70% 0.2 240)" colorspace="oklch"></color-input>
+```
+
+<Tabs>
+  <TabItem label="OKLCH">
+    <ColorInputDemo value="oklch(70% 0.2 240)" colorspace="oklch" />
+  </TabItem>
+  <TabItem label="HSL">
+    <ColorInputDemo value="hsl(240 80% 60%)" colorspace="hsl" />
+  </TabItem>
+  <TabItem label="Hex">
+    <ColorInputDemo value="#3b82f6" colorspace="srgb" />
+  </TabItem>
+  <TabItem label="Display P3">
+    <ColorInputDemo value="color(display-p3 0.3 0.7 0.95)" colorspace="display-p3" />
+  </TabItem>
+</Tabs>
+
+:::tip
+If `value` is omitted, it defaults to `oklch(75% 75% 180)` (vibrant cyan).
+:::
+
+### colorspace
+
+The `colorspace` attribute specifies which color space to use for editing:
+
+- **`oklch`** (default) - Perceptually uniform lightness/chroma/hue
+- **`oklab`** - Perceptually uniform lightness/a/b
+- **`hsl`** - Hue/saturation/lightness
+- **`hwb`** - Hue/whiteness/blackness
+- **`srgb`** - Red/green/blue (sRGB)
+- **`lab`** - CIE LAB lightness/a/b
+- **`lch`** - CIE LCH lightness/chroma/hue
+- **`display-p3`** - Wide-gamut Display P3 RGB
+- **`rec2020`** - Wide-gamut Rec.2020 RGB
+- **`a98-rgb`**, **`prophoto`**, **`xyz`**, **`xyz-d50`**, **`xyz-d65`**
+
+```html
+<color-input value="hsl(200 90% 50%)" colorspace="hsl"></color-input>
+```
+
+:::note
+The component automatically converts between color spaces.
+:::
+
+### theme
+
+The `theme` attribute controls the visual appearance:
+
+- **`auto`** (default) - Respects user's system preference
+- **`light`** - Always uses light theme
+- **`dark`** - Always uses dark theme
+
+<Tabs>
+  <TabItem label="Auto">
+    <ColorInputDemo value="oklch(65% 0.2 280)" colorspace="oklch" theme="auto" />
+  </TabItem>
+  <TabItem label="Light">
+    <ColorInputDemo value="oklch(65% 0.2 280)" colorspace="oklch" theme="light" />
+  </TabItem>
+  <TabItem label="Dark">
+    <ColorInputDemo value="oklch(65% 0.2 280)" colorspace="oklch" theme="dark" />
+  </TabItem>
+</Tabs>
+
+## Properties
+
+The `<color-input>` element exposes five properties:
+
+### Read/Write Properties
+
+**value** - Current color as a CSS string
+
+```js
+const picker = document.querySelector('color-input');
+console.log(picker.value); // "oklch(70% 0.2 240)"
+picker.value = 'oklch(80% 0.15 180)';
+```
+
+**colorspace** - Current color space
+
+```js
+console.log(picker.colorspace); // "oklch"
+picker.colorspace = 'hsl';
+```
+
+**theme** - Visual theme
+
+```js
+console.log(picker.theme); // "auto"
+picker.theme = 'dark'; // "auto", "light", or "dark"
+```
+
+### Read-Only Properties
+
+**gamut** - Detected gamut (smallest gamut that contains the current color)
+
+```js
+console.log(picker.gamut); // "srgb" | "p3" | "rec2020" | "xyz"
+```
+
+**contrastColor** - Recommended text color for contrast
+
+```js
+console.log(picker.contrastColor); // "white" or "black"
+```
+
+:::note
+All read/write properties reflect to attributes and vice versa.
+:::
+
+## Methods
+
+### show()
+
+Opens the picker popover programmatically:
+
+```js
+const picker = document.querySelector('color-input');
+picker.show();
+```
+
+### close()
+
+Closes the picker popover:
+
+```js
+picker.close();
+```
+
+### setAnchor(element)
+
+Sets a custom anchor element for popover positioning:
+
+```js
+const customAnchor = document.querySelector('#my-anchor');
+picker.setAnchor(customAnchor);
+```
+
+By default, the popover positions relative to the trigger button.
+
+## Events
+
+The `<color-input>` element dispatches three custom events:
+
+### change
+
+Fired when the color value changes. The event detail contains:
+
+```ts
+interface ChangeDetail {
+  value: string;      // CSS color string, e.g., "oklch(70% 0.2 240)"
+  colorspace: string; // Current color space, e.g., "oklch"
+  gamut: string;      // Detected gamut: "srgb", "p3", "rec2020", or "xyz"
+}
+```
+
+```js
+picker.addEventListener('change', (event) => {
+  const { value, colorspace, gamut } = event.detail;
+  console.log(`New color: ${value}`);
+  console.log(`Color space: ${colorspace}`);
+  console.log(`Gamut: ${gamut}`);
+});
+```
+
+<EventLogger />
+
+### open
+
+Fired when the picker popover opens:
+
+```js
+picker.addEventListener('open', () => {
+  console.log('Picker opened');
+});
+```
+
+### close
+
+Fired when the picker popover closes:
+
+```js
+picker.addEventListener('close', () => {
+  console.log('Picker closed');
+});
+```
+
+:::tip
+All events bubble and can be captured at parent elements.
+:::
+
+## CSS Parts
+
+The `<color-input>` element exposes several CSS parts for styling with the `::part()` selector:
+
+- `trigger` - The button that opens the picker
+- `chip` - Color swatch inside the trigger button
+- `label` - Text label inside the trigger button
+- `panel` - Popover container
+- `output` - CSS color string display
+- `gamut` - Gamut badge (srgb/p3/rec2020/xyz)
+- `controls` - Container for channel sliders and inputs
+
+### Circle Swatch Example
+
+Perfect for color palettes and compact color selection:
+
+<Tabs>
+  <TabItem label="Result">
+    <div class="demo">
+      <style>{`
+        .circle-swatch::part(trigger) {
+          width: 48px;
+          height: 48px;
+          min-width: 48px;
+          padding: 0;
+          border: 3px solid white;
+          border-radius: 50%;
+          background: transparent;
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15), inset 0 0 0 1px rgba(0, 0, 0, 0.1);
+          cursor: pointer;
+          transition: transform 0.15s ease, box-shadow 0.15s ease;
+          overflow: hidden;
+        }
+        .circle-swatch::part(trigger):hover {
+          transform: scale(1.1);
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2), inset 0 0 0 1px rgba(0, 0, 0, 0.1);
+        }
+        .circle-swatch::part(trigger):active {
+          transform: scale(1.05);
+        }
+        .circle-swatch::part(chip) {
+          width: 100%;
+          height: 100%;
+          margin: 0;
+          border: none;
+          border-radius: 0;
+        }
+        .circle-swatch::part(label) {
+          display: none;
+        }
+      `}</style>
+      <div class="demo-row">
+        <color-input class="circle-swatch" value="#ef4444" colorspace="srgb"></color-input>
+        <color-input class="circle-swatch" value="#f59e0b" colorspace="srgb"></color-input>
+        <color-input class="circle-swatch" value="#10b981" colorspace="srgb"></color-input>
+        <color-input class="circle-swatch" value="#3b82f6" colorspace="srgb"></color-input>
+        <color-input class="circle-swatch" value="#8b5cf6" colorspace="srgb"></color-input>
+      </div>
+    </div>
+  </TabItem>
+  <TabItem label="CSS">
+    ```css
+    .circle-swatch::part(trigger) {
+      width: 48px;
+      height: 48px;
+      min-width: 48px;
+      padding: 0;
+      border: 3px solid white;
+      border-radius: 50%;
+      background: transparent;
+      box-shadow:
+        0 2px 8px rgba(0, 0, 0, 0.15),
+        inset 0 0 0 1px rgba(0, 0, 0, 0.1);
+      cursor: pointer;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+      overflow: hidden;
+    }
+
+    .circle-swatch::part(trigger):hover {
+      transform: scale(1.1);
+      box-shadow:
+        0 4px 12px rgba(0, 0, 0, 0.2),
+        inset 0 0 0 1px rgba(0, 0, 0, 0.1);
+    }
+
+    .circle-swatch::part(chip) {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      border: none;
+      border-radius: 0;
+    }
+
+    .circle-swatch::part(label) {
+      display: none;
+    }
+    ```
+  </TabItem>
+</Tabs>
+
+### Pill Style Example
+
+<Tabs>
+  <TabItem label="Result">
+    <div class="demo">
+      <style>{`
+        .pill-style::part(trigger) {
+          border: 2px solid oklch(70% 0.15 280);
+          border-radius: 24px;
+          padding: 8px 16px;
+          background: oklch(95% 0.05 280);
+          transition: all 0.2s ease;
+        }
+        .pill-style::part(trigger):hover {
+          border-color: oklch(60% 0.2 280);
+          background: oklch(90% 0.08 280);
+        }
+        .pill-style::part(chip) {
+          width: 28px;
+          height: 28px;
+          border-radius: 50%;
+          border: 2px solid white;
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+        }
+      `}</style>
+      <color-input class="pill-style" value="oklch(65% 0.2 280)" colorspace="oklch"></color-input>
+    </div>
+  </TabItem>
+  <TabItem label="CSS">
+    ```css
+    .pill-style::part(trigger) {
+      border: 2px solid oklch(70% 0.15 280);
+      border-radius: 24px;
+      padding: 8px 16px;
+      background: oklch(95% 0.05 280);
+      transition: all 0.2s ease;
+    }
+
+    .pill-style::part(chip) {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      border: 2px solid white;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    }
+    ```
+  </TabItem>
+</Tabs>
+
+### Parts Reference
+
+| Part | Description |
+|------|-------------|
+| `trigger` | Button that opens the picker |
+| `chip` | Color swatch preview |
+| `label` | Text label (if any) |
+| `panel` | Popover container |
+| `output` | Current color value display |
+| `gamut` | Gamut badge |
+| `controls` | Sliders and inputs container |

@@ -417,18 +417,15 @@ template.innerHTML = `
   <style>
     /* Design tokens and system colors */
     :host {
-      /* System colors */
       --canvas: Canvas;
       --canvas-text: CanvasText;
-      /* Radii */
       --radius-2: 0.5rem;
       --radius-3: 0.75rem;
       --radius-round: 9999px;
-      /* Shadows */
       --shadow-elev: 0 10px 30px rgba(0,0,0,.18);
       --shadow-inner: inset 0 0 0 1px color-mix(in oklab, var(--canvas-text), transparent 94%);
-      /* Checkerboard for alpha previews */
       --checker: repeating-conic-gradient(color-mix(in oklab, var(--canvas-text), transparent 90%) 0% 25%, transparent 0% 50%) 50%/1rem 1rem;
+
       color-scheme: light dark;
       display: inline-block;
       position: relative;
@@ -540,9 +537,9 @@ template.innerHTML = `
       transform: rotate(90deg) scale(1.5);
     }
 
-/* Gamut badge: displays detected color gamut (srgb/p3/rec2020/xyz) */
-/* Info output: shows the current CSS color string */
-.gamut, .info {
+    /* Gamut badge: displays detected color gamut (srgb/p3/rec2020/xyz) */
+    /* Info output: shows the current CSS color string */
+    .gamut, .info {
       line-height: 1.1;
       text-box: cap alphabetic;
       display: block;
