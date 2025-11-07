@@ -1,10 +1,12 @@
-# color-input
+# `<color-input>`
 
-A standalone web component color picker using colorjs.io and preact signals.
+A standalone web component color picker using [colorjs.io](http://colorjs.io/) and [Preact signals](https://github.com/preactjs/signals).
 
 - One script import, one custom element tag
 - Colorspaces: srgb, hsl, hwb, lab, lch, oklch, oklab and wide-gamut RGB-like spaces
-- Popover UI with automatic positioning; Shadow DOM encapsulation
+- Popover UI with automatic positioning and Shadow DOM encapsulation
+
+> Consider this as a beta or alpha build, needing battle testing, contributions and possibly a couple more features before being production ready
 
 ## Install
 
