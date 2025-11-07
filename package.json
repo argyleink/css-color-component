@@ -24,6 +24,7 @@
     "dev:component": "vite",
     "build": "npm run build:lib && npm run build:docs",
     "build:lib": "vite build",
+    "build:prod": "vite build --mode production",
     "build:docs": "cd docs && npm run build",
     "preview": "cd docs && npm run preview",
     "test": "vitest run",
@@ -31,8 +32,8 @@
     "typecheck": "npm run typecheck:lib && npm run typecheck:docs",
     "typecheck:lib": "tsc -p tsconfig.json --noEmit",
     "typecheck:docs": "cd docs && npm run typecheck",
-    "prepublishOnly": "npm run build:lib",
-    "release": "npm run build:lib && npm publish"
+    "prepublishOnly": "npm run build:prod",
+    "release": "npm run build:prod && npm publish"
   },
   "dependencies": {
     "@preact/signals-core": "^1.6.0",
@@ -46,6 +47,7 @@
     "open-props": "^1.7.16",
     "postcss": "^8.4.40",
     "postcss-jit-props": "^1.0.14",
+    "terser": "^5.44.1",
     "typescript": "^5.6.2",
     "vite": "^5.4.9",
     "vitest": "^1.6.0"

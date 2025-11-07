@@ -1,7 +1,7 @@
 import Color from 'colorjs.io'
 
 export type Theme = 'auto' | 'light' | 'dark'
-export type StandardSpace = 'srgb' | 'hsl' | 'hwb' | 'lab' | 'lch' | 'oklab' | 'oklch'
+export type StandardSpace = 'srgb' | 'hex' | 'hsl' | 'hwb' | 'lab' | 'lch' | 'oklab' | 'oklch'
 export type WideRGB = 'srgb-linear' | 'display-p3' | 'rec2020' | 'a98-rgb' | 'prophoto' | 'xyz' | 'xyz-d50' | 'xyz-d65'
 export type ColorSpace = StandardSpace | WideRGB
 

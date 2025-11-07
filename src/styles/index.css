@@ -1,0 +1,200 @@
+/* Design tokens and system colors */
+:host {
+  --canvas: Canvas;
+  --canvas-text: CanvasText;
+  --radius-2: 0.5rem;
+  --radius-3: 0.75rem;
+  --radius-round: 9999px;
+  --shadow-elev: 0 10px 30px rgba(0,0,0,.18);
+  --shadow-inner: inset 0 0 0 1px color-mix(in oklab, var(--canvas-text), transparent 94%);
+  --checker: repeating-conic-gradient(color-mix(in oklab, var(--canvas-text), transparent 90%) 0% 25%, transparent 0% 50%) 50%/1rem 1rem;
+
+  color-scheme: light dark;
+  display: inline-block;
+  position: relative;
+
+  :focus-visible {
+    outline-offset: 2px;
+  }
+}
+:host([hidden]) { display: none; }
+
+/* Trigger button: externally visible chip + label that opens the picker */
+button.trigger {
+  all: unset;
+  cursor: pointer;
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--radius-2);
+  background: color-mix(in oklab, var(--canvas-text), var(--canvas) 92%);
+  box-shadow: var(--shadow-inner);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  .chip {
+    inline-size: 1.25rem;
+    block-size: 1.25rem;
+    border-radius: var(--radius-round);
+    box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--canvas-text), transparent 92%);
+    margin-inline-end: .25rem;
+    background: linear-gradient(var(--value) 0 0), var(--checker);
+  }
+}
+
+/* Panel: popover container for preview + controls; positioned via Popover API */
+.panel {
+  margin: 0;
+  max-inline-size: min(92vw, 560px);
+  background: var(--canvas);
+  color: var(--canvas-text);
+  box-shadow: var(--shadow-elev);
+  border-radius: var(--radius-3);
+  padding: 0;
+  border: 1px solid #0000;
+}
+
+/* Preview area: visual swatch + colorspace selector + current value output + gamut badge */
+.preview {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  min-inline-size: 28ch;
+  display: grid;
+  align-content: end;
+  justify-items: start;
+  padding: 0.75rem;
+  gap: .25lh;
+  box-shadow: var(--shadow-inner);
+  background: linear-gradient(var(--value) 0 0), var(--checker);
+  &:hover .copy-btn, &:focus-within .copy-btn { opacity: 1; }
+
+  & > *:not(:hover) {opacity:.8}
+  .copy-wrap {
+    position: absolute;
+    top: .5rem;
+    right: .5rem;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: .25rem;
+  }
+  .copy-btn {
+    color: var(--contrast);
+    background: none;
+    border: 1px solid #0000;
+    border-radius: 0;
+    padding: 0;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity .2s ease;
+    display: inline-flex;
+    align-items: center;
+  }
+  .copy-btn svg { display: block; }
+  .copy-message {
+    color: var(--contrast);
+    font-size: 14px;
+    font-weight: 500;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .2s ease;
+    white-space: nowrap;
+  }
+  .copy-message.show { opacity: 1; }
+}
+
+/* Colorspace select: dropdown for switching color models (rgb, oklch, lab, etc.) */
+.space {
+  appearance: base-select;
+  min-block-size: 1lh;
+  line-height: 1.1;
+  font-size: 12px;
+  font-weight: bold;
+  margin: 0;
+  padding: 0;
+  color: var(--contrast);
+  background: transparent;
+  border-radius: 0;
+  border: none;
+}
+.space::picker-icon {
+  content: "›";
+  transform: rotate(90deg) scale(1.5);
+}
+
+/* Gamut badge: displays detected color gamut (srgb/p3/rec2020/xyz) */
+/* Info output: shows the current CSS color string */
+.gamut, .info {
+  line-height: 1.1;
+  text-box: cap alphabetic;
+  display: block;
+  color: var(--contrast);
+  /* No padding/radius; background only on hover/focus */
+  background: transparent;
+}
+.gamut { font-size: 12px; text-box: ex alphabetic; }
+
+/* Controls: dynamically generated sliders + numeric inputs for each channel in the selected color space */
+.controls {
+  display: grid;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  border-radius: 0 0 var(--radius-3) var(--radius-3);
+  .control {
+    display: grid;
+    grid-template-columns: min-content 1fr 4ch;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .control .num-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+  .control .num-wrapper sup {
+    opacity: 0.5;
+    font-size: 10px;
+    place-self: start;
+  }
+  .control label {
+    font: 500 12px/1.2 ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
+  }
+  .control input[type="number"] {
+    text-align: end;
+    font-size: 12px; padding: 0; background: none;
+    border: 1px solid var(--canvas);
+    border-radius: 0.25rem;
+    -moz-appearance: textfield;
+    font-variant: tabular-nums;
+    font-family: monospace;
+
+    &::-webkit-outer-spin-button,
+    &::-webkit-inner-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+  }
+  .control input[type="range"] {
+    width: 100%; height: 1rem; border-radius: 999px;
+    border: 1px solid var(--canvas);
+    background: var(--canvas); box-shadow: var(--shadow-inner); appearance: none;
+  }
+  .control input[type="range"].alpha {
+    background: linear-gradient(to right, #0000, #000), var(--checker);
+  }
+  /* Slider thumb styles */
+  .control input[type="range"]::-webkit-slider-thumb {
+    cursor: grab; appearance: none; border: 4px solid white;
+    height: calc(1rem + 8px); aspect-ratio: 1; border-radius: var(--radius-round);
+    box-shadow: 0 0px 1px 1px rgba(0,0,0,.25), inset 0 1px 2px rgba(0,0,0,.15);
+  }
+  .control input[type="range"]:active::-webkit-slider-thumb {
+    cursor: grabbing;
+  }
+  .control input[type="range"]::-moz-range-thumb {
+    cursor: grab; appearance: none; border: 4px solid white;
+    height: calc(1rem + 8px); aspect-ratio: 1; border-radius: var(--radius-round);
+    box-shadow: 0 0px 1px 1px rgba(0,0,0,.25), inset 0 1px 2px rgba(0,0,0,.15);
+  }
+  .control input[type="range"]:active::-moz-range-thumb {
+    cursor: grabbing;
+  }
+}
