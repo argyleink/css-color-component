@@ -12,31 +12,32 @@
   color-scheme: light dark;
   display: inline-block;
   position: relative;
-
-  :focus-visible {
-    outline-offset: 2px;
-  }
 }
 :host([hidden]) { display: none; }
 
 /* Trigger button: externally visible chip + label that opens the picker */
-button.trigger {
-  all: unset;
-  cursor: pointer;
-  padding: 0.5rem 0.75rem;
-  border-radius: var(--radius-2);
-  background: color-mix(in oklab, var(--canvas-text), var(--canvas) 92%);
-  box-shadow: var(--shadow-inner);
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  .chip {
-    inline-size: 1.25rem;
-    block-size: 1.25rem;
-    border-radius: var(--radius-round);
-    box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--canvas-text), transparent 92%);
-    margin-inline-end: .25rem;
-    background: linear-gradient(var(--value) 0 0), var(--checker);
+button {
+  border: 1px solid color-mix(in oklab, var(--canvas-text), var(--canvas) 80%);
+  outline-offset: 5px;
+
+  &.trigger {
+    cursor: pointer;
+    padding: 0.5rem 0.75rem;
+    border-radius: var(--radius-2);
+    background: color-mix(in oklab, var(--canvas-text), var(--canvas) 92%);
+    box-shadow: var(--shadow-inner);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+
+    .chip {
+      inline-size: 1.25rem;
+      block-size: 1.25rem;
+      border-radius: var(--radius-round);
+      box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--canvas-text), transparent 92%);
+      margin-inline-end: .25rem;
+      background: linear-gradient(var(--value) 0 0), var(--checker);
+    }
   }
 }
 

@@ -126,7 +126,7 @@ export class ColorInput extends HTMLElement {
 
   constructor() {
     super()
-    this.#root = this.attachShadow({ mode: 'open' })
+    this.#root = this.attachShadow({ mode: 'open', delegatesFocus: true })
 
     // Adopt shared stylesheet if supported, otherwise inject inline styles
     if ('adoptedStyleSheets' in this.#root && typeof sheet.replaceSync === 'function') {
