@@ -193,6 +193,9 @@ button.trigger {
     cursor: grab; appearance: none; border: 4px solid white;
     height: calc(1rem + 8px); aspect-ratio: 1; border-radius: var(--radius-round);
     box-shadow: 0 0px 1px 1px rgba(0,0,0,.25), inset 0 1px 2px rgba(0,0,0,.15);
+    width: calc(8px + 1rem);
+    background: none;
+    box-sizing: border-box;
   }
   .control input[type="range"]:active::-moz-range-thumb {
     cursor: grabbing;
