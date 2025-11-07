@@ -45,8 +45,8 @@ import { Card, CardGrid } from '@astrojs/starlight/components';
 
 ## Try it out
 
-<ColorInputDemo 
-  value="oklch(75% 0.3 180)" 
+<ColorInputDemo
+  value="oklch(75% 0.3 180)"
   colorspace="oklch"
   description="Interact with the color picker below. The readout updates as you adjust the color."
 />
@@ -54,28 +54,6 @@ import { Card, CardGrid } from '@astrojs/starlight/components';
 :::tip[Why OKLCH?]
 OKLCH provides perceptually uniform lightness and chroma, making it ideal for creating accessible color scales and harmonious palettes.
 :::
-
-## Installation
-
-<Tabs>
-  <TabItem label="npm">
-    ```sh
-    npm install color-input
-    ```
-  </TabItem>
-  <TabItem label="pnpm">
-    ```sh
-    pnpm add color-input
-    ```
-  </TabItem>
-  <TabItem label="CDN">
-    ```html
-    <script type="module">
-      import 'https://esm.sh/color-input@latest'
-    </script>
-    ```
-  </TabItem>
-</Tabs>
 
 ## Quick Start
 
@@ -86,15 +64,15 @@ OKLCH provides perceptually uniform lightness and chroma, making it ideal for cr
       import 'color-input'
     </script>
 
-    <color-input 
-      value="oklch(75% 0.3 180)" 
+    <color-input
+      value="oklch(75% 0.3 180)"
       colorspace="oklch"
     ></color-input>
     ```
   </TabItem>
   <TabItem label="Result">
-    <ColorInputDemo 
-      value="oklch(75% 0.3 180)" 
+    <ColorInputDemo
+      value="oklch(75% 0.3 180)"
       colorspace="oklch"
       showCode={false}
     />
