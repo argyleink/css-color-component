@@ -23,7 +23,7 @@ export function createTemplate(): HTMLTemplateElement {
         <span class="copy-message" aria-live="polite" role="status">Copied!</span>
       </div>
       <select class="space" title="Colorspace"></select>
-      <output class="info" part="output"></output>
+      <output class="info" part="output" tabindex="0" role="textbox" aria-label="Color value (click to edit or paste)" contenteditable="true" spellcheck="false"></output>
       <span class="gamut" title="Color's gamut" part="gamut"></span>
     </div>
     <div class="controls" part="controls"></div>

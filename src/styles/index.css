@@ -132,6 +132,26 @@ button.trigger {
 }
 .gamut { font-size: 12px; text-box: ex alphabetic; }
 
+/* Editable output styling */
+.info {
+  cursor: text;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+  transition: background 0.2s ease;
+  outline: none;
+  user-select: text;
+  white-space: pre;
+  min-width: 12ch;
+}
+.info:hover {
+  background: color-mix(in oklab, var(--contrast), transparent 90%);
+}
+.info:focus {
+  background: color-mix(in oklab, var(--contrast), transparent 85%);
+  outline: 2px solid color-mix(in oklab, var(--contrast), transparent 70%);
+  outline-offset: 2px;
+}
+
 /* Controls: dynamically generated sliders + numeric inputs for each channel in the selected color space */
 .controls {
   display: grid;

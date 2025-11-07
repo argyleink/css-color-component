@@ -170,6 +170,70 @@ export class ColorInput extends HTMLElement {
       })
     }
 
+    // Paste and edit functionality for output element
+    if (this.#output) {
+      let originalValue = ''
+
+      // Handle focus - save original value
+      this.#output.addEventListener('focus', () => {
+        originalValue = this.#output?.textContent || ''
+        // Select all text on focus for easy replacement
+        const range = document.createRange()
+        const sel = window.getSelection()
+        if (this.#output && sel) {
+          range.selectNodeContents(this.#output)
+          sel.removeAllRanges()
+          sel.addRange(range)
+        }
+      })
+
+      // Handle paste event
+      this.#output.addEventListener('paste', (e: ClipboardEvent) => {
+        e.preventDefault()
+        const pastedText = e.clipboardData?.getData('text/plain')
+        if (pastedText) {
+          this.#trySetColorFromInput(pastedText.trim())
+        }
+      })
+
+      // Handle keyboard input
+      this.#output.addEventListener('keydown', (e: KeyboardEvent) => {
+        if (e.key === 'Enter') {
+          e.preventDefault()
+          const newValue = this.#output?.textContent?.trim()
+          if (newValue) {
+            this.#trySetColorFromInput(newValue)
+          }
+          this.#output?.blur()
+        } else if (e.key === 'Escape') {
+          e.preventDefault()
+          // Restore original value
+          if (this.#output) {
+            this.#output.textContent = originalValue
+          }
+          this.#output?.blur()
+        }
+      })
+
+      // Handle blur - validate and apply or restore
+      this.#output.addEventListener('blur', () => {
+        const newValue = this.#output?.textContent?.trim()
+        if (newValue && newValue !== this.#value.value) {
+          const success = this.#trySetColorFromInput(newValue)
+          // If invalid, restore the original value
+          if (!success && this.#output) {
+            this.#output.textContent = this.#value.value
+          }
+        } else if (this.#output) {
+          // Restore current value if empty or unchanged
+          this.#output.textContent = this.#value.value
+        }
+      })
+
+      // Prevent default drag behavior
+      this.#output.addEventListener('dragstart', (e) => e.preventDefault())
+    }
+
     // Init space options
     this.#spaceSelect.innerHTML = `
       <optgroup label="Standard">
@@ -285,6 +349,46 @@ export class ColorInput extends HTMLElement {
   #emitChange() {
     const detail: ChangeDetail = { value: this.#value.value, colorspace: this.#space.value, gamut: this.#gamut.value }
     this.dispatchEvent(new CustomEvent<ChangeDetail>('change', { detail, bubbles: true }))
+  }
+
+  /**
+   * Attempts to parse and set a color value from user input (paste or keyboard entry)
+   * Returns true if successful, false if the color value is invalid
+   */
+  #trySetColorFromInput(input: string): boolean {
+    try {
+      const parsed = new Color(input)
+      const sid = reverseColorJSSpaceID(parsed.space.id) as string
+      const isHex = input.trim().startsWith('#')
+
+      // Update the component state
+      this.#space.value = isHex ? 'hex' : (sid === 'rgb' ? 'srgb' : (sid as ColorSpace))
+      this.#value.value = input
+      this.setAttribute('value', input)
+      this.setAttribute('colorspace', this.#space.value)
+
+      // Update the space selector
+      if (this.#spaceSelect) {
+        this.#spaceSelect.value = this.#space.value
+      }
+
+      // Re-render controls for new colorspace
+      if (this.#controls) this.#renderControls()
+
+      // Emit change event
+      this.#emitChange()
+
+      // Update the output element display
+      if (this.#output) {
+        this.#output.textContent = input
+      }
+
+      return true
+    } catch (error) {
+      // Invalid color value - return false to indicate failure
+      console.warn('Invalid color value:', input)
+      return false
+    }
   }
 
   // ──────────────────────────────────────────────────────────────────────────────
