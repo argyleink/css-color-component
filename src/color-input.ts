@@ -61,9 +61,16 @@ export class ColorInput extends HTMLElement {
       const parsed = new Color(v)
       const sid = reverseColorJSSpaceID(parsed.space.id) as string
       const isHex = typeof v === 'string' && v.trim().startsWith('#')
-      this.#space.value = isHex ? 'hex' : (sid === 'rgb' ? 'srgb' : (sid as ColorSpace))
-      this.#value.value = v
-      this.setAttribute('value', v)
+      const space = isHex ? 'hex' : (sid === 'rgb' ? 'srgb' : (sid as ColorSpace))
+      this.#space.value = space
+
+      // Normalize the value by parsing and regenerating to ensure consistent formatting
+      // This fixes issue #5 where chroma values in lch/oklch were shown as decimals on initial load
+      const channels = parseIntoChannels(space, v)
+      const normalized = gencolor(space, channels.ch)
+
+      this.#value.value = normalized
+      this.setAttribute('value', normalized)
       this.setAttribute('colorspace', this.#space.value)
       this.#emitChange()
     } catch {}
@@ -268,8 +275,15 @@ export class ColorInput extends HTMLElement {
         const parsed = new Color(value)
         const sid = reverseColorJSSpaceID(parsed.space.id) as string
         const isHex = typeof value === 'string' && value.trim().startsWith('#')
-        this.#value.value = value
-        this.#space.value = isHex ? 'hex' : (sid === 'rgb' ? 'srgb' : (sid as ColorSpace))
+        const space = isHex ? 'hex' : (sid === 'rgb' ? 'srgb' : (sid as ColorSpace))
+
+        // Normalize the value by parsing and regenerating to ensure consistent formatting
+        // This fixes issue #5 where chroma values in lch/oklch were shown as decimals on initial load
+        const channels = parseIntoChannels(space, value)
+        const normalized = gencolor(space, channels.ch)
+
+        this.#value.value = normalized
+        this.#space.value = space
         if (this.#spaceSelect) this.#spaceSelect.value = this.#space.value
       } catch {}
     }
