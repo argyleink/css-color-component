@@ -1,6 +1,6 @@
 {
   "name": "color-input",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "A standalone web component color picker using colorjs.io and preact signals.",
   "type": "module",
   "exports": {
