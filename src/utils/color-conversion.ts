@@ -57,10 +57,24 @@ export function gencolor(space: ColorSpace, ch: ChannelRecord): string {
       const rh = r.toString(16).padStart(2, '0')
       const gh = g.toString(16).padStart(2, '0')
       const bh = b.toString(16).padStart(2, '0')
+
+      // Check if we can use shortened hex format (3 or 4 digits)
+      const canShorten = rh[0] === rh[1] && gh[0] === gh[1] && bh[0] === bh[1]
+
       if (a < 100) {
         const alpha = Math.round((a / 100) * 255)
         const ah = alpha.toString(16).padStart(2, '0')
+
+        if (canShorten && ah[0] === ah[1]) {
+          // Use 4-digit hex format (#rgba)
+          return `#${rh[0]}${gh[0]}${bh[0]}${ah[0]}`
+        }
         return `#${rh}${gh}${bh}${ah}`
+      }
+
+      if (canShorten) {
+        // Use 3-digit hex format (#rgb)
+        return `#${rh[0]}${gh[0]}${bh[0]}`
       }
       return `#${rh}${gh}${bh}`
     }

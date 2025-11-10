@@ -101,11 +101,33 @@ describe('color-conversion', () => {
 
       it('should handle edge cases for hex conversion', () => {
         // Pure white
-        expect(gencolor('hex', { R: '100', G: '100', B: '100', ALP: '100' })).toBe('#ffffff')
+        expect(gencolor('hex', { R: '100', G: '100', B: '100', ALP: '100' })).toBe('#fff')
         // Pure black
-        expect(gencolor('hex', { R: '0', G: '0', B: '0', ALP: '100' })).toBe('#000000')
+        expect(gencolor('hex', { R: '0', G: '0', B: '0', ALP: '100' })).toBe('#000')
         // Semi-transparent white
         expect(gencolor('hex', { R: '100', G: '100', B: '100', ALP: '50' })).toBe('#ffffff80')
+      })
+
+      it('should generate shortened 3-digit hex codes when possible', () => {
+        // Test cases where each RGB component can be represented as a single hex digit
+        expect(gencolor('hex', { R: '0', G: '0', B: '0', ALP: '100' })).toBe('#000') // Black
+        expect(gencolor('hex', { R: '100', G: '100', B: '100', ALP: '100' })).toBe('#fff') // White
+        expect(gencolor('hex', { R: '20', G: '20', B: '20', ALP: '100' })).toBe('#333') // Dark gray (51/255)
+        expect(gencolor('hex', { R: '60', G: '60', B: '60', ALP: '100' })).toBe('#999') // Light gray (153/255)
+        // Colors that can be shortened
+        expect(gencolor('hex', { R: '100', G: '0', B: '0', ALP: '100' })).toBe('#f00') // Red
+        expect(gencolor('hex', { R: '0', G: '100', B: '0', ALP: '100' })).toBe('#0f0') // Green
+        expect(gencolor('hex', { R: '0', G: '0', B: '100', ALP: '100' })).toBe('#00f') // Blue
+      })
+
+      it('should generate shortened 4-digit hex codes with alpha when possible', () => {
+        // Test cases where RGB and alpha can all be shortened
+        expect(gencolor('hex', { R: '0', G: '0', B: '0', ALP: '0' })).toBe('#0000') // Fully transparent black
+        expect(gencolor('hex', { R: '100', G: '100', B: '100', ALP: '100' })).toBe('#fff') // Opaque white (no alpha)
+        expect(gencolor('hex', { R: '100', G: '0', B: '0', ALP: '20' })).toBe('#f003') // Semi-transparent red (20% ≈ 51/255 = 0x33)
+        expect(gencolor('hex', { R: '0', G: '100', B: '0', ALP: '60' })).toBe('#0f09') // Semi-transparent green (60% ≈ 153/255 = 0x99)
+        // Alpha cannot be shortened, so should use 8-digit format
+        expect(gencolor('hex', { R: '100', G: '100', B: '100', ALP: '50' })).toBe('#ffffff80') // Alpha is 0x80, cannot shorten
       })
     })
 
