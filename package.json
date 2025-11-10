@@ -1,6 +1,6 @@
 {
   "name": "color-input",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "A standalone web component color picker using colorjs.io and preact signals.",
   "type": "module",
   "exports": {
@@ -41,6 +41,7 @@
   },
   "devDependencies": {
     "@astrojs/netlify": "^6.6.0",
+    "@astrojs/starlight": "^0.36.2",
     "@types/jsdom": "^21.1.7",
     "autoprefixer": "^10.4.19",
     "jsdom": "^24.1.0",

@@ -1,7 +1,7 @@
 [build]
-  base = "docs"
-  command = "cd .. && npm install && cd docs && npm run build"
-  publish = "dist"
+  base = "."
+  command = "npm install && npm run build"
+  publish = "docs/dist"
 
 [build.environment]
   NODE_VERSION = "18"
