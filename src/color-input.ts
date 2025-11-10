@@ -54,6 +54,10 @@ export class ColorInput extends HTMLElement {
   #contrast = computed(() => contrastColor(this.#value.value))
   #gamut = computed(() => detectGamut(this.#value.value))
 
+  #previewEffectCleanup: ReturnType<typeof effect> | null = null
+  #colorSchemeEffectCleanup: ReturnType<typeof effect> | null = null
+  #controlsEffectCleanup: ReturnType<typeof effect> | null = null
+
   get value() { return this.#value.value }
   set value(v: string) {
     if (typeof v !== 'string' || !v) return
@@ -233,7 +237,7 @@ export class ColorInput extends HTMLElement {
     })
 
     // Reactive effects
-    effect(() => {
+    this.#previewEffectCleanup = effect(() => {
       const v = this.#value.value
       const gamut = this.#gamut.value
       const contrast = this.#contrast.value
@@ -247,7 +251,7 @@ export class ColorInput extends HTMLElement {
       if (preview) preview.style.setProperty('--value', v)
     })
 
-    effect(() => {
+    this.#colorSchemeEffectCleanup = effect(() => {
       const theme = this.#theme.value
       const colorScheme = theme === 'auto' ? 'light dark' : theme
       this.style.setProperty('color-scheme', colorScheme)
@@ -259,6 +263,11 @@ export class ColorInput extends HTMLElement {
 
     this.#spaceSelect.value = this.#space.value
     this.#renderControls()
+  }
+
+  disconnectedCallback() {
+    if (this.#colorSchemeEffectCleanup) this.#colorSchemeEffectCleanup()
+    if (this.#previewEffectCleanup) this.#previewEffectCleanup()
   }
 
   attributeChangedCallback(name: string, _old: string | null, value: string | null) {
@@ -452,6 +461,7 @@ export class ColorInput extends HTMLElement {
   // Control rendering
   // ──────────────────────────────────────────────────────────────────────────────
   #renderControls() {
+    if (this.#controlsEffectCleanup) this.#controlsEffectCleanup()
     const space = this.#space.value
     if (!this.#controls) return
     const current = parseIntoChannels(space, this.#value.value)
@@ -569,7 +579,7 @@ export class ColorInput extends HTMLElement {
         make('A', 'ALP', 0, 100, 1)
       )
       const alphaRange = this.#controls.querySelector<HTMLInputElement>('input[type="range"].ch-alp')
-      effect(() => {
+      this.#controlsEffectCleanup = effect(() => {
         const L = channelSignals.L.value || '50'
         const A = channelSignals.A.value || '0'
         const B = channelSignals.B.value || '0'
@@ -586,7 +596,7 @@ export class ColorInput extends HTMLElement {
       )
       const cRange = this.#controls.querySelector<HTMLInputElement>('input[type="range"].ch-c')
       const alphaRange = this.#controls.querySelector<HTMLInputElement>('input[type="range"].ch-alp')
-      effect(() => {
+      this.#controlsEffectCleanup = effect(() => {
         const L = channelSignals.L.value || '0'
         const C = channelSignals.C.value || '0'
         const H = channelSignals.H.value || '0'
@@ -605,7 +615,7 @@ export class ColorInput extends HTMLElement {
         make('A', 'ALP', 0, 100, 1)
       )
       const alphaRange = this.#controls.querySelector<HTMLInputElement>('input[type="range"].ch-alp')
-      effect(() => {
+      this.#controlsEffectCleanup = effect(() => {
         const L = channelSignals.L.value || '50'
         const A = channelSignals.A.value || '0'
         const B = channelSignals.B.value || '0'
@@ -622,7 +632,7 @@ export class ColorInput extends HTMLElement {
       )
       const cRange = this.#controls.querySelector<HTMLInputElement>('input[type="range"].ch-c')
       const alphaRange = this.#controls.querySelector<HTMLInputElement>('input[type="range"].ch-alp')
-      effect(() => {
+      this.#controlsEffectCleanup = effect(() => {
         const L = channelSignals.L.value || '50'
         const C = channelSignals.C.value || '0'
         const H = channelSignals.H.value || '0'
@@ -643,7 +653,7 @@ export class ColorInput extends HTMLElement {
       const sRange = this.#controls.querySelector<HTMLInputElement>('input[type="range"].ch-s')
       const lRange = this.#controls.querySelector<HTMLInputElement>('input[type="range"].ch-l')
       const alphaRange = this.#controls.querySelector<HTMLInputElement>('input[type="range"].ch-alp')
-      effect(() => {
+      this.#controlsEffectCleanup = effect(() => {
         const H = channelSignals.H.value || '0'
         const S = channelSignals.S.value || '100'
         const L = channelSignals.L.value || '50'
@@ -665,7 +675,7 @@ export class ColorInput extends HTMLElement {
         make('A', 'ALP', 0, 100, 1)
       )
       const alphaRange = this.#controls.querySelector<HTMLInputElement>('input[type="range"].ch-alp')
-      effect(() => {
+      this.#controlsEffectCleanup = effect(() => {
         const H = channelSignals.H.value || '0'
         const W = channelSignals.W.value || '0'
         const B = channelSignals.B.value || '0'
@@ -681,7 +691,7 @@ export class ColorInput extends HTMLElement {
         make('A', 'ALP', 0, 100, 1)
       )
       const alphaRange = this.#controls.querySelector<HTMLInputElement>('input[type="range"].ch-alp')
-      effect(() => {
+      this.#controlsEffectCleanup = effect(() => {
         const R = channelSignals.R.value || '0'
         const G = channelSignals.G.value || '0'
         const B = channelSignals.B.value || '0'
@@ -697,7 +707,7 @@ export class ColorInput extends HTMLElement {
         make('A', 'ALP', 0, 100, 1)
       )
       const alphaRange = this.#controls.querySelector<HTMLInputElement>('input[type="range"].ch-alp')
-      effect(() => {
+      this.#controlsEffectCleanup = effect(() => {
         const R = channelSignals.R.value || '0'
         const G = channelSignals.G.value || '0'
         const B = channelSignals.B.value || '0'
