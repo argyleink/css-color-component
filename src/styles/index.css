@@ -10,19 +10,19 @@
   --checker: repeating-conic-gradient(color-mix(in oklab, var(--canvas-text), transparent 90%) 0% 25%, transparent 0% 50%) 50%/1rem 1rem;
 
   color-scheme: light dark;
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 10px;
   position: relative;
 }
 :host([hidden]) { display: none; }
 
 /* Error state styling */
-:host([data-error]) {
-  outline: 2px solid #ef4444;
-  outline-offset: 2px;
+/* :host([data-error]) {
+  outline: 2px solid red;
+  outline-offset: 5px;
   border-radius: var(--radius-2);
-}
+} */
 
 /* Trigger button: now only contains the color chip/swatch */
 button {
@@ -30,16 +30,16 @@ button {
   outline-offset: 5px;
 
   &.trigger {
-    cursor: pointer;
-    padding: 0.5rem;
-    border-radius: var(--radius-2);
-    background: color-mix(in oklab, var(--canvas-text), var(--canvas) 92%);
-    box-shadow: var(--shadow-inner);
-    display: inline-flex;
-    align-items: center;
     flex-shrink: 0;
+    background: none;
+    padding: 0;
+    border: none;
+    display: inline-flex;
+    place-content: center;
+    border-radius: var(--radius-round);
 
     .chip {
+      display: inline-block;
       inline-size: 1.25rem;
       block-size: 1.25rem;
       border-radius: var(--radius-round);
@@ -60,25 +60,19 @@ button {
 }
 
 .text-input {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
-  font-size: 14px;
-  padding: 0.5rem 0.75rem;
+  field-sizing: content;
+  font-family: inherit;
+  padding: 1ch 1.5ch;
   border: 1px solid color-mix(in oklab, var(--canvas-text), var(--canvas) 80%);
   border-radius: var(--radius-2);
   background: color-mix(in oklab, var(--canvas-text), var(--canvas) 92%);
   color: var(--canvas-text);
   box-shadow: var(--shadow-inner);
   outline-offset: 5px;
-  width: 100%;
-  min-width: 0;
-}
 
-.text-input:focus {
-  outline: 2px solid color-mix(in oklab, var(--canvas-text), var(--canvas) 50%);
-}
-
-.text-input[aria-invalid="true"] {
-  border-color: #ef4444;
+  &[aria-invalid="true"] {
+    outline-color: red;
+  }
 }
 
 .error-message {

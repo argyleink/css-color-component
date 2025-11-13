@@ -24,6 +24,7 @@ import {
   type Size
 } from './utils/positioning'
 import { createTemplate } from './utils/template'
+// @ts-ignore
 import styles from './styles/index.css?inline'
 
 export type { Theme, ColorSpace }
