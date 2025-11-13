@@ -170,7 +170,6 @@ button {
 /* Colorspace select: dropdown for switching color models (rgb, oklch, lab, etc.) */
 .space {
   appearance: base-select;
-  -webkit-appearance: none;
   min-block-size: 1lh;
   line-height: 1.1;
   font-size: 12px;
@@ -184,6 +183,7 @@ button {
 
   &::picker-icon {
     content: "›";
+    -webkit-appearance: none;
     transform: rotate(90deg) scale(1.5);
   }
 }
