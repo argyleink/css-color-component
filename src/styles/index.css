@@ -4,7 +4,7 @@
   --canvas-text: CanvasText;
   --radius-2: 0.5rem;
   --radius-3: 0.75rem;
-  --radius-round: 9999px;
+  --radius-round: 1e4px;
   --shadow-elev: #0305081f 0px -1px 2px 0px,
     #03050821 0px 2px 1px -2px,
     #03050821 0px 5px 5px -2px,
