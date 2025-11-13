@@ -37,6 +37,7 @@ button {
       box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--canvas-text), transparent 92%);
       margin-inline-end: .25rem;
       background: linear-gradient(var(--value) 0 0), var(--checker);
+      forced-color-adjust: none;
     }
   }
 }
@@ -65,7 +66,11 @@ button {
   gap: .25lh;
   box-shadow: var(--shadow-inner);
   background: linear-gradient(var(--value) 0 0), var(--checker);
-  &:hover .copy-btn, &:focus-within .copy-btn { opacity: 1; }
+  forced-color-adjust: none;
+
+  &:hover .copy-btn, &:focus-within .copy-btn { 
+    opacity: 1; 
+  }
 
   & > *:not(:hover) {opacity:.8}
   .copy-wrap {
@@ -174,9 +179,14 @@ button {
     }
   }
   .control input[type="range"] {
-    width: 100%; height: 1rem; border-radius: 999px;
+    width: 100%; 
+    height: 1rem; 
+    border-radius: 999px;
     border: 1px solid var(--canvas);
-    background: var(--canvas); box-shadow: var(--shadow-inner); appearance: none;
+    background: var(--canvas); 
+    box-shadow: var(--shadow-inner); 
+    appearance: none;
+    forced-color-adjust: none;
   }
   .control input[type="range"].alpha {
     background: linear-gradient(to right, #0000, #000), var(--checker);
