@@ -46,8 +46,8 @@ import { Card, CardGrid } from '@astrojs/starlight/components';
 ## Try it out
 
 <ColorInputDemo
-  value="oklch(75% 0.3 180)"
-  colorspace="oklch"
+  value="#0bf8"
+  colorspace="hex"
   description="Interact with the color picker below. The readout updates as you adjust the color."
 />
 
@@ -65,14 +65,14 @@ OKLCH provides perceptually uniform lightness and chroma, making it ideal for cr
     </script>
 
     <color-input
-      value="oklch(75% 0.3 180)"
+      value="oklch(75% 30% 180)"
       colorspace="oklch"
     ></color-input>
     ```
   </TabItem>
   <TabItem label="Result">
     <ColorInputDemo
-      value="oklch(75% 0.3 180)"
+      value="oklch(75% 30% 180)"
       colorspace="oklch"
       showCode={false}
     />

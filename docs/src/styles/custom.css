@@ -1,14 +1,14 @@
 :root {
-  --sl-color-accent-low: oklch(85% 0.1 280);
-  --sl-color-accent: oklch(70% 0.15 280);
-  --sl-color-accent-high: oklch(55% 0.2 280);
+  --sl-color-accent-low: oklch(85% 10% 280);
+  --sl-color-accent: oklch(70% 15% 280);
+  --sl-color-accent-high: oklch(55% 20% 280);
   --sl-color-text-accent: var(--sl-color-accent-high);
 }
 
 :root[data-theme='dark'] {
-  --sl-color-accent-low: oklch(30% 0.1 280);
-  --sl-color-accent: oklch(65% 0.15 280);
-  --sl-color-accent-high: oklch(80% 0.2 280);
+  --sl-color-accent-low: oklch(30% 10% 280);
+  --sl-color-accent: oklch(65% 15% 280);
+  --sl-color-accent-high: oklch(80% 20% 280);
   --sl-color-text-accent: var(--sl-color-accent-high);
 }
 
@@ -22,7 +22,7 @@ button,
 [role='button'],
 summary {
   touch-action: manipulation;
-  -webkit-tap-highlight-color: oklch(70% 0.15 280 / 0.2);
+  -webkit-tap-highlight-color: oklch(70% 15% 280 / 0.2);
 }
 
 /* Focus visibility */

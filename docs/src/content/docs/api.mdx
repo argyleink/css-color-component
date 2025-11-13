@@ -16,12 +16,12 @@ The `<color-input>` element accepts three HTML attributes:
 The `value` attribute sets the color using standard CSS color syntax.
 
 ```html
-<color-input value="oklch(70% 0.2 240)" colorspace="oklch"></color-input>
+<color-input value="oklch(70% 20% 240)" colorspace="oklch"></color-input>
 ```
 
 <Tabs>
   <TabItem label="OKLCH">
-    <ColorInputDemo value="oklch(70% 0.2 240)" colorspace="oklch" />
+    <ColorInputDemo value="oklch(70% 20% 240)" colorspace="oklch" />
   </TabItem>
   <TabItem label="HSL">
     <ColorInputDemo value="hsl(240 80% 60%)" colorspace="hsl" />
@@ -77,13 +77,13 @@ The `theme` attribute controls the visual appearance:
 
 <Tabs>
   <TabItem label="Auto">
-    <ColorInputDemo value="oklch(65% 0.2 280)" colorspace="oklch" theme="auto" />
+    <ColorInputDemo value="oklch(65% 20% 280)" colorspace="oklch" theme="auto" />
   </TabItem>
   <TabItem label="Light">
-    <ColorInputDemo value="oklch(65% 0.2 280)" colorspace="oklch" theme="light" />
+    <ColorInputDemo value="oklch(65% 20% 280)" colorspace="oklch" theme="light" />
   </TabItem>
   <TabItem label="Dark">
-    <ColorInputDemo value="oklch(65% 0.2 280)" colorspace="oklch" theme="dark" />
+    <ColorInputDemo value="oklch(65% 20% 280)" colorspace="oklch" theme="dark" />
   </TabItem>
 </Tabs>
 
@@ -117,12 +117,12 @@ The `<color-input>` element exposes five properties:
 
 ```js
 const picker = document.querySelector('color-input');
-console.log(picker.value); // "oklch(70% 0.2 240)"
-picker.value = 'oklch(80% 0.15 180)';
+console.log(picker.value); // "oklch(70% 20% 240)"
+picker.value = 'oklch(80% 15% 180)';
 ```
 
 :::::note
-For backward compatibility you can also assign through the legacy setter: `picker.setColor = 'oklch(80% 0.15 180)'`.
+For backward compatibility you can also assign through the legacy setter: `picker.setColor = 'oklch(80% 15% 180)'`.
 ::::
 
 **colorspace** - Current color space
@@ -231,7 +231,7 @@ Fired when the color value changes. The event detail contains:
 
 ```ts
 interface ChangeDetail {
-  value: string;      // CSS color string, e.g., "oklch(70% 0.2 240)"
+  value: string;      // CSS color string, e.g., "oklch(70% 20% 240)"
   colorspace: string; // Current color space, e.g., "oklch"
   gamut: string;      // Detected gamut: "srgb", "p3", "rec2020", or "xyz"
 }
@@ -379,15 +379,15 @@ Perfect for color palettes and compact color selection:
     <div class="demo">
       <style>{`
         .pill-style::part(trigger) {
-          border: 2px solid oklch(70% 0.15 280);
+          border: 2px solid oklch(70% 15% 280);
           border-radius: 24px;
           padding: 8px 16px;
-          background: oklch(95% 0.05 280);
+          background: oklch(95% 5% 280);
           transition: all 0.2s ease;
         }
         .pill-style::part(trigger):hover {
-          border-color: oklch(60% 0.2 280);
-          background: oklch(90% 0.08 280);
+          border-color: oklch(60% 20% 280);
+          background: oklch(90% 8% 280);
         }
         .pill-style::part(chip) {
           width: 28px;
@@ -397,16 +397,16 @@ Perfect for color palettes and compact color selection:
           box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
         }
       `}</style>
-      <color-input class="pill-style" value="oklch(65% 0.2 280)" colorspace="oklch"></color-input>
+      <color-input class="pill-style" value="oklch(65% 20% 280)" colorspace="oklch"></color-input>
     </div>
   </TabItem>
   <TabItem label="CSS">
     ```css
     .pill-style::part(trigger) {
-      border: 2px solid oklch(70% 0.15 280);
+      border: 2px solid oklch(70% 15% 280);
       border-radius: 24px;
       padding: 8px 16px;
-      background: oklch(95% 0.05 280);
+      background: oklch(95% 5% 280);
       transition: all 0.2s ease;
     }
 
