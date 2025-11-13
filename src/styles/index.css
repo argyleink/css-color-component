@@ -111,7 +111,7 @@ button {
 /* Colorspace select: dropdown for switching color models (rgb, oklch, lab, etc.) */
 .space {
   appearance: base-select;
-  -webkit-appearance: caret;
+  -webkit-appearance: none;
   min-block-size: 1lh;
   line-height: 1.1;
   font-size: 12px;
@@ -122,10 +122,20 @@ button {
   background: transparent;
   border-radius: 0;
   border: none;
+
+  &::picker-icon {
+    content: "›";
+    transform: rotate(90deg) scale(1.5);
+  }
 }
-.space::picker-icon {
-  content: "›";
-  transform: rotate(90deg) scale(1.5);
+
+@supports not selector(::picker-icon) {
+  .space {
+    background-image: url("https://api.iconify.design/basil:caret-down-solid.svg");
+    background-size: 1rem;
+    background-position: right 0.5rem center;
+    background-repeat: no-repeat;
+  }
 }
 
 /* Gamut badge: displays detected color gamut (srgb/p3/rec2020/xyz) */
