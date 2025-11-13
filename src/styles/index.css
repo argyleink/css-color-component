@@ -5,7 +5,12 @@
   --radius-2: 0.5rem;
   --radius-3: 0.75rem;
   --radius-round: 9999px;
-  --shadow-elev: 0 10px 30px rgba(0,0,0,.18);
+  --shadow-elev: #0305081f 0px -1px 2px 0px,
+    #03050821 0px 2px 1px -2px,
+    #03050821 0px 5px 5px -2px,
+    #03050824 0px 10px 10px -2px,
+    #03050826 0px 20px 20px -2px,
+    #0305082b 0px 40px 40px -2px;
   --shadow-inner: inset 0 0 0 1px color-mix(in oklab, var(--canvas-text), transparent 94%);
   --checker: repeating-conic-gradient(color-mix(in oklab, var(--canvas-text), transparent 90%) 0% 25%, transparent 0% 50%) 50%/1rem 1rem;
 
@@ -14,6 +19,10 @@
   align-items: center;
   gap: 10px;
   position: relative;
+
+  @media (width < 350px) {
+    overflow: hidden;
+  }
 }
 :host([hidden]) { display: none; }
 
