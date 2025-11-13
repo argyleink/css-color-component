@@ -47,6 +47,8 @@ The `colorspace` attribute specifies which color space to use for editing:
 - **`hsl`** - Hue/saturation/lightness
 - **`hwb`** - Hue/whiteness/blackness
 - **`srgb`** - Red/green/blue (sRGB)
+- **`hex`** - Hex editing with synchronized RGB controls and smart shorthand output
+- **`srgb-linear`** - Linear-light sRGB for color-managed rendering pipelines
 - **`lab`** - CIE LAB lightness/a/b
 - **`lch`** - CIE LCH lightness/chroma/hue
 - **`display-p3`** - Wide-gamut Display P3 RGB
@@ -57,9 +59,13 @@ The `colorspace` attribute specifies which color space to use for editing:
 <color-input value="hsl(200 90% 50%)" colorspace="hsl"></color-input>
 ```
 
-:::note
+::::note
 The component automatically converts between color spaces.
-:::
+::::
+
+::::tip
+Supplying a hex value (such as `#ff7a00`) automatically switches the component into `colorspace="hex"` so copy/paste round-trips preserve the hex format.
+::::
 
 ### theme
 
@@ -81,6 +87,26 @@ The `theme` attribute controls the visual appearance:
   </TabItem>
 </Tabs>
 
+## Inline Text Input
+
+Every `<color-input>` now includes an inline text field for editing the current color string. It accepts anything the CSS Color Level 4 parser understands and keeps the sliders, preview, and computed properties in sync as you type.
+
+- Validation runs on every keystroke. When parsing fails the host gains a `data-error` attribute, the textbox sets `aria-invalid="true"`, and the inline error message becomes visible.
+- Restyle the field with `::part(input)` and target invalid states with `[data-error]`.
+
+```html
+<color-input value="#9333ea"></color-input>
+```
+
+## Copy to Clipboard
+
+Hover or focus the preview area to reveal a copy button. Activating it copies the current color string with `navigator.clipboard.writeText()` and shows a "Copied!" status message inside the panel. No configuration is required—the control works for every supported color space, including `hex`.
+
+::::note
+The Clipboard API requires a secure context (https or localhost) and a user interaction. Browsers that block it simply prevent the confirmation message from showing.
+::::
+
+
 ## Properties
 
 The `<color-input>` element exposes five properties:
@@ -94,6 +120,10 @@ const picker = document.querySelector('color-input');
 console.log(picker.value); // "oklch(70% 0.2 240)"
 picker.value = 'oklch(80% 0.15 180)';
 ```
+
+:::::note
+For backward compatibility you can also assign through the legacy setter: `picker.setColor = 'oklch(80% 0.15 180)'`.
+::::
 
 **colorspace** - Current color space
 
@@ -138,6 +168,14 @@ const picker = document.querySelector('color-input');
 picker.show();
 ```
 
+### showPicker()
+
+Alias for `show()` retained for compatibility with earlier versions:
+
+```js
+picker.showPicker();
+```
+
 ### close()
 
 Closes the picker popover:
@@ -156,6 +194,32 @@ picker.setAnchor(customAnchor);
 ```
 
 By default, the popover positions relative to the trigger button.
+
+::::note
+The compatibility setter `picker.setAnchorElement = customAnchor` mirrors `setAnchor()` for drop-in upgrades.
+::::
+
+## Command API Integration
+
+`<color-input>` listens for [Popover command events](https://developer.mozilla.org/en-US/docs/Web/API/Popover_API#invoking_commands) so you can wire it up with declarative `popovertarget` controls or custom command dispatchers.
+
+- Buttons with `popovertarget` automatically send `show`, `hide`, or `toggle` commands that the element consumes.
+- The component accepts either the short (`show`, `hide`, `toggle`) or Popover-specific (`show-popover`, `hide-popover`, `toggle-popover`) command strings.
+- When a command originates from an invoker element, that invoker becomes the new popover anchor via `setAnchor()`.
+
+```html
+<button popovertarget="picker" popovertargetaction="toggle">Toggle color picker</button>
+<color-input id="picker"></color-input>
+```
+
+You can also trigger commands manually:
+
+```js
+const cmd = new Event('command', { bubbles: true });
+Object.assign(cmd, { command: 'show' });
+picker.dispatchEvent(cmd);
+```
+
 
 ## Events
 
@@ -214,7 +278,7 @@ The `<color-input>` element exposes several CSS parts for styling with the `::pa
 
 - `trigger` - The button that opens the picker
 - `chip` - Color swatch inside the trigger button
-- `label` - Text label inside the trigger button
+- `input` - Inline text field for direct color entry
 - `panel` - Popover container
 - `output` - CSS color string display
 - `gamut` - Gamut badge (srgb/p3/rec2020/xyz)
@@ -363,8 +427,8 @@ Perfect for color palettes and compact color selection:
 |------|-------------|
 | `trigger` | Button that opens the picker |
 | `chip` | Color swatch preview |
-| `label` | Text label (if any) |
+| `input` | Inline text field for manual color entry |
 | `panel` | Popover container |
 | `output` | Current color value display |
 | `gamut` | Gamut badge |
-| `controls` | Sliders and inputs container |
+| `controls` | Sliders and numeric inputs container |
