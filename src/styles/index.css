@@ -52,6 +52,7 @@ button {
   border-radius: var(--radius-3);
   padding: 0;
   border: 1px solid #0000;
+  overflow: hidden; /* prevent scrollbars when in constrained viewports */
 }
 
 /* Preview area: visual swatch + colorspace selector + current value output + gamut badge */
@@ -110,6 +111,7 @@ button {
 /* Colorspace select: dropdown for switching color models (rgb, oklch, lab, etc.) */
 .space {
   appearance: base-select;
+  -webkit-appearance: caret;
   min-block-size: 1lh;
   line-height: 1.1;
   font-size: 12px;
