@@ -41,7 +41,7 @@ if (typeof sheet.replaceSync === 'function') {
 }
 
 export class ColorInput extends HTMLElement {
-  static get observedAttributes() { return ['value', 'colorspace', 'theme'] }
+  static get observedAttributes() { return ['value', 'theme'] }
 
   // ──────────────────────────────────────────────────────────────────────────────
   // State: Reactive signals (Preact Signals Core)
@@ -71,7 +71,6 @@ export class ColorInput extends HTMLElement {
       this.#space.value = isHex ? 'hex' : (sid === 'rgb' ? 'srgb' : (sid as ColorSpace))
       this.#value.value = v
       this.setAttribute('value', v)
-      this.setAttribute('colorspace', this.#space.value)
       this.#emitChange()
     } catch {}
   }
@@ -80,7 +79,6 @@ export class ColorInput extends HTMLElement {
   set colorspace(s: ColorSpace | string) {
     const next = (s as ColorSpace) || DEFAULT_SPACE
     this.#space.value = next
-    this.setAttribute('colorspace', next)
     try {
       const current = new Color(this.#value.value)
       const targetSpace = next === 'hex' ? 'srgb' : next
@@ -296,7 +294,6 @@ export class ColorInput extends HTMLElement {
 
     // Defaults
     if (!this.hasAttribute('value')) this.setAttribute('value', DEFAULT_VALUE)
-    if (!this.hasAttribute('colorspace')) this.setAttribute('colorspace', DEFAULT_SPACE)
 
     this.#spaceSelect.value = this.#space.value
     this.#renderControls()
@@ -319,10 +316,6 @@ export class ColorInput extends HTMLElement {
         this.#space.value = isHex ? 'hex' : (sid === 'rgb' ? 'srgb' : (sid as ColorSpace))
         if (this.#spaceSelect) this.#spaceSelect.value = this.#space.value
       } catch {}
-    }
-    if (name === 'colorspace' && value) {
-      this.#space.value = value as ColorSpace
-      if (this.#spaceSelect) this.#spaceSelect.value = value
     }
     if (name === 'theme') {
       this.#theme.value = (value as Theme) || 'auto'
@@ -352,7 +345,6 @@ export class ColorInput extends HTMLElement {
       this.#space.value = isHex ? 'hex' : (sid === 'rgb' ? 'srgb' : (sid as ColorSpace))
       this.#value.value = inputValue
       this.setAttribute('value', inputValue)
-      this.setAttribute('colorspace', this.#space.value)
       if (this.#spaceSelect) this.#spaceSelect.value = this.#space.value
       this.#emitChange()
     } catch (error) {

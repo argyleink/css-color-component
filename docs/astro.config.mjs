@@ -23,7 +23,6 @@ export default defineConfig({
         { label: 'Home', slug: 'index' },
         { label: 'API Reference', slug: 'api' },
         { label: 'Styling', slug: 'styling' },
-        { label: 'Color Spaces', slug: 'color-spaces' },
         { label: 'Advanced', slug: 'advanced' }
       ]
     }),

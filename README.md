@@ -19,10 +19,11 @@ A standalone web component color picker using [colorjs.io](http://colorjs.io/) a
 ```
 
 ## API
-- Attributes: `value`, `colorspace`, `theme` (auto|light|dark)
+- Attributes: `value` (required), `theme` (auto|light|dark)
 - Properties: `value`, `colorspace`, `theme`, readonly: `gamut`, `contrastColor`
 - Methods: `show()`, `close()`, `setAnchor(element)`
 - Events: `change`, `open`, `close`
+- Note: `colorspace` is available as a property for programmatic control but is not an HTML attribute
 
 ## Dev
 - Dev docs: `npm run dev` (serves docs/)

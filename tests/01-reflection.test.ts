@@ -19,11 +19,13 @@ describe('attribute/property reflection', () => {
     expect(el.getAttribute('value')).toContain('hsl(')
   })
 
-  it('reflects colorspace attribute to property and vice versa', () => {
-    el.setAttribute('colorspace', 'hsl')
+  it('colorspace property works without attribute', () => {
+    el.colorspace = 'hsl'
     expect(el.colorspace).toBe('hsl')
+    expect(el.hasAttribute('colorspace')).toBe(false)
     el.colorspace = 'oklch'
-    expect(el.getAttribute('colorspace')).toBe('oklch')
+    expect(el.colorspace).toBe('oklch')
+    expect(el.hasAttribute('colorspace')).toBe(false)
   })
 
   it('theme auto clears attribute, dark/light sets attribute', () => {
