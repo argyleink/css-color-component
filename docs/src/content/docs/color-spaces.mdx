@@ -21,7 +21,7 @@ The `<color-input>` component supports multiple color spaces for editing colors:
 
 OKLCH is the **recommended choice** for most design work. It's a perceptually uniform color space designed to match human vision.
 
-<ColorInputDemo value="oklch(70% 0.2 240)" colorspace="oklch" />
+<ColorInputDemo value="oklch(70% 20% 240)" colorspace="oklch" />
 
 ### Why OKLCH?
 
@@ -40,10 +40,10 @@ OKLCH is the **recommended choice** for most design work. It's a perceptually un
 ### Syntax
 
 ```css
-oklch(70% 0.2 240)        /* Vibrant blue */
-oklch(85% 0.15 120)       /* Light green */
-oklch(50% 0.25 30)        /* Rich orange */
-oklch(90% 0.05 180 / 0.8) /* Subtle cyan with alpha */
+oklch(70% 20% 240)        /* Vibrant blue */
+oklch(85% 15% 120)        /* Light green */
+oklch(50% 25% 30)         /* Rich orange */
+oklch(90% 5% 180 / 0.8)   /* Subtle cyan with alpha */
 ```
 
 ### Best Practices
@@ -51,16 +51,16 @@ oklch(90% 0.05 180 / 0.8) /* Subtle cyan with alpha */
 **Color Scales:**
 ```css
 /* Keep C and H constant, vary L for consistent hue */
---brand-50:  oklch(95% 0.1 240);
---brand-500: oklch(70% 0.2 240);
---brand-900: oklch(30% 0.15 240);
+--brand-50:  oklch(95% 10% 240);
+--brand-500: oklch(70% 20% 240);
+--brand-900: oklch(30% 15% 240);
 ```
 
 **Accessible Contrast:**
 ```css
 /* Lighter colors need less chroma for clarity */
---text-light: oklch(95% 0.02 240);
---text-dark:  oklch(25% 0.05 240);
+--text-light: oklch(95% 2% 240);
+--text-dark:  oklch(25% 5% 240);
 ```
 
 :::tip[When to Use OKLCH]
@@ -194,6 +194,47 @@ Ultra-wide gamut for HDR and future displays:
 color(rec2020 0.3 0.7 0.95)
 ```
 
+### Additional Supported Spaces
+
+<Tabs>
+  <TabItem label="sRGB Linear">
+    <ColorInputDemo value="color(srgb-linear 0.25 0.4 0.7)" colorspace="srgb-linear" />
+    ```css
+    color(srgb-linear 0.25 0.4 0.7)
+    ```
+  </TabItem>
+  <TabItem label="a98-rgb">
+    <ColorInputDemo value="color(a98-rgb 0.25 0.6 0.85)" colorspace="a98-rgb" />
+    ```css
+    color(a98-rgb 0.25 0.6 0.85)
+    ```
+  </TabItem>
+  <TabItem label="ProPhoto">
+    <ColorInputDemo value="color(prophoto 0.35 0.28 0.65)" colorspace="prophoto" />
+    ```css
+    color(prophoto 0.35 0.28 0.65)
+    ```
+  </TabItem>
+  <TabItem label="XYZ">
+    <ColorInputDemo value="color(xyz 0.25 0.32 0.4)" colorspace="xyz" />
+    ```css
+    color(xyz 0.25 0.32 0.4)
+    ```
+  </TabItem>
+  <TabItem label="XYZ D50">
+    <ColorInputDemo value="color(xyz-d50 0.24 0.35 0.38)" colorspace="xyz-d50" />
+    ```css
+    color(xyz-d50 0.24 0.35 0.38)
+    ```
+  </TabItem>
+  <TabItem label="XYZ D65">
+    <ColorInputDemo value="color(xyz-d65 0.22 0.33 0.36)" colorspace="xyz-d65" />
+    ```css
+    color(xyz-d65 0.22 0.33 0.36)
+    ```
+  </TabItem>
+</Tabs>
+
 ### Gamut Detection
 
 The component automatically detects which gamut contains your color and displays a badge:
@@ -207,7 +248,7 @@ The component automatically detects which gamut contains your color and displays
 
 <Tabs>
   <TabItem label="OKLCH (Best)">
-    <ColorInputDemo value="oklch(70% 0.2 240)" colorspace="oklch" showCode={false} />
+    <ColorInputDemo value="oklch(70% 20% 240)" colorspace="oklch" showCode={false} />
     Perceptually uniform, intuitive
   </TabItem>
   <TabItem label="OKLAB">
