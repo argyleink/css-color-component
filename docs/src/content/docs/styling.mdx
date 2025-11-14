@@ -3,8 +3,8 @@ title: Styling & Customization
 description: Customize the color picker appearance with themes and CSS parts
 ---
 
-import ColorInputDemo from "../../components/ColorInputDemo.astro";
-import { Tabs, TabItem } from "@astrojs/starlight/components";
+import ColorInputDemo from '../../components/ColorInputDemo.astro';
+import { Tabs, TabItem } from '@astrojs/starlight/components';
 
 ## Theming
 
@@ -27,20 +27,20 @@ Use the `theme` attribute:
 Or set via JavaScript:
 
 ```js
-picker.theme = "dark";
+picker.theme = 'dark';
 ```
 
 <Tabs>
   <TabItem label="Auto">
-    <ColorInputDemo value="oklch(65% 20% 280)" theme="auto" />
+    <ColorInputDemo value="oklch(65% 20% 280)" colorspace="oklch" theme="auto" />
     Respects your system preference
   </TabItem>
   <TabItem label="Light">
-    <ColorInputDemo value="oklch(65% 20% 280)" theme="light" />
+    <ColorInputDemo value="oklch(65% 20% 280)" colorspace="oklch" theme="light" />
     Always light, regardless of system
   </TabItem>
   <TabItem label="Dark">
-    <ColorInputDemo value="oklch(65% 20% 280)" theme="dark" />
+    <ColorInputDemo value="oklch(65% 20% 280)" colorspace="oklch" theme="dark" />
     Always dark, regardless of system
   </TabItem>
 </Tabs>
@@ -55,7 +55,7 @@ The `<color-input>` element exposes several CSS parts for styling with the `::pa
 
 - `trigger` - The button that opens the picker
 - `chip` - Color swatch inside the trigger button
-- `input` - Text input field for entering/editing colors
+- `label` - Text label inside the trigger button
 - `panel` - Popover container
 - `output` - CSS color string display
 - `gamut` - Gamut badge (srgb/p3/rec2020/xyz)
@@ -63,46 +63,33 @@ The `<color-input>` element exposes several CSS parts for styling with the `::pa
 
 ## Styling Examples
 
-### Circle Swatch (Input Hidden)
+### Circle Swatch
 
-Perfect for color palettes - this example shows how to hide the text input for a pure swatch look:
+Perfect for color palettes and compact color selection:
 
 <Tabs>
   <TabItem label="Result">
     <div class="demo">
       <style>{`
-        .circle-swatch {
-          display: inline-flex;
-          margin: 0;
-        }
-        .circle-swatch::part(input) {
-          display: none;
-        }
         .circle-swatch::part(trigger) {
-          width: 52px;
-          height: 52px;
-          min-width: 52px;
+          width: 48px;
+          height: 48px;
+          min-width: 48px;
           padding: 0;
-          border: 3px solid oklch(100% 0% 0);
+          border: 3px solid white;
           border-radius: 50%;
           background: transparent;
-          box-shadow:
-            0 2px 8px oklch(0% 0% 0 / 0.12),
-            0 1px 3px oklch(0% 0% 0 / 0.08),
-            inset 0 0 0 1px oklch(0% 0% 0 / 0.06);
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15), inset 0 0 0 1px rgba(0, 0, 0, 0.1);
           cursor: pointer;
-          transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+          transition: transform 0.15s ease, box-shadow 0.15s ease;
           overflow: hidden;
         }
         .circle-swatch::part(trigger):hover {
-          transform: translateY(-2px) scale(1.05);
-          box-shadow:
-            0 4px 16px oklch(0% 0% 0 / 0.16),
-            0 2px 8px oklch(0% 0% 0 / 0.08),
-            inset 0 0 0 1px oklch(0% 0% 0 / 0.06);
+          transform: scale(1.1);
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2), inset 0 0 0 1px rgba(0, 0, 0, 0.1);
         }
         .circle-swatch::part(trigger):active {
-          transform: translateY(0) scale(1.02);
+          transform: scale(1.05);
         }
         .circle-swatch::part(chip) {
           width: 100%;
@@ -111,54 +98,46 @@ Perfect for color palettes - this example shows how to hide the text input for a
           border: none;
           border-radius: 0;
         }
+        .circle-swatch::part(label) {
+          display: none;
+        }
       `}</style>
-      <div class="demo-row" style="display: flex; gap: 12px; flex-wrap: wrap; margin: 0;">
-        <color-input class="circle-swatch" value="oklch(62% 25% 29)"></color-input>
-        <color-input class="circle-swatch" value="oklch(77% 17% 70)"></color-input>
-        <color-input class="circle-swatch" value="oklch(68% 19% 162)"></color-input>
-        <color-input class="circle-swatch" value="oklch(60% 24% 257)"></color-input>
-        <color-input class="circle-swatch" value="oklch(64% 23% 293)"></color-input>
+      <div class="demo-row">
+        <color-input class="circle-swatch" value="#ef4444" colorspace="srgb"></color-input>
+        <color-input class="circle-swatch" value="#f59e0b" colorspace="srgb"></color-input>
+        <color-input class="circle-swatch" value="#10b981" colorspace="srgb"></color-input>
+        <color-input class="circle-swatch" value="#3b82f6" colorspace="srgb"></color-input>
+        <color-input class="circle-swatch" value="#8b5cf6" colorspace="srgb"></color-input>
       </div>
     </div>
   </TabItem>
   <TabItem label="CSS">
     ```css
-    .circle-swatch {
-      display: inline-flex;
-    }
-
-    /* Hide the text input for a pure swatch look */
-    .circle-swatch::part(input) {
-      display: none;
-    }
-
     .circle-swatch::part(trigger) {
-      width: 52px;
-      height: 52px;
-      min-width: 52px;
+      width: 48px;
+      height: 48px;
+      min-width: 48px;
       padding: 0;
-      border: 3px solid oklch(100% 0% 0);
+      border: 3px solid white;
       border-radius: 50%;
       background: transparent;
       box-shadow:
-        0 2px 8px oklch(0% 0% 0 / 0.12),
-        0 1px 3px oklch(0% 0% 0 / 0.08),
-        inset 0 0 0 1px oklch(0% 0% 0 / 0.06);
+        0 2px 8px rgba(0, 0, 0, 0.15),
+        inset 0 0 0 1px rgba(0, 0, 0, 0.1);
       cursor: pointer;
-      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
       overflow: hidden;
     }
 
     .circle-swatch::part(trigger):hover {
-      transform: translateY(-2px) scale(1.05);
+      transform: scale(1.1);
       box-shadow:
-        0 4px 16px oklch(0% 0% 0 / 0.16),
-        0 2px 8px oklch(0% 0% 0 / 0.08),
-        inset 0 0 0 1px oklch(0% 0% 0 / 0.06);
+        0 4px 12px rgba(0, 0, 0, 0.2),
+        inset 0 0 0 1px rgba(0, 0, 0, 0.1);
     }
 
     .circle-swatch::part(trigger):active {
-      transform: translateY(0) scale(1.02);
+      transform: scale(1.05);
     }
 
     .circle-swatch::part(chip) {
@@ -168,16 +147,244 @@ Perfect for color palettes - this example shows how to hide the text input for a
       border: none;
       border-radius: 0;
     }
-    ```
 
+    /* Hide the label for a pure swatch look */
+    .circle-swatch::part(label) {
+      display: none;
+    }
+    ```
   </TabItem>
   <TabItem label="HTML">
     ```html
-    <color-input class="circle-swatch" value="oklch(62% 25% 29)"></color-input>
-    <color-input class="circle-swatch" value="oklch(77% 17% 70)"></color-input>
-    <color-input class="circle-swatch" value="oklch(68% 19% 162)"></color-input>
-    <color-input class="circle-swatch" value="oklch(60% 24% 257)"></color-input>
-    <color-input class="circle-swatch" value="oklch(64% 23% 293)"></color-input>
+    <color-input class="circle-swatch" value="#ef4444"></color-input>
+    <color-input class="circle-swatch" value="#f59e0b"></color-input>
+    <color-input class="circle-swatch" value="#10b981"></color-input>
+    <color-input class="circle-swatch" value="#3b82f6"></color-input>
+    <color-input class="circle-swatch" value="#8b5cf6"></color-input>
+    ```
+  </TabItem>
+</Tabs>
+
+### Rounded Pill Style
+
+<Tabs>
+  <TabItem label="Result">
+    <div class="demo">
+      <style>{`
+        .pill-style::part(trigger) {
+          border: 2px solid oklch(70% 15% 280);
+          border-radius: 24px;
+          padding: 8px 16px;
+          background: oklch(95% 5% 280);
+          transition: all 0.2s ease;
+        }
+        .pill-style::part(trigger):hover {
+          border-color: oklch(60% 20% 280);
+          background: oklch(90% 8% 280);
+        }
+        .pill-style::part(chip) {
+          width: 28px;
+          height: 28px;
+          border-radius: 50%;
+          border: 2px solid white;
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+        }
+        .pill-style::part(panel) {
+          border-radius: 0;
+        }
+      `}</style>
+      <color-input class="pill-style" value="oklch(65% 20% 280)" colorspace="oklch"></color-input>
+    </div>
+  </TabItem>
+  <TabItem label="CSS">
+    ```css
+    .pill-style::part(trigger) {
+      border: 2px solid oklch(70% 15% 280);
+      border-radius: 24px;
+      padding: 8px 16px;
+      background: oklch(95% 5% 280);
+      transition: all 0.2s ease;
+    }
+
+    .pill-style::part(trigger):hover {
+      border-color: oklch(60% 20% 280);
+      background: oklch(90% 8% 280);
+    }
+
+    .pill-style::part(chip) {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      border: 2px solid white;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    }
+
+    .pill-style::part(panel) {
+      border-radius: 0px;
+    }
+    ```
+  </TabItem>
+</Tabs>
+
+### Minimal Flat Design
+
+<Tabs>
+  <TabItem label="Result">
+    <div class="demo">
+      <style>{`
+        .minimal-style::part(trigger) {
+          border: none;
+          border-radius: 6px;
+          padding: 6px 12px;
+          background: transparent;
+          box-shadow: 0 0 0 1px oklch(80% 2% 280);
+        }
+        .minimal-style::part(trigger):hover {
+          background: oklch(96% 2% 280);
+        }
+        .minimal-style::part(chip) {
+          width: 24px;
+          height: 24px;
+          border-radius: 4px;
+          border: 1px solid oklch(85% 2% 280);
+        }
+        .minimal-style::part(panel) {
+          border-radius: 8px;
+          border: 1px solid oklch(85% 2% 280);
+          box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+        }
+        .minimal-style::part(output) {
+          font-family: ui-monospace, monospace;
+          font-size: 0.875rem;
+          color: oklch(40% 5% 280);
+        }
+      `}</style>
+      <color-input class="minimal-style" value="oklch(70% 15% 200)" colorspace="oklch"></color-input>
+    </div>
+  </TabItem>
+  <TabItem label="CSS">
+    ```css
+    .minimal-style::part(trigger) {
+      border: none;
+      border-radius: 6px;
+      padding: 6px 12px;
+      background: transparent;
+      box-shadow: 0 0 0 1px oklch(80% 2% 280);
+    }
+
+    .minimal-style::part(trigger):hover {
+      background: oklch(96% 2% 280);
+    }
+
+    .minimal-style::part(chip) {
+      width: 24px;
+      height: 24px;
+      border-radius: 4px;
+      border: 1px solid oklch(85% 2% 280);
+    }
+
+    .minimal-style::part(panel) {
+      border-radius: 8px;
+      border: 1px solid oklch(85% 2% 280);
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+    }
+
+    .minimal-style::part(output) {
+      font-family: ui-monospace, monospace;
+      font-size: 0.875rem;
+      color: oklch(40% 5% 280);
+    }
+    ```
+  </TabItem>
+</Tabs>
+
+### Bold Gradient Style
+
+<Tabs>
+  <TabItem label="Result">
+    <div class="demo">
+      <style>{`
+        .gradient-style::part(trigger) {
+          border: none;
+          border-radius: 12px;
+          padding: 10px 18px;
+          background: linear-gradient(135deg, oklch(75% 15% 300), oklch(65% 18% 260));
+          color: white;
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+        .gradient-style::part(trigger):hover {
+          box-shadow: 0 6px 16px rgba(0, 0, 0, 0.25);
+          transform: translateY(-1px);
+        }
+        .gradient-style::part(chip) {
+          width: 32px;
+          height: 32px;
+          border-radius: 8px;
+          border: 3px solid white;
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+        }
+        .gradient-style::part(panel) {
+          border-radius: 16px;
+          border: 2px solid oklch(70% 15% 280);
+          box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2);
+          background: linear-gradient(to bottom, oklch(98% 2% 280), oklch(96% 3% 280));
+        }
+        .gradient-style::part(gamut) {
+          background: oklch(70% 15% 280);
+          color: white;
+          font-weight: 600;
+          padding: 4px 8px;
+          border-radius: 6px;
+        }
+      `}</style>
+      <color-input class="gradient-style" value="oklch(60% 22% 320)" colorspace="oklch"></color-input>
+    </div>
+  </TabItem>
+  <TabItem label="CSS">
+    ```css
+    .gradient-style::part(trigger) {
+      border: none;
+      border-radius: 12px;
+      padding: 10px 18px;
+      background: linear-gradient(135deg,
+        oklch(75% 15% 300),
+        oklch(65% 18% 260)
+      );
+      color: white;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    }
+
+    .gradient-style::part(trigger):hover {
+      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.25);
+      transform: translateY(-1px);
+    }
+
+    .gradient-style::part(chip) {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      border: 3px solid white;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    }
+
+    .gradient-style::part(panel) {
+      border-radius: 16px;
+      border: 2px solid oklch(70% 15% 280);
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2);
+      background: linear-gradient(
+        to bottom,
+        oklch(98% 2% 280),
+        oklch(96% 3% 280)
+      );
+    }
+
+    .gradient-style::part(gamut) {
+      background: oklch(70% 15% 280);
+      color: white;
+      font-weight: 600;
+      padding: 4px 8px;
+      border-radius: 6px;
+    }
     ```
   </TabItem>
 </Tabs>
@@ -208,20 +415,12 @@ color-input[theme="dark"]::part(panel) {
 
 ## Parts Reference
 
-| Part       | Description                                           |
-| ---------- | ----------------------------------------------------- |
-| `trigger`  | Button that opens the color picker panel              |
-| `chip`     | Color swatch/preview inside the trigger button        |
-| `input`    | Text input field for entering/editing color values    |
-| `panel`    | Popover container holding the color picker UI         |
-| `output`   | Display of the current color value in the panel       |
-| `gamut`    | Badge showing the color's gamut (srgb/p3/rec2020/xyz) |
-| `controls` | Container for channel sliders and numeric inputs      |
-
-:::tip[Flexible Layouts]
-You can hide any part using `display: none`:
-
-- Hide `trigger` for text-only input
-- Hide `input` for swatch-only display
-- Mix and match parts to create your ideal interface
-  :::
+| Part | Description |
+|------|-------------|
+| `trigger` | Button that opens the picker |
+| `chip` | Color swatch preview |
+| `label` | Text label (if any) |
+| `panel` | Popover container |
+| `output` | Current color value display |
+| `gamut` | Gamut badge |
+| `controls` | Sliders and inputs container |

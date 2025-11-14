@@ -17,7 +17,7 @@ const loggerId = `logger-${Math.random().toString(36).substr(2, 9)}`;
     <color-input
       id={`picker-${loggerId}`}
       value={value}
-      data-initial-colorspace={colorspace}
+      colorspace={colorspace}
     ></color-input>
     <button type="button" data-action="clear-log" class="code-toggle">Clear Log</button>
   </div>
@@ -36,18 +36,11 @@ const loggerId = `logger-${Math.random().toString(36).substr(2, 9)}`;
     const container = document.querySelector(`[data-logger-id="${loggerId}"]`);
     if (!container) return;
 
-    const picker = container.querySelector('color-input') as any;
+    const picker = container.querySelector('color-input');
     const logContainer = container.querySelector('[data-log-container]');
     const clearButton = container.querySelector('[data-action="clear-log"]');
 
     if (!picker || !logContainer) return;
-
-    // Set initial colorspace if specified (as a property, not attribute)
-    const initialColorspace = picker.dataset?.initialColorspace;
-    if (initialColorspace) {
-      picker.colorspace = initialColorspace;
-      delete picker.dataset.initialColorspace;
-    }
 
     let logs: LogEntry[] = [];
     const MAX_LOGS = 50;

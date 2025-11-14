@@ -91,5 +91,5 @@ jobs:
           echo "**Usage:**" >> $GITHUB_STEP_SUMMARY
           echo '```html' >> $GITHUB_STEP_SUMMARY
           echo '<script src="https://cdn.jsdelivr.net/gh/${{ github.repository }}@cdn-latest/dist/color-input.min.js"></script>' >> $GITHUB_STEP_SUMMARY
-          echo '<color-input value="oklch(75% 75% 180)"></color-input>' >> $GITHUB_STEP_SUMMARY
+          echo '<color-input value="oklch(75% 75% 180)" colorspace="oklch"></color-input>' >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
