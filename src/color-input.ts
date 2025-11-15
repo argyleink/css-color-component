@@ -162,7 +162,6 @@ export class ColorInput extends HTMLElement {
     const copyMessageLiveRegion = this.#root.querySelector<HTMLElement>('.copy-message-live-region')
     if (copyBtn && copyMessage && copyMessageLiveRegion) {
       let copyTimeout: number | null = null
-      let hideTimeout: number | null = null
       copyBtn.addEventListener('click', async () => {
         try {
           await navigator.clipboard.writeText(this.#value.value)
