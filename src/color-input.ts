@@ -159,15 +159,19 @@ export class ColorInput extends HTMLElement {
     // Copy to clipboard
     const copyBtn = this.#root.querySelector<HTMLButtonElement>('button.copy-btn')
     const copyMessage = this.#root.querySelector<HTMLElement>('.copy-message')
-    if (copyBtn && copyMessage) {
+    const copyMessageLiveRegion = this.#root.querySelector<HTMLElement>('.copy-message-live-region')
+    if (copyBtn && copyMessage && copyMessageLiveRegion) {
       let copyTimeout: number | null = null
+      let hideTimeout: number | null = null
       copyBtn.addEventListener('click', async () => {
         try {
           await navigator.clipboard.writeText(this.#value.value)
           copyMessage.classList.add('show')
+          copyMessageLiveRegion.innerText = copyMessage.innerText
           if (copyTimeout !== null) clearTimeout(copyTimeout)
           copyTimeout = window.setTimeout(() => {
             copyMessage.classList.remove('show')
+            copyMessageLiveRegion.innerText = ""
             copyTimeout = null
           }, 3000)
         } catch {}
