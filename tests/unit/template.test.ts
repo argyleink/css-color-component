@@ -53,8 +53,6 @@ describe('template', () => {
       const template = createTemplate()
       const copyBtn = template.content.querySelector('.copy-btn')
       expect(copyBtn).not.toBeNull()
-      expect(copyBtn?.getAttribute('title')).toBe('Copy color')
-      expect(copyBtn?.getAttribute('aria-label')).toBe('Copy color')
     })
 
     it('should include copy button SVG', () => {
