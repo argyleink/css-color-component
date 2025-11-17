@@ -296,7 +296,11 @@ export class ColorInput extends HTMLElement {
 
     // Defaults
     if (!this.hasAttribute('value')) this.setAttribute('value', DEFAULT_VALUE)
-    if (!this.hasAttribute('colorspace')) this.setAttribute('colorspace', DEFAULT_SPACE)
+    if (!this.hasAttribute('colorspace')) {
+      // If we have a value attribute, the colorspace was already detected in attributeChangedCallback
+      // So we should sync the attribute with the detected internal space value
+      this.setAttribute('colorspace', this.#space.value)
+    }
 
     this.#spaceSelect.value = this.#space.value
     this.#renderControls()
