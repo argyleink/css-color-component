@@ -60,6 +60,14 @@ jobs:
             git push origin "cdn-$TAG_NAME" -f
           fi
 
+      - name: Purge jsDelivr CDN cache
+        run: |
+          echo "Purging jsDelivr cache to ensure latest files are served..."
+          # Purge both the minified and ES module versions
+          curl -X POST "https://purge.jsdelivr.net/gh/${{ github.repository }}@cdn-latest/dist/color-input.min.js"
+          curl -X POST "https://purge.jsdelivr.net/gh/${{ github.repository }}@cdn-latest/dist/index.js"
+          echo "CDN cache purged successfully"
+
       - name: Upload release assets
         if: github.event_name == 'release'
         uses: actions/upload-release-asset@v1
