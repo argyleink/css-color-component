@@ -34,37 +34,16 @@ The `value` attribute sets the color using standard CSS color syntax.
   </TabItem>
 </Tabs>
 
-:::tip
-If `value` is omitted, it defaults to `oklch(75% 75% 180)` (vibrant cyan).
-:::
-
-### colorspace
-
-The `colorspace` attribute specifies which color space to use for editing:
-
-- **`oklch`** (default) - Perceptually uniform lightness/chroma/hue
-- **`oklab`** - Perceptually uniform lightness/a/b
-- **`hsl`** - Hue/saturation/lightness
-- **`hwb`** - Hue/whiteness/blackness
-- **`srgb`** - Red/green/blue (sRGB)
-- **`hex`** - Hex editing with synchronized RGB controls and smart shorthand output
-- **`srgb-linear`** - Linear-light sRGB for color-managed rendering pipelines
-- **`lab`** - CIE LAB lightness/a/b
-- **`lch`** - CIE LCH lightness/chroma/hue
-- **`display-p3`** - Wide-gamut Display P3 RGB
-- **`rec2020`** - Wide-gamut Rec.2020 RGB
-- **`a98-rgb`**, **`prophoto`**, **`xyz`**, **`xyz-d50`**, **`xyz-d65`**
-
 ```html
 <color-input value="hsl(200 90% 50%)"></color-input>
 ```
 
+:::tip
+If `value` is omitted, it defaults to `oklch(75% 75% 180)` (vibrant cyan).
+:::
+
 ::::note
 The component automatically converts between color spaces.
-::::
-
-::::tip
-Supplying a hex value (such as `#ff7a00`) automatically switches the component into `colorspace="hex"` so copy/paste round-trips preserve the hex format.
 ::::
 
 ### theme
