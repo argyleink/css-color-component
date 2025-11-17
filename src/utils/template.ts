@@ -20,7 +20,7 @@ export function createTemplate(): HTMLTemplateElement {
   <div class="panel" popover="auto" part="panel">
     <div class="preview">
       <div class="copy-wrap">
-        <button class="copy-btn">
+        <button class="copy-btn" title="Copy color" aria-label="Copy color">
           <span class="visually-hidden">Copy color</span>
           <svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true"><title>Copy color</title><path fill="currentColor" d="M5 22q-.825 0-1.413-.588T3 20V6h2v14h11v2H5Zm4-4q-.825 0-1.413-.588T7 16V4q0-.825.588-1.413T9 2h9q.825 0 1.413.588T20 4v12q0 .825-.588 1.413T18 18H9Z"/></svg>
         </button>
