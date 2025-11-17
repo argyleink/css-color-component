@@ -67,9 +67,9 @@ describe('template', () => {
     it('should include copy message', () => {
       const template = createTemplate()
       const copyMessage = template.content.querySelector('.copy-message')
+      const copyMessageLiveRegion = template.content.querySelector('.copy-message-live-region')
       expect(copyMessage).not.toBeNull()
-      expect(copyMessage?.getAttribute('aria-live')).toBe('polite')
-      expect(copyMessage?.getAttribute('role')).toBe('status')
+      expect(copyMessageLiveRegion?.getAttribute('role')).toBe('status')
       expect(copyMessage?.textContent).toBe('Copied!')
     })
 

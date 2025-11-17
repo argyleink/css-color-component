@@ -165,6 +165,15 @@ button {
     white-space: nowrap;
   }
   .copy-message.show { opacity: 1; }
+
+  .visually-hidden:not(:focus):not(:active) {
+      clip-path: inset(50%);
+      height: 1px;
+      overflow: hidden;
+      position: absolute;
+      white-space: nowrap;
+      width: 1px;
+  }
 }
 
 /* Colorspace select: dropdown for switching color models (rgb, oklch, lab, etc.) */
