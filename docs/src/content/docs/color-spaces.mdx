@@ -3,8 +3,8 @@ title: Color Spaces
 description: Understanding color spaces and when to use each
 ---
 
-import ColorInputDemo from '../../components/ColorInputDemo.astro';
-import { Tabs, TabItem } from '@astrojs/starlight/components';
+import ColorInputDemo from "../../components/ColorInputDemo.astro";
+import { Tabs, TabItem } from "@astrojs/starlight/components";
 
 ## Overview
 
@@ -21,7 +21,7 @@ The `<color-input>` component supports multiple color spaces for editing colors:
 
 OKLCH is the **recommended choice** for most design work. It's a perceptually uniform color space designed to match human vision.
 
-<ColorInputDemo value="oklch(70% 20% 240)" colorspace="oklch" />
+<ColorInputDemo value="oklch(70% 20% 240)" />
 
 ### Why OKLCH?
 
@@ -49,33 +49,36 @@ oklch(90% 5% 180 / 0.8)   /* Subtle cyan with alpha */
 ### Best Practices
 
 **Color Scales:**
+
 ```css
 /* Keep C and H constant, vary L for consistent hue */
---brand-50:  oklch(95% 10% 240);
+--brand-50: oklch(95% 10% 240);
 --brand-500: oklch(70% 20% 240);
 --brand-900: oklch(30% 15% 240);
 ```
 
 **Accessible Contrast:**
+
 ```css
 /* Lighter colors need less chroma for clarity */
 --text-light: oklch(95% 2% 240);
---text-dark:  oklch(25% 5% 240);
+--text-dark: oklch(25% 5% 240);
 ```
 
 :::tip[When to Use OKLCH]
 Use OKLCH for:
+
 - Creating accessible color scales
 - Generating harmonious palettes
 - Maintaining consistent perceived brightness
 - Any design work requiring precision
-:::
+  :::
 
 ## OKLAB
 
 OKLAB uses rectangular coordinates instead of cylindrical: **Lightness**, **a** (green-red), **b** (blue-yellow).
 
-<ColorInputDemo value="oklab(70% 0.1 -0.15)" colorspace="oklab" />
+<ColorInputDemo value="oklab(70% 0.1 -0.15)" />
 
 ### Channels
 
@@ -94,6 +97,7 @@ oklab(50% 0.2 0.05)      /* Reddish */
 ### When to Use OKLAB
 
 Use OKLAB when:
+
 - You need to blend colors (interpolate in rectangular space)
 - Working with color math or transformations
 - You prefer Cartesian coordinates over cylindrical
@@ -104,7 +108,7 @@ For design work, **OKLCH is usually more intuitive**.
 
 HSL (Hue, Saturation, Lightness) is familiar to web developers but not perceptually uniform.
 
-<ColorInputDemo value="hsl(240 80% 60%)" colorspace="hsl" />
+<ColorInputDemo value="hsl(240 80% 60%)" />
 
 ### Syntax
 
@@ -127,15 +131,15 @@ Standard RGB color space for the web. Supports hex notation.
 
 <Tabs>
   <TabItem label="Hex">
-    <ColorInputDemo value="#3b82f6" colorspace="srgb" />
+    <ColorInputDemo value="#3b82f6" />
     ```html
-    <color-input value="#3b82f6" colorspace="srgb"></color-input>
+    <color-input value="#3b82f6"></color-input>
     ```
   </TabItem>
   <TabItem label="RGB">
-    <ColorInputDemo value="rgb(59 130 246)" colorspace="srgb" />
+    <ColorInputDemo value="rgb(59 130 246)" />
     ```html
-    <color-input value="rgb(59 130 246)" colorspace="srgb"></color-input>
+    <color-input value="rgb(59 130 246)"></color-input>
     ```
   </TabItem>
 </Tabs>
@@ -152,7 +156,7 @@ For color design, prefer OKLCH.
 
 HWB (Hue, Whiteness, Blackness) is an alternative to HSL, sometimes easier to understand.
 
-<ColorInputDemo value="hwb(240 20% 10%)" colorspace="hwb" />
+<ColorInputDemo value="hwb(240 20% 10%)" />
 
 ```css
 hwb(240 20% 10%)  /* Blue with some white and black */
@@ -165,10 +169,10 @@ CIE LAB and LCH are perceptual color spaces. OKLCH is generally preferred for mo
 
 <Tabs>
   <TabItem label="LAB">
-    <ColorInputDemo value="lab(70% 20 -40)" colorspace="lab" />
+    <ColorInputDemo value="lab(70% 20 -40)" />
   </TabItem>
   <TabItem label="LCH">
-    <ColorInputDemo value="lch(70% 45 240)" colorspace="lch" />
+    <ColorInputDemo value="lch(70% 45 240)" />
   </TabItem>
 </Tabs>
 
@@ -180,7 +184,7 @@ Wide-gamut RGB spaces for modern displays that exceed sRGB.
 
 Used by modern Apple devices and high-end displays:
 
-<ColorInputDemo value="color(display-p3 0.3 0.7 0.95)" colorspace="display-p3" />
+<ColorInputDemo value="color(display-p3 0.3 0.7 0.95)" />
 
 ```css
 color(display-p3 0.3 0.7 0.95)
@@ -198,40 +202,28 @@ color(rec2020 0.3 0.7 0.95)
 
 <Tabs>
   <TabItem label="sRGB Linear">
-    <ColorInputDemo value="color(srgb-linear 0.25 0.4 0.7)" colorspace="srgb-linear" />
-    ```css
-    color(srgb-linear 0.25 0.4 0.7)
-    ```
+    <ColorInputDemo value="color(srgb-linear 0.25 0.4 0.7)" />
+    ```css color(srgb-linear 0.25 0.4 0.7) ```
   </TabItem>
   <TabItem label="a98-rgb">
-    <ColorInputDemo value="color(a98-rgb 0.25 0.6 0.85)" colorspace="a98-rgb" />
-    ```css
-    color(a98-rgb 0.25 0.6 0.85)
-    ```
+    <ColorInputDemo value="color(a98-rgb 0.25 0.6 0.85)" />
+    ```css color(a98-rgb 0.25 0.6 0.85) ```
   </TabItem>
   <TabItem label="ProPhoto">
-    <ColorInputDemo value="color(prophoto 0.35 0.28 0.65)" colorspace="prophoto" />
-    ```css
-    color(prophoto 0.35 0.28 0.65)
-    ```
+    <ColorInputDemo value="color(prophoto 0.35 0.28 0.65)" />
+    ```css color(prophoto 0.35 0.28 0.65) ```
   </TabItem>
   <TabItem label="XYZ">
-    <ColorInputDemo value="color(xyz 0.25 0.32 0.4)" colorspace="xyz" />
-    ```css
-    color(xyz 0.25 0.32 0.4)
-    ```
+    <ColorInputDemo value="color(xyz 0.25 0.32 0.4)" />
+    ```css color(xyz 0.25 0.32 0.4) ```
   </TabItem>
   <TabItem label="XYZ D50">
-    <ColorInputDemo value="color(xyz-d50 0.24 0.35 0.38)" colorspace="xyz-d50" />
-    ```css
-    color(xyz-d50 0.24 0.35 0.38)
-    ```
+    <ColorInputDemo value="color(xyz-d50 0.24 0.35 0.38)" />
+    ```css color(xyz-d50 0.24 0.35 0.38) ```
   </TabItem>
   <TabItem label="XYZ D65">
-    <ColorInputDemo value="color(xyz-d65 0.22 0.33 0.36)" colorspace="xyz-d65" />
-    ```css
-    color(xyz-d65 0.22 0.33 0.36)
-    ```
+    <ColorInputDemo value="color(xyz-d65 0.22 0.33 0.36)" />
+    ```css color(xyz-d65 0.22 0.33 0.36) ```
   </TabItem>
 </Tabs>
 
@@ -248,36 +240,36 @@ The component automatically detects which gamut contains your color and displays
 
 <Tabs>
   <TabItem label="OKLCH (Best)">
-    <ColorInputDemo value="oklch(70% 20% 240)" colorspace="oklch" showCode={false} />
+    <ColorInputDemo value="oklch(70% 20% 240)" showCode={false} />
     Perceptually uniform, intuitive
   </TabItem>
   <TabItem label="OKLAB">
-    <ColorInputDemo value="oklab(70% 0.1 -0.15)" colorspace="oklab" showCode={false} />
+    <ColorInputDemo value="oklab(70% 0.1 -0.15)" showCode={false} />
     Perceptually uniform, rectangular
   </TabItem>
   <TabItem label="HSL">
-    <ColorInputDemo value="hsl(240 80% 60%)" colorspace="hsl" showCode={false} />
+    <ColorInputDemo value="hsl(240 80% 60%)" showCode={false} />
     Familiar but not uniform
   </TabItem>
   <TabItem label="sRGB">
-    <ColorInputDemo value="rgb(59 130 246)" colorspace="srgb" showCode={false} />
+    <ColorInputDemo value="rgb(59 130 246)" showCode={false} />
     Standard web RGB
   </TabItem>
   <TabItem label="Display P3">
-    <ColorInputDemo value="color(display-p3 0.3 0.7 0.95)" colorspace="display-p3" showCode={false} />
+    <ColorInputDemo value="color(display-p3 0.3 0.7 0.95)" showCode={false} />
     Wide-gamut RGB
   </TabItem>
 </Tabs>
 
 ## Quick Reference
 
-| Color Space | Type | Gamut | Best For |
-|------------|------|-------|----------|
-| **OKLCH** | Perceptual | Wide | Design, accessibility, palettes |
-| **OKLAB** | Perceptual | Wide | Color math, blending |
-| **HSL** | Legacy | sRGB | Simple adjustments, legacy code |
-| **HWB** | Legacy | sRGB | Alternative to HSL |
-| **sRGB** | RGB | sRGB | Hex colors, legacy |
-| **LAB/LCH** | Perceptual | Wide | Alternative to OKLCH |
-| **Display P3** | RGB | P3 | Wide-gamut displays |
-| **Rec2020** | RGB | 2020 | HDR, future displays |
+| Color Space    | Type       | Gamut | Best For                        |
+| -------------- | ---------- | ----- | ------------------------------- |
+| **OKLCH**      | Perceptual | Wide  | Design, accessibility, palettes |
+| **OKLAB**      | Perceptual | Wide  | Color math, blending            |
+| **HSL**        | Legacy     | sRGB  | Simple adjustments, legacy code |
+| **HWB**        | Legacy     | sRGB  | Alternative to HSL              |
+| **sRGB**       | RGB        | sRGB  | Hex colors, legacy              |
+| **LAB/LCH**    | Perceptual | Wide  | Alternative to OKLCH            |
+| **Display P3** | RGB        | P3    | Wide-gamut displays             |
+| **Rec2020**    | RGB        | 2020  | HDR, future displays            |

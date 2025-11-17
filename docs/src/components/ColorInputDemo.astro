@@ -18,23 +18,14 @@ const {
 } = Astro.props;
 
 const demoId = `demo-${Math.random().toString(36).substr(2, 9)}`;
-const codeSnippet = `<color-input
-  value="${value}"
-  colorspace="${colorspace}"
-  theme="${theme}"
-></color-input>`;
+const codeSnippet = `<color-input value="${value}" theme="${theme}"></color-input>`;
 ---
 
 <div class="demo color-input-demo" data-demo-id={demoId}>
   {description && <p class="demo-description">{description}</p>}
   
   <div class="demo-row">
-    <color-input
-      id={demoId}
-      value={value}
-      colorspace={colorspace}
-      theme={theme}
-    ></color-input>
+    <color-input id={demoId} value={value} theme={theme}></color-input>
   </div>
 
   <dl class="readout" aria-live="polite" aria-atomic="true">

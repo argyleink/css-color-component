@@ -16,30 +16,36 @@ hero:
       variant: minimal
 ---
 
-import ColorInputDemo from '../../components/ColorInputDemo.astro';
-import { Tabs, TabItem } from '@astrojs/starlight/components';
-import { Card, CardGrid } from '@astrojs/starlight/components';
+import ColorInputDemo from "../../components/ColorInputDemo.astro";
+import { Tabs, TabItem } from "@astrojs/starlight/components";
+import { Card, CardGrid } from "@astrojs/starlight/components";
 
 ## Features
 
 <CardGrid>
   <Card title="Wide-Gamut Colors" icon="star">
-    Support for sRGB, Display P3, Rec2020, and more. Automatic gamut detection shows you which color space contains your color.
+    Support for sRGB, Display P3, Rec2020, and more. Automatic gamut detection
+    shows you which color space contains your color.
   </Card>
   <Card title="Multiple Color Spaces" icon="palette">
-    Choose from sRGB, HSL, HWB, LAB, LCH, OKLCH, OKLAB, and wide-gamut RGB spaces. Convert between them seamlessly.
+    Choose from sRGB, HSL, HWB, LAB, LCH, OKLCH, OKLAB, and wide-gamut RGB
+    spaces. Convert between them seamlessly.
   </Card>
   <Card title="Popover UI" icon="open-book">
-    Built-in popover with intelligent positioning. Respects viewport boundaries and safe areas automatically.
+    Built-in popover with intelligent positioning. Respects viewport boundaries
+    and safe areas automatically.
   </Card>
   <Card title="Signals & Reactivity" icon="rocket">
-    Powered by Preact Signals for efficient, fine-grained reactivity. Shadow DOM encapsulation keeps styles isolated.
+    Powered by Preact Signals for efficient, fine-grained reactivity. Shadow DOM
+    encapsulation keeps styles isolated.
   </Card>
   <Card title="CSS Parts" icon="puzzle">
-    Customize every part of the picker with `::part()` selectors. Style the trigger, panel, sliders, and more.
+    Customize every part of the picker with `::part()` selectors. Style the
+    trigger, panel, sliders, and more.
   </Card>
   <Card title="Small Bundle" icon="document">
-    Tree-shakeable ES modules. Color math by colorjs.io. No framework dependencies.
+    Tree-shakeable ES modules. Color math by colorjs.io. No framework
+    dependencies.
   </Card>
 </CardGrid>
 
@@ -47,7 +53,6 @@ import { Card, CardGrid } from '@astrojs/starlight/components';
 
 <ColorInputDemo
   value="#0bf8"
-  colorspace="hex"
   description="Interact with the color picker below. The readout updates as you adjust the color."
 />
 
@@ -64,16 +69,13 @@ OKLCH provides perceptually uniform lightness and chroma, making it ideal for cr
       import 'color-input'
     </script>
 
-    <color-input
-      value="oklch(75% 30% 180)"
-      colorspace="oklch"
-    ></color-input>
+    <color-input value="oklch(75% 30% 180)"></color-input>
     ```
+
   </TabItem>
   <TabItem label="Result">
     <ColorInputDemo
       value="oklch(75% 30% 180)"
-      colorspace="oklch"
       showCode={false}
     />
   </TabItem>

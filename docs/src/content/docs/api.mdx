@@ -3,9 +3,9 @@ title: API Reference
 description: Complete API documentation for color-input attributes, properties, methods, events, and CSS parts
 ---
 
-import ColorInputDemo from '../../components/ColorInputDemo.astro';
-import EventLogger from '../../components/EventLogger.astro';
-import { Tabs, TabItem } from '@astrojs/starlight/components';
+import ColorInputDemo from "../../components/ColorInputDemo.astro";
+import EventLogger from "../../components/EventLogger.astro";
+import { Tabs, TabItem } from "@astrojs/starlight/components";
 
 ## Attributes
 
@@ -16,21 +16,21 @@ The `<color-input>` element accepts three HTML attributes:
 The `value` attribute sets the color using standard CSS color syntax.
 
 ```html
-<color-input value="oklch(70% 20% 240)" colorspace="oklch"></color-input>
+<color-input value="oklch(70% 20% 240)"></color-input>
 ```
 
 <Tabs>
   <TabItem label="OKLCH">
-    <ColorInputDemo value="oklch(70% 20% 240)" colorspace="oklch" />
+    <ColorInputDemo value="oklch(70% 20% 240)" />
   </TabItem>
   <TabItem label="HSL">
-    <ColorInputDemo value="hsl(240 80% 60%)" colorspace="hsl" />
+    <ColorInputDemo value="hsl(240 80% 60%)" />
   </TabItem>
   <TabItem label="Hex">
-    <ColorInputDemo value="#3b82f6" colorspace="srgb" />
+    <ColorInputDemo value="#3b82f6" />
   </TabItem>
   <TabItem label="Display P3">
-    <ColorInputDemo value="color(display-p3 0.3 0.7 0.95)" colorspace="display-p3" />
+    <ColorInputDemo value="color(display-p3 0.3 0.7 0.95)" />
   </TabItem>
 </Tabs>
 
@@ -56,7 +56,7 @@ The `colorspace` attribute specifies which color space to use for editing:
 - **`a98-rgb`**, **`prophoto`**, **`xyz`**, **`xyz-d50`**, **`xyz-d65`**
 
 ```html
-<color-input value="hsl(200 90% 50%)" colorspace="hsl"></color-input>
+<color-input value="hsl(200 90% 50%)"></color-input>
 ```
 
 ::::note
@@ -77,13 +77,13 @@ The `theme` attribute controls the visual appearance:
 
 <Tabs>
   <TabItem label="Auto">
-    <ColorInputDemo value="oklch(65% 20% 280)" colorspace="oklch" theme="auto" />
+    <ColorInputDemo value="oklch(65% 20% 280)" theme="auto" />
   </TabItem>
   <TabItem label="Light">
-    <ColorInputDemo value="oklch(65% 20% 280)" colorspace="oklch" theme="light" />
+    <ColorInputDemo value="oklch(65% 20% 280)" theme="light" />
   </TabItem>
   <TabItem label="Dark">
-    <ColorInputDemo value="oklch(65% 20% 280)" colorspace="oklch" theme="dark" />
+    <ColorInputDemo value="oklch(65% 20% 280)" theme="dark" />
   </TabItem>
 </Tabs>
 
@@ -106,7 +106,6 @@ Hover or focus the preview area to reveal a copy button. Activating it copies th
 The Clipboard API requires a secure context (https or localhost) and a user interaction. Browsers that block it simply prevent the confirmation message from showing.
 ::::
 
-
 ## Properties
 
 The `<color-input>` element exposes five properties:
@@ -116,9 +115,9 @@ The `<color-input>` element exposes five properties:
 **value** - Current color as a CSS string
 
 ```js
-const picker = document.querySelector('color-input');
+const picker = document.querySelector("color-input");
 console.log(picker.value); // "oklch(70% 20% 240)"
-picker.value = 'oklch(80% 15% 180)';
+picker.value = "oklch(80% 15% 180)";
 ```
 
 :::::note
@@ -129,14 +128,14 @@ For backward compatibility you can also assign through the legacy setter: `picke
 
 ```js
 console.log(picker.colorspace); // "oklch"
-picker.colorspace = 'hsl';
+picker.colorspace = "hsl";
 ```
 
 **theme** - Visual theme
 
 ```js
 console.log(picker.theme); // "auto"
-picker.theme = 'dark'; // "auto", "light", or "dark"
+picker.theme = "dark"; // "auto", "light", or "dark"
 ```
 
 ### Read-Only Properties
@@ -164,7 +163,7 @@ All read/write properties reflect to attributes and vice versa.
 Opens the picker popover programmatically:
 
 ```js
-const picker = document.querySelector('color-input');
+const picker = document.querySelector("color-input");
 picker.show();
 ```
 
@@ -189,7 +188,7 @@ picker.close();
 Sets a custom anchor element for popover positioning:
 
 ```js
-const customAnchor = document.querySelector('#my-anchor');
+const customAnchor = document.querySelector("#my-anchor");
 picker.setAnchor(customAnchor);
 ```
 
@@ -208,18 +207,19 @@ The compatibility setter `picker.setAnchorElement = customAnchor` mirrors `setAn
 - When a command originates from an invoker element, that invoker becomes the new popover anchor via `setAnchor()`.
 
 ```html
-<button popovertarget="picker" popovertargetaction="toggle">Toggle color picker</button>
+<button popovertarget="picker" popovertargetaction="toggle">
+  Toggle color picker
+</button>
 <color-input id="picker"></color-input>
 ```
 
 You can also trigger commands manually:
 
 ```js
-const cmd = new Event('command', { bubbles: true });
-Object.assign(cmd, { command: 'show' });
+const cmd = new Event("command", { bubbles: true });
+Object.assign(cmd, { command: "show" });
 picker.dispatchEvent(cmd);
 ```
-
 
 ## Events
 
@@ -231,14 +231,14 @@ Fired when the color value changes. The event detail contains:
 
 ```ts
 interface ChangeDetail {
-  value: string;      // CSS color string, e.g., "oklch(70% 20% 240)"
+  value: string; // CSS color string, e.g., "oklch(70% 20% 240)"
   colorspace: string; // Current color space, e.g., "oklch"
-  gamut: string;      // Detected gamut: "srgb", "p3", "rec2020", or "xyz"
+  gamut: string; // Detected gamut: "srgb", "p3", "rec2020", or "xyz"
 }
 ```
 
 ```js
-picker.addEventListener('change', (event) => {
+picker.addEventListener("change", (event) => {
   const { value, colorspace, gamut } = event.detail;
   console.log(`New color: ${value}`);
   console.log(`Color space: ${colorspace}`);
@@ -253,8 +253,8 @@ picker.addEventListener('change', (event) => {
 Fired when the picker popover opens:
 
 ```js
-picker.addEventListener('open', () => {
-  console.log('Picker opened');
+picker.addEventListener("open", () => {
+  console.log("Picker opened");
 });
 ```
 
@@ -263,8 +263,8 @@ picker.addEventListener('open', () => {
 Fired when the picker popover closes:
 
 ```js
-picker.addEventListener('close', () => {
-  console.log('Picker closed');
+picker.addEventListener("close", () => {
+  console.log("Picker closed");
 });
 ```
 
@@ -324,11 +324,11 @@ Perfect for color palettes and compact color selection:
         }
       `}</style>
       <div class="demo-row">
-        <color-input class="circle-swatch" value="#ef4444" colorspace="srgb"></color-input>
-        <color-input class="circle-swatch" value="#f59e0b" colorspace="srgb"></color-input>
-        <color-input class="circle-swatch" value="#10b981" colorspace="srgb"></color-input>
-        <color-input class="circle-swatch" value="#3b82f6" colorspace="srgb"></color-input>
-        <color-input class="circle-swatch" value="#8b5cf6" colorspace="srgb"></color-input>
+        <color-input class="circle-swatch" value="#ef4444"></color-input>
+        <color-input class="circle-swatch" value="#f59e0b"></color-input>
+        <color-input class="circle-swatch" value="#10b981"></color-input>
+        <color-input class="circle-swatch" value="#3b82f6"></color-input>
+        <color-input class="circle-swatch" value="#8b5cf6"></color-input>
       </div>
     </div>
   </TabItem>
@@ -369,6 +369,7 @@ Perfect for color palettes and compact color selection:
       display: none;
     }
     ```
+
   </TabItem>
 </Tabs>
 
@@ -397,7 +398,7 @@ Perfect for color palettes and compact color selection:
           box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
         }
       `}</style>
-      <color-input class="pill-style" value="oklch(65% 20% 280)" colorspace="oklch"></color-input>
+      <color-input class="pill-style" value="oklch(65% 20% 280)"></color-input>
     </div>
   </TabItem>
   <TabItem label="CSS">
@@ -418,17 +419,18 @@ Perfect for color palettes and compact color selection:
       box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
     }
     ```
+
   </TabItem>
 </Tabs>
 
 ### Parts Reference
 
-| Part | Description |
-|------|-------------|
-| `trigger` | Button that opens the picker |
-| `chip` | Color swatch preview |
-| `input` | Inline text field for manual color entry |
-| `panel` | Popover container |
-| `output` | Current color value display |
-| `gamut` | Gamut badge |
-| `controls` | Sliders and numeric inputs container |
+| Part       | Description                              |
+| ---------- | ---------------------------------------- |
+| `trigger`  | Button that opens the picker             |
+| `chip`     | Color swatch preview                     |
+| `input`    | Inline text field for manual color entry |
+| `panel`    | Popover container                        |
+| `output`   | Current color value display              |
+| `gamut`    | Gamut badge                              |
+| `controls` | Sliders and numeric inputs container     |
