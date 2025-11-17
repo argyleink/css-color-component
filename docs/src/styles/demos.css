@@ -20,6 +20,11 @@
   gap: 1rem;
   align-items: center;
   flex-wrap: wrap;
+  margin: 0;
+
+  > * {
+    margin: 0;
+  }
 }
 
 .demo-controls {

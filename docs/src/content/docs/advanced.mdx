@@ -1,123 +1,9 @@
 ---
 title: Advanced Topics
-description: Accessibility, architecture, performance, and advanced features
+description: Architecture, performance, and advanced features
 ---
 
-import ColorInputDemo from '../../components/ColorInputDemo.astro';
-
-## Accessibility
-
-The `<color-input>` component is built with accessibility as a core requirement, following WAI-ARIA Authoring Practices Guide (APG) patterns.
-
-### Keyboard Support
-
-All functionality is accessible via keyboard:
-
-**Opening/Closing:**
-- **Enter** or **Space** on the trigger button - Opens the picker
-- **Escape** - Closes the picker and returns focus to the trigger
-- **Tab** - Navigates between controls when open
-
-**Adjusting Colors:**
-- **Arrow Up/Down** - Increment/decrement value by 1 unit
-- **Shift + Arrow Up/Down** - Increment/decrement by 10 units
-- **Home** - Set to minimum value
-- **End** - Set to maximum value
-- **Tab** - Move between channel controls
-
-<ColorInputDemo value="oklch(70% 0.2 240)" colorspace="oklch" description="Try keyboard navigation: Tab to focus, Enter to open, Arrow keys to adjust sliders, Escape to close." />
-
-### Screen Reader Support
-
-The component uses semantic HTML with proper ARIA attributes:
-
-- **Semantic Elements**: Native `<button>`, `<input type="range">`, `<input type="number">`
-- **ARIA Labels**: `aria-label` for control purpose (e.g., "Lightness slider")
-- **Live Regions**: `aria-live="polite"` for value announcements
-- **Range Properties**: `aria-valuenow`, `aria-valuemin`, `aria-valuemax`
-
-### Focus Management
-
-**Focus Rings:**
-All interactive elements have visible focus indicators using `:focus-visible`.
-
-**Focus Trap:**
-When the picker is open, Tab cycles through controls within the popover. Escape closes and returns focus to the trigger.
-
-**Focus Restoration:**
-Focus returns to the trigger button when the picker closes.
-
-### Contrast & Color
-
-The `contrastColor` property provides the recommended text color for maximum contrast:
-
-```js
-const picker = document.querySelector('color-input');
-
-picker.addEventListener('change', (e) => {
-  const textColor = picker.contrastColor; // "white" or "black"
-  document.body.style.background = e.detail.value;
-  document.body.style.color = textColor;
-});
-```
-
-The component calculates contrast using WCAG 2.1 formulas for AA/AAA compliance.
-
-### Touch & Mobile
-
-**Hit Target Sizing:**
-- Mobile: ≥44px × 44px
-- Desktop: ≥24px × 24px
-
-**Touch Affordances:**
-- `touch-action: manipulation` prevents double-tap zoom
-- Generous padding expands clickable areas
-- No hover-only interactions
-
-### Reduced Motion
-
-Respects `prefers-reduced-motion` for users sensitive to motion:
-
-```css
-@media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
-    animation-duration: 0.01ms !important;
-    transition-duration: 0.01ms !important;
-  }
-}
-```
-
-### Best Practices
-
-:::tip[Always Provide Labels]
-Provide context in your UI:
-
-```html
-<label for="bg-color">Background Color</label>
-<color-input id="bg-color" value="oklch(70% 0.2 240)"></color-input>
-```
-:::
-
-:::caution[Color Alone Is Not Enough]
-Never rely on color alone to convey information:
-
-```html
-<!-- Good -->
-<label>Theme Color</label>
-<color-input aria-label="Theme color picker"></color-input>
-```
-:::
-
-### Testing Checklist
-
-- ☐ All features work with keyboard only
-- ☐ Screen reader announces changes properly
-- ☐ Focus indicators are visible
-- ☐ Hit targets meet minimum sizes
-- ☐ Color contrast meets WCAG AA (4.5:1 for text)
-- ☐ Works with reduced motion enabled
-- ☐ Tab order is logical
-- ☐ Popover closes with Escape
+import ColorInputDemo from "../../components/ColorInputDemo.astro";
 
 ## Architecture
 
@@ -158,11 +44,13 @@ The component is designed for minimal bundle impact:
 ### Runtime Performance
 
 **Efficient Updates:**
+
 - Signals prevent unnecessary re-renders
 - Color conversions are cached
 - Popover uses native Popover API (hardware accelerated)
 
 **Lazy Loading:**
+
 - Component registers on import
 - Popover content rendered on-demand
 
@@ -184,8 +72,8 @@ The popover automatically positions relative to the trigger button:
 Use `setAnchor()` to position relative to a different element:
 
 ```js
-const picker = document.querySelector('color-input');
-const customAnchor = document.querySelector('#my-anchor');
+const picker = document.querySelector("color-input");
+const customAnchor = document.querySelector("#my-anchor");
 
 picker.setAnchor(customAnchor);
 picker.show();
@@ -225,7 +113,7 @@ A gamut badge appears in the picker UI showing the current gamut. This helps you
 The `change` event includes gamut information:
 
 ```js
-picker.addEventListener('change', (e) => {
+picker.addEventListener("change", (e) => {
   console.log(e.detail.gamut); // "srgb" | "p3" | "rec2020" | "xyz"
 });
 ```
@@ -239,15 +127,15 @@ While the component doesn't inherit from `HTMLInputElement`, you can integrate i
 ```html
 <form id="settings-form">
   <label for="theme-color">Theme Color</label>
-  <color-input id="theme-color" value="oklch(70% 0.2 240)"></color-input>
-  <input type="hidden" name="theme_color" id="theme-color-input">
+  <color-input id="theme-color" value="oklch(70% 20% 240)"></color-input>
+  <input type="hidden" name="theme_color" id="theme-color-input" />
 </form>
 
 <script>
-  const picker = document.querySelector('#theme-color');
-  const hiddenInput = document.querySelector('#theme-color-input');
+  const picker = document.querySelector("#theme-color");
+  const hiddenInput = document.querySelector("#theme-color-input");
 
-  picker.addEventListener('change', (e) => {
+  picker.addEventListener("change", (e) => {
     hiddenInput.value = e.detail.value;
   });
 
@@ -261,7 +149,7 @@ While the component doesn't inherit from `HTMLInputElement`, you can integrate i
 Use properties and methods to control the picker:
 
 ```js
-const picker = document.querySelector('color-input');
+const picker = document.querySelector("color-input");
 
 // Read state
 console.log(picker.value);
@@ -270,9 +158,8 @@ console.log(picker.gamut);
 console.log(picker.contrastColor);
 
 // Update state
-picker.value = 'oklch(80% 0.15 180)';
-picker.colorspace = 'hsl';
-picker.theme = 'dark';
+picker.value = "oklch(80% 15% 180)";
+picker.theme = "dark";
 
 // Control popover
 picker.show();
@@ -285,11 +172,8 @@ picker.close();
 
 - [CSS Color Module Level 4](https://www.w3.org/TR/css-color-4/)
 - [Popover API](https://developer.mozilla.org/en-US/docs/Web/API/Popover_API)
-- [WAI-ARIA APG](https://www.w3.org/WAI/ARIA/apg/)
-- [WCAG 2.1 Guidelines](https://www.w3.org/WAI/WCAG21/quickref/)
 
 ### Tools
 
 - [colorjs.io](https://colorjs.io) - Color science library
-- [WebAIM Contrast Checker](https://webaim.org/resources/contrastchecker/)
 - [OKLCH Color Picker](https://oklch.com)

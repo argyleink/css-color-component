@@ -24,6 +24,7 @@ import {
   type Size
 } from './utils/positioning'
 import { createTemplate } from './utils/template'
+// @ts-ignore
 import styles from './styles/index.css?inline'
 
 export type { Theme, ColorSpace }
@@ -50,12 +51,14 @@ export class ColorInput extends HTMLElement {
   #theme = signal<Theme>('auto')
   #open = signal(false)
   #anchor: Signal<HTMLElement | null> = signal(null)
+  #error = signal<string | null>(null)
 
   #contrast = computed(() => contrastColor(this.#value.value))
   #gamut = computed(() => detectGamut(this.#value.value))
 
   #previewEffectCleanup: ReturnType<typeof effect> | null = null
   #colorSchemeEffectCleanup: ReturnType<typeof effect> | null = null
+  #errorEffectCleanup: ReturnType<typeof effect> | null = null
   #controlsEffectCleanup: ReturnType<typeof effect> | null = null
 
   get value() { return this.#value.value }
@@ -126,6 +129,8 @@ export class ColorInput extends HTMLElement {
   #output?: HTMLOutputElement
   #chip?: HTMLElement
   #internalTrigger?: HTMLButtonElement
+  #textInput?: HTMLInputElement
+  #errorMessage?: HTMLElement
   #lastInvoker: HTMLElement | null = null
 
   constructor() {
@@ -155,6 +160,8 @@ export class ColorInput extends HTMLElement {
     this.#spaceSelect = this.#root.querySelector('.space') as HTMLSelectElement
     this.#output = this.#root.querySelector('output.info') as HTMLOutputElement
     this.#chip = this.#root.querySelector('.chip') as HTMLElement
+    this.#textInput = this.#root.querySelector('.text-input') as HTMLInputElement
+    this.#errorMessage = this.#root.querySelector('.error-message') as HTMLElement
 
     // Copy to clipboard
     const copyBtn = this.#root.querySelector<HTMLButtonElement>('button.copy-btn')
@@ -202,6 +209,20 @@ export class ColorInput extends HTMLElement {
 
     if (btn) btn.addEventListener('click', () => this.show(btn))
 
+    // Text input validation
+    if (this.#textInput) {
+      this.#textInput.value = this.#value.value
+
+      this.#textInput.addEventListener('input', (e) => {
+        const inputValue = (e.target as HTMLInputElement).value
+        this.#validateAndSetColor(inputValue)
+      })
+
+      this.#textInput.addEventListener('paste', (e) => {
+        // Allow default paste, then validate via input event
+      })
+    }
+
     // Command API handler
     this.addEventListener('command', (ev: Event) => {
       const command = (ev as any).command as string | undefined
@@ -243,12 +264,28 @@ export class ColorInput extends HTMLElement {
       const contrast = this.#contrast.value
       if (this.#output) this.#output.value = v
       if (this.#chip) this.#chip.style.setProperty('--value', v)
+      if (this.#textInput && this.#textInput.value !== v) {
+        this.#textInput.value = v
+      }
       this.style.setProperty('--contrast', contrast)
       this.style.setProperty('--counter', contrast === 'white' ? 'black' : 'white')
       const gamutEl = this.#root.querySelector('.gamut') as HTMLElement
       if (gamutEl) gamutEl.textContent = gamut
       const preview = this.#root.querySelector('.preview') as HTMLElement
       if (preview) preview.style.setProperty('--value', v)
+    })
+
+    this.#errorEffectCleanup = effect(() => {
+      const error = this.#error.value
+      if (error) {
+        this.setAttribute('data-error', '')
+        if (this.#errorMessage) this.#errorMessage.textContent = error
+        if (this.#textInput) this.#textInput.setAttribute('aria-invalid', 'true')
+      } else {
+        this.removeAttribute('data-error')
+        if (this.#errorMessage) this.#errorMessage.textContent = ''
+        if (this.#textInput) this.#textInput.setAttribute('aria-invalid', 'false')
+      }
     })
 
     this.#colorSchemeEffectCleanup = effect(() => {
@@ -259,7 +296,11 @@ export class ColorInput extends HTMLElement {
 
     // Defaults
     if (!this.hasAttribute('value')) this.setAttribute('value', DEFAULT_VALUE)
-    if (!this.hasAttribute('colorspace')) this.setAttribute('colorspace', DEFAULT_SPACE)
+    if (!this.hasAttribute('colorspace')) {
+      // If we have a value attribute, the colorspace was already detected in attributeChangedCallback
+      // So we should sync the attribute with the detected internal space value
+      this.setAttribute('colorspace', this.#space.value)
+    }
 
     this.#spaceSelect.value = this.#space.value
     this.#renderControls()
@@ -268,6 +309,7 @@ export class ColorInput extends HTMLElement {
   disconnectedCallback() {
     if (this.#colorSchemeEffectCleanup) this.#colorSchemeEffectCleanup()
     if (this.#previewEffectCleanup) this.#previewEffectCleanup()
+    if (this.#errorEffectCleanup) this.#errorEffectCleanup()
   }
 
   attributeChangedCallback(name: string, _old: string | null, value: string | null) {
@@ -294,6 +336,32 @@ export class ColorInput extends HTMLElement {
   #emitChange() {
     const detail: ChangeDetail = { value: this.#value.value, colorspace: this.#space.value, gamut: this.#gamut.value }
     this.dispatchEvent(new CustomEvent<ChangeDetail>('change', { detail, bubbles: true }))
+  }
+
+  #validateAndSetColor(inputValue: string) {
+    if (!inputValue || !inputValue.trim()) {
+      this.#error.value = 'Invalid color format'
+      return
+    }
+
+    try {
+      const parsed = new Color(inputValue)
+      const sid = reverseColorJSSpaceID(parsed.space.id) as string
+      const isHex = typeof inputValue === 'string' && inputValue.trim().startsWith('#')
+
+      // Clear error on success
+      this.#error.value = null
+
+      // Update value and colorspace
+      this.#space.value = isHex ? 'hex' : (sid === 'rgb' ? 'srgb' : (sid as ColorSpace))
+      this.#value.value = inputValue
+      this.setAttribute('value', inputValue)
+      this.setAttribute('colorspace', this.#space.value)
+      if (this.#spaceSelect) this.#spaceSelect.value = this.#space.value
+      this.#emitChange()
+    } catch (error) {
+      this.#error.value = 'Invalid color format'
+    }
   }
 
   // ──────────────────────────────────────────────────────────────────────────────
