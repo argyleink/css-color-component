@@ -6,6 +6,8 @@ A standalone web component color picker using [colorjs.io](http://colorjs.io/) a
 - Colorspaces: srgb, hsl, hwb, lab, lch, oklch, oklab and wide-gamut RGB-like spaces
 - Popover UI with automatic positioning and Shadow DOM encapsulation
 
+Try on [CodePen](https://codepen.io/argyleink/pen/dPGBYZg)
+
 > Consider this as a beta or alpha build, needing battle testing, contributions and possibly a couple more features before being production ready
 
 ## Usage
