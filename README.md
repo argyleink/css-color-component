@@ -13,7 +13,7 @@ A standalone web component color picker using [colorjs.io](http://colorjs.io/) a
 ### With CDN
 
 ```html
-<script src="https://cdn.jsdelivr.net/gh/argyleink/css-color-component@cdn-latest/dist/color-input.min.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/argyleink/css-color-component/dist/index.js"></script>
 
 <color-input value="oklch(75% 75% 180)"></color-input>
 ```
