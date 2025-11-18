@@ -19,7 +19,7 @@ A standalone web component color picker using [colorjs.io](http://colorjs.io/) a
 ```
 
 ## API
-- Attributes: `value`, `colorspace`, `theme` (auto|light|dark)
+- Attributes: `value`, `theme` (auto|light|dark)
 - Properties: `value`, `colorspace`, `theme`, readonly: `gamut`, `contrastColor`
 - Methods: `show()`, `close()`, `setAnchor(element)`
 - Events: `change`, `open`, `close`
