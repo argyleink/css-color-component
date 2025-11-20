@@ -123,7 +123,7 @@ button {
   align-content: end;
   justify-items: start;
   padding: 0.75rem;
-  gap: .25lh;
+  gap: 10px;
   box-shadow: var(--shadow-inner);
   background: linear-gradient(var(--value) 0 0), var(--checker);
   forced-color-adjust: none;
@@ -132,7 +132,7 @@ button {
     opacity: 1; 
   }
 
-  & > *:not(:hover) {opacity:.8}
+  & > *:not(:hover) {opacity:.9}
   .copy-wrap {
     position: absolute;
     top: .5rem;
@@ -157,7 +157,7 @@ button {
   .copy-btn svg { display: block; }
   .copy-message {
     color: var(--contrast);
-    font-size: 14px;
+    font-size: .8rem;
     font-weight: 500;
     opacity: 0;
     pointer-events: none;
@@ -181,7 +181,6 @@ button {
   appearance: base-select;
   min-block-size: 1lh;
   line-height: 1.1;
-  font-size: 12px;
   font-weight: bold;
   margin: 0;
   padding: 0;
@@ -216,7 +215,9 @@ button {
   /* No padding/radius; background only on hover/focus */
   background: transparent;
 }
-.gamut { font-size: 12px; text-box: ex alphabetic; }
+.gamut { font-size: 1rem; text-box: ex alphabetic; }
+
+.info { font-size: 1.25rem }
 
 /* Controls: dynamically generated sliders + numeric inputs for each channel in the selected color space */
 .controls {
@@ -237,7 +238,7 @@ button {
   }
   .control .num-wrapper sup {
     opacity: 0.5;
-    font-size: 10px;
+    font-size: .5em;
     place-self: start;
   }
   .control label {
