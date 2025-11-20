@@ -71,6 +71,7 @@ button {
 .text-input {
   field-sizing: content;
   font-family: inherit;
+  font-size: 16px;
   padding: 1ch 1.5ch;
   border: 1px solid color-mix(in oklab, var(--canvas-text), var(--canvas) 80%);
   border-radius: var(--radius-2);
@@ -181,7 +182,7 @@ button {
   appearance: base-select;
   min-block-size: 1lh;
   line-height: 1.1;
-  font-size: 12px;
+  font-size: 16px;
   font-weight: bold;
   margin: 0;
   padding: 0;
@@ -245,7 +246,7 @@ button {
   }
   .control input[type="number"] {
     text-align: end;
-    font-size: 12px; padding: 0; background: none;
+    font-size: 16px; padding: 0; background: none;
     border: 1px solid var(--canvas);
     border-radius: 0.25rem;
     -moz-appearance: textfield;
