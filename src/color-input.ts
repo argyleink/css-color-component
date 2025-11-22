@@ -72,7 +72,6 @@ export class ColorInput extends HTMLElement {
       this.#value.value = v
       this.setAttribute('value', v)
       this.setAttribute('colorspace', this.#space.value)
-      this.#emitChange()
     } catch {}
   }
 
@@ -90,7 +89,6 @@ export class ColorInput extends HTMLElement {
       const newValue = gencolor(next, parsed.ch)
       this.#value.value = newValue
       this.setAttribute('value', newValue)
-      this.#emitChange()
     } catch {}
     // Re-render controls for new colorspace
     if (this.#controls) this.#renderControls()
