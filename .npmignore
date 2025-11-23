@@ -1,0 +1,27 @@
+# Source files (we only need dist/)
+src/
+tests/
+
+# Documentation (except README.md)
+docs/
+
+# Config files
+.github/
+.gitattributes
+.gitignore
+vite.config.ts
+tsconfig.json
+postcss.config.cjs
+netlify.toml
+
+# Development
+node_modules/
+*.log
+.DS_Store
+.vscode/
+.idea/
+
+# NPM
+package-lock.json
+yarn.lock
+pnpm-lock.yaml

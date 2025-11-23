@@ -3,6 +3,27 @@
   "version": "0.2.1",
   "description": "A standalone web component color picker using colorjs.io and preact signals.",
   "type": "module",
+  "keywords": [
+    "color-picker",
+    "web-component",
+    "colorjs",
+    "oklch",
+    "color-input",
+    "custom-element",
+    "color-space",
+    "color",
+    "preact-signals"
+  ],
+  "author": "Adam Argyle",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/argyleink/css-color-component.git"
+  },
+  "bugs": {
+    "url": "https://github.com/argyleink/css-color-component/issues"
+  },
+  "homepage": "https://github.com/argyleink/css-color-component#readme",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
