@@ -14,7 +14,7 @@ export function createTemplate(): HTMLTemplateElement {
     <span class="chip" part="chip"></span>
   </button>
   <div class="input-wrapper">
-    <span class="error-message" role="alert" aria-live="polite"></span>
+    <span class="error-message" part="error" role="alert" aria-live="polite"></span>
     <input type="text" class="text-input" part="input" aria-label="Color value" title="Color value" aria-invalid="false" spellcheck="false" />
   </div>
   <div class="panel" popover="auto" part="panel">
