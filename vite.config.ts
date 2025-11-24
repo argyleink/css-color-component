@@ -1,5 +1,6 @@
 import { defineConfig } from 'vite'
 import { resolve } from 'node:path'
+import dts from 'vite-plugin-dts'
 
 export default defineConfig(({ command, mode }) => {
   const isServe = command === 'serve'
@@ -12,6 +13,14 @@ export default defineConfig(({ command, mode }) => {
       open: true,
       fs: { allow: ['..'] }
     },
+    plugins: isServe && !isTest ? [] : [
+      dts({
+        include: ['src/**/*'],
+        outDir: 'dist',
+        insertTypesEntry: true,
+        rollupTypes: true
+      })
+    ],
     build: isServe && !isTest ? undefined : {
       lib: {
         entry: resolve(__dirname, 'src/index.ts'),
