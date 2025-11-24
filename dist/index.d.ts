@@ -13,6 +13,8 @@ export declare class ColorInput extends HTMLElement {
     set colorspace(s: ColorSpace | string);
     get theme(): Theme | string;
     set theme(t: Theme | string);
+    get noAlpha(): boolean;
+    set noAlpha(v: boolean);
     get gamut(): Gamut;
     get contrastColor(): "white" | "black";
     show(anchor?: HTMLElement | null): void;
