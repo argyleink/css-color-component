@@ -9,7 +9,7 @@ import { Tabs, TabItem } from "@astrojs/starlight/components";
 
 ## Attributes
 
-The `<color-input>` element accepts three HTML attributes:
+The `<color-input>` element accepts four HTML attributes:
 
 ### value
 
@@ -66,6 +66,27 @@ The `theme` attribute controls the visual appearance:
   </TabItem>
 </Tabs>
 
+### no-alpha
+
+The `no-alpha` attribute hides the alpha channel control from the color picker. When present, users cannot modify the alpha/opacity value through the UI, though the alpha value is still preserved in the color.
+
+```html
+<color-input value="oklch(70% 20% 240 / 80%)" no-alpha></color-input>
+```
+
+<Tabs>
+  <TabItem label="With Alpha Control">
+    <ColorInputDemo value="oklch(70% 20% 240 / 80%)" />
+  </TabItem>
+  <TabItem label="Without Alpha Control">
+    <ColorInputDemo value="oklch(70% 20% 240 / 80%)" no-alpha />
+  </TabItem>
+</Tabs>
+
+:::tip
+Use `no-alpha` when you want to enforce fully opaque colors or prevent users from adjusting transparency in your application.
+:::
+
 ## Inline Text Input
 
 Every `<color-input>` now includes an inline text field for editing the current color string. It accepts anything the CSS Color Level 4 parser understands and keeps the sliders, preview, and computed properties in sync as you type.
@@ -87,7 +108,7 @@ The Clipboard API requires a secure context (https or localhost) and a user inte
 
 ## Properties
 
-The `<color-input>` element exposes five properties:
+The `<color-input>` element exposes six properties:
 
 ### Read/Write Properties
 
@@ -115,6 +136,14 @@ picker.colorspace = "hsl";
 ```js
 console.log(picker.theme); // "auto"
 picker.theme = "dark"; // "auto", "light", or "dark"
+```
+
+**noAlpha** - Controls alpha channel visibility
+
+```js
+console.log(picker.noAlpha); // false
+picker.noAlpha = true; // Hides alpha controls
+picker.noAlpha = false; // Shows alpha controls
 ```
 
 ### Read-Only Properties
