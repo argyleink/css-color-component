@@ -71,15 +71,15 @@ The `theme` attribute controls the visual appearance:
 The `no-alpha` attribute hides the alpha channel control from the color picker. When present, users cannot modify the alpha/opacity value through the UI, though the alpha value is still preserved in the color.
 
 ```html
-<color-input value="oklch(70% 20% 240 / 80%)" no-alpha></color-input>
+<color-input value="red" no-alpha></color-input>
 ```
 
 <Tabs>
   <TabItem label="With Alpha Control">
-    <ColorInputDemo value="oklch(70% 20% 240 / 80%)" />
+    <ColorInputDemo value="red" />
   </TabItem>
   <TabItem label="Without Alpha Control">
-    <ColorInputDemo value="oklch(70% 20% 240 / 80%)" no-alpha={true} />
+    <ColorInputDemo value="red" noAlpha={true} />
   </TabItem>
 </Tabs>
 

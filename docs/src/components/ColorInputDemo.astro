@@ -5,7 +5,7 @@ interface Props {
   value?: string;
   colorspace?: string;
   theme?: 'auto' | 'light' | 'dark';
-  'no-alpha'?: boolean;
+  noAlpha?: boolean;
   showCode?: boolean;
   description?: string;
 }
@@ -14,14 +14,15 @@ const {
   value = 'oklch(75% 30% 180)',
   colorspace = 'oklch',
   theme = 'auto',
-  'no-alpha': noAlpha = false,
+  noAlpha = false,
   showCode = true,
   description
 } = Astro.props;
 
 const demoId = `demo-${Math.random().toString(36).substr(2, 9)}`;
-const attrs = noAlpha ? ` no-alpha` : '';
-const codeSnippet = `<color-input value="${value}" theme="${theme}"${attrs}></color-input>`;
+const themeAttr = theme !== 'auto' ? ` theme="${theme}"` : '';
+const noAlphaAttr = noAlpha ? ` no-alpha` : '';
+const codeSnippet = `<color-input value="${value}"${themeAttr}${noAlphaAttr}></color-input>`;
 ---
 
 <div class="demo color-input-demo" data-demo-id={demoId}>
