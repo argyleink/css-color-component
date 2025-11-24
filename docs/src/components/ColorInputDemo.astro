@@ -28,7 +28,7 @@ const codeSnippet = `<color-input value="${value}" theme="${theme}"${attrs}></co
   {description && <p class="demo-description">{description}</p>}
   
   <div class="demo-row">
-    <color-input id={demoId} value={value} theme={theme} no-alpha={noAlpha || undefined}></color-input>
+    <color-input id={demoId} value={value} theme={theme} {...(noAlpha ? { 'no-alpha': '' } : {})}></color-input>
   </div>
 
   <dl class="readout" aria-live="polite" aria-atomic="true">
