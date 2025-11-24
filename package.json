@@ -1,6 +1,6 @@
 {
   "name": "hdr-color-input",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "description": "A standalone web component color picker using colorjs.io and preact signals.",
   "type": "module",
   "keywords": [
