@@ -1,8 +1,35 @@
 {
-  "name": "color-input",
+  "name": "hdr-color-input",
   "version": "0.2.1",
   "description": "A standalone web component color picker using colorjs.io and preact signals.",
   "type": "module",
+  "keywords": [
+    "color-picker",
+    "hdr-color",
+    "css-color",
+    "web-component",
+    "colorjs",
+    "oklch",
+    "oklab",
+    "rec2020",
+    "display-p3",
+    "color-input",
+    "custom-element",
+    "color-space",
+    "color",
+    "hdr-gamut",
+    "preact-signals"
+  ],
+  "author": "Adam Argyle",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/argyleink/css-color-component.git"
+  },
+  "bugs": {
+    "url": "https://github.com/argyleink/css-color-component/issues"
+  },
+  "homepage": "https://github.com/argyleink/css-color-component#readme",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -51,6 +78,7 @@
     "terser": "^5.44.1",
     "typescript": "^5.6.2",
     "vite": "^5.4.9",
+    "vite-plugin-dts": "^4.5.4",
     "vitest": "^1.6.0"
   }
 }
