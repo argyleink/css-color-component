@@ -6,7 +6,7 @@ A standalone web component color picker using [colorjs.io](http://colorjs.io/) a
 - Colorspaces: srgb, hsl, hwb, lab, lch, oklch, oklab and wide-gamut RGB-like spaces
 - Popover UI with automatic positioning and Shadow DOM encapsulation
 
-Try on [CodePen](https://codepen.io/argyleink/pen/dPGBYZg)
+Try on [CodePen](https://codepen.io/argyleink/pen/dPGBYZg) or get it on [NPM](https://www.npmjs.com/package/hdr-color-input)
 
 > Consider this as a beta or alpha build, needing battle testing, contributions and possibly a couple more features before being production ready
 
@@ -15,7 +15,7 @@ Try on [CodePen](https://codepen.io/argyleink/pen/dPGBYZg)
 ### With CDN
 
 ```html
-<script src="https://cdn.jsdelivr.net/gh/argyleink/css-color-component/dist/index.js"></script>
+<script src="https://unpkg.com/hdr-color-input"></script>
 
 <color-input value="oklch(75% 75% 180)"></color-input>
 ```
