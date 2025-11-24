@@ -74,14 +74,7 @@ The `no-alpha` attribute hides the alpha channel control from the color picker. 
 <color-input value="red" no-alpha></color-input>
 ```
 
-<Tabs>
-  <TabItem label="With Alpha Control">
-    <ColorInputDemo value="red" />
-  </TabItem>
-  <TabItem label="Without Alpha Control">
-    <ColorInputDemo value="red" noAlpha={true} />
-  </TabItem>
-</Tabs>
+<ColorInputDemo value="red" noAlpha={true} />
 
 :::tip
 Use `no-alpha` when you want to enforce fully opaque colors or prevent users from adjusting transparency in your application.
