@@ -60,6 +60,7 @@ export class ColorInput extends HTMLElement {
   #colorSchemeEffectCleanup: ReturnType<typeof effect> | null = null
   #errorEffectCleanup: ReturnType<typeof effect> | null = null
   #controlsEffectCleanup: ReturnType<typeof effect> | null = null
+  #programmaticUpdate = false
 
   get value() { return this.#value.value }
   set value(v: string) {
@@ -70,8 +71,11 @@ export class ColorInput extends HTMLElement {
       const isHex = typeof v === 'string' && v.trim().startsWith('#')
       this.#space.value = isHex ? 'hex' : (sid === 'rgb' ? 'srgb' : (sid as ColorSpace))
       this.#value.value = v
+      this.#programmaticUpdate = true
       this.setAttribute('value', v)
       this.setAttribute('colorspace', this.#space.value)
+      this.#programmaticUpdate = false
+      this.#emitChange()
     } catch {}
   }
 
@@ -79,6 +83,7 @@ export class ColorInput extends HTMLElement {
   set colorspace(s: ColorSpace | string) {
     const next = (s as ColorSpace) || DEFAULT_SPACE
     this.#space.value = next
+    this.#programmaticUpdate = true
     this.setAttribute('colorspace', next)
     try {
       const current = new Color(this.#value.value)
@@ -89,7 +94,9 @@ export class ColorInput extends HTMLElement {
       const newValue = gencolor(next, parsed.ch)
       this.#value.value = newValue
       this.setAttribute('value', newValue)
+      this.#emitChange()
     } catch {}
+    this.#programmaticUpdate = false
     // Re-render controls for new colorspace
     if (this.#controls) this.#renderControls()
   }
@@ -315,6 +322,9 @@ export class ColorInput extends HTMLElement {
 
   attributeChangedCallback(name: string, _old: string | null, value: string | null) {
     if (value === _old) return
+    // Skip processing if this is from a programmatic update (avoid circular event emissions)
+    if (this.#programmaticUpdate) return
+
     if (name === 'value' && typeof value === 'string') {
       try {
         const parsed = new Color(value)
