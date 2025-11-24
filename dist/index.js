@@ -9,7 +9,7 @@ var __privateGet = (obj, member, getter) => (__accessCheck(obj, member, "read fr
 var __privateAdd = (obj, member, value) => member.has(obj) ? __typeError("Cannot add the same private member more than once") : member instanceof WeakSet ? member.add(obj) : member.set(obj, value);
 var __privateSet = (obj, member, value, setter) => (__accessCheck(obj, member, "write to private field"), setter ? setter.call(obj, value) : member.set(obj, value), value);
 var __privateMethod = (obj, member, method) => (__accessCheck(obj, member, "access private method"), method);
-var _a, _b, _c, _value, _space, _theme, _open, _anchor, _error, _contrast, _gamut, _previewEffectCleanup, _colorSchemeEffectCleanup, _errorEffectCleanup, _controlsEffectCleanup, _programmaticUpdate, _root, _panel, _controls, _spaceSelect, _output, _chip, _internalTrigger, _textInput, _errorMessage, _lastInvoker, _ColorInput_instances, emitChange_fn, validateAndSetColor_fn, _lastPlacement, _lastPanelSize, _cleanup, _rafId, startReposition_fn, stopReposition_fn, scheduleReposition_fn, positionNow_fn, getAnchorRect_fn, measurePanel_fn, renderControls_fn;
+var _a, _b, _c, _value, _space, _theme, _open, _anchor, _error, _noAlpha, _contrast, _gamut, _previewEffectCleanup, _colorSchemeEffectCleanup, _errorEffectCleanup, _controlsEffectCleanup, _programmaticUpdate, _root, _panel, _controls, _spaceSelect, _output, _chip, _internalTrigger, _textInput, _errorMessage, _lastInvoker, _ColorInput_instances, emitChange_fn, validateAndSetColor_fn, _lastPlacement, _lastPanelSize, _cleanup, _rafId, startReposition_fn, stopReposition_fn, scheduleReposition_fn, positionNow_fn, getAnchorRect_fn, measurePanel_fn, renderControls_fn;
 var i = Symbol.for("preact-signals");
 function t() {
   if (!(s > 1)) {
@@ -4779,6 +4779,7 @@ class ColorInput extends HTMLElement {
     __privateAdd(this, _open, d$1(false));
     __privateAdd(this, _anchor, d$1(null));
     __privateAdd(this, _error, d$1(null));
+    __privateAdd(this, _noAlpha, d$1(false));
     __privateAdd(this, _contrast, w(() => contrastColor(__privateGet(this, _value).value)));
     __privateAdd(this, _gamut, w(() => detectGamut(__privateGet(this, _value).value)));
     __privateAdd(this, _previewEffectCleanup, null);
@@ -4818,7 +4819,7 @@ class ColorInput extends HTMLElement {
     __privateGet(this, _root).appendChild(template.content.cloneNode(true));
   }
   static get observedAttributes() {
-    return ["value", "colorspace", "theme"];
+    return ["value", "colorspace", "theme", "no-alpha"];
   }
   get value() {
     return __privateGet(this, _value).value;
@@ -4870,6 +4871,14 @@ class ColorInput extends HTMLElement {
     __privateGet(this, _theme).value = next;
     if (next === "auto") this.removeAttribute("theme");
     else this.setAttribute("theme", next);
+  }
+  get noAlpha() {
+    return __privateGet(this, _noAlpha).value;
+  }
+  set noAlpha(v2) {
+    __privateGet(this, _noAlpha).value = !!v2;
+    if (v2) this.setAttribute("no-alpha", "");
+    else this.removeAttribute("no-alpha");
   }
   get gamut() {
     return __privateGet(this, _gamut).value;
@@ -5067,6 +5076,10 @@ class ColorInput extends HTMLElement {
     if (name === "theme") {
       __privateGet(this, _theme).value = value || "auto";
     }
+    if (name === "no-alpha") {
+      __privateGet(this, _noAlpha).value = value !== null;
+      if (__privateGet(this, _controls)) __privateMethod(this, _ColorInput_instances, renderControls_fn).call(this);
+    }
   }
 }
 _value = new WeakMap();
@@ -5075,6 +5088,7 @@ _theme = new WeakMap();
 _open = new WeakMap();
 _anchor = new WeakMap();
 _error = new WeakMap();
+_noAlpha = new WeakMap();
 _contrast = new WeakMap();
 _gamut = new WeakMap();
 _previewEffectCleanup = new WeakMap();
@@ -5365,11 +5379,13 @@ renderControls_fn = function() {
   };
   __privateGet(this, _controls).innerHTML = "";
   if (space === "oklab") {
+    const alphaControl = make("A", "ALP", 0, 100, 1);
+    if (__privateGet(this, _noAlpha).value) alphaControl.style.display = "none";
     __privateGet(this, _controls).append(
       make("L", "L", 0, 100, 1, "linear-gradient(in oklab to right, black, white)"),
       make("A", "A", -0.5, 0.5, 0.01, "linear-gradient(to right in oklab, oklab(65% -.5 .5), oklab(65% .5 .5))"),
       make("B", "B", -0.5, 0.5, 0.01, "linear-gradient(to right in oklab, oklab(47% -.03 -.32), oklab(96% 0 .25))"),
-      make("A", "ALP", 0, 100, 1)
+      alphaControl
     );
     const alphaRange = __privateGet(this, _controls).querySelector('input[type="range"].ch-alp');
     __privateSet(this, _controlsEffectCleanup, E(() => {
@@ -5381,11 +5397,13 @@ renderControls_fn = function() {
       }
     }));
   } else if (space === "oklch") {
+    const alphaControl = make("A", "ALP", 0, 100, 1);
+    if (__privateGet(this, _noAlpha).value) alphaControl.style.display = "none";
     __privateGet(this, _controls).append(
       make("L", "L", 0, 100, 1, "linear-gradient(in oklab to right, black, white)"),
       make("C", "C", 0, 100, 1, `linear-gradient(in oklch to right, oklch(${(_a2 = ch.L) != null ? _a2 : 0}% 1% ${(_b2 = ch.H) != null ? _b2 : 0}), oklch(${(_c2 = ch.L) != null ? _c2 : 0}% 100% ${(_d = ch.H) != null ? _d : 0}))`),
       make("H", "H", 0, 359, 1, "linear-gradient(to right in oklch longer hue, oklch(90% 75% 0), oklch(90% 75% 0))"),
-      make("A", "ALP", 0, 100, 1)
+      alphaControl
     );
     const cRange = __privateGet(this, _controls).querySelector('input[type="range"].ch-c');
     const alphaRange = __privateGet(this, _controls).querySelector('input[type="range"].ch-alp');
@@ -5401,11 +5419,13 @@ renderControls_fn = function() {
       }
     }));
   } else if (space === "lab") {
+    const alphaControl = make("A", "ALP", 0, 100, 1);
+    if (__privateGet(this, _noAlpha).value) alphaControl.style.display = "none";
     __privateGet(this, _controls).append(
       make("L", "L", 0, 100, 1, "linear-gradient(in lab to right, black, white)"),
       make("A", "A", -160, 160, 1, "linear-gradient(to right in oklab, lab(85% -100 100), lab(55% 100 100))"),
       make("B", "B", -160, 160, 1, "linear-gradient(to right in oklab, lab(31% 70 -120), lab(96% 0 120))"),
-      make("A", "ALP", 0, 100, 1)
+      alphaControl
     );
     const alphaRange = __privateGet(this, _controls).querySelector('input[type="range"].ch-alp');
     __privateSet(this, _controlsEffectCleanup, E(() => {
@@ -5417,11 +5437,13 @@ renderControls_fn = function() {
       }
     }));
   } else if (space === "lch") {
+    const alphaControl = make("A", "ALP", 0, 100, 1);
+    if (__privateGet(this, _noAlpha).value) alphaControl.style.display = "none";
     __privateGet(this, _controls).append(
       make("L", "L", 0, 100, 1, "linear-gradient(in lab to right, black, white)"),
       make("C", "C", 0, 100, 1, `linear-gradient(in lch to right, lch(${(_e = ch.L) != null ? _e : 0}% 1% ${(_f = ch.H) != null ? _f : 0}), lch(${(_g = ch.L) != null ? _g : 0}% 100% ${(_h = ch.H) != null ? _h : 0}))`),
       make("H", "H", 0, 359, 1, "linear-gradient(to right in lch longer hue, lch(90% 75% 0), lch(90% 75% 0))"),
-      make("A", "ALP", 0, 100, 1)
+      alphaControl
     );
     const cRange = __privateGet(this, _controls).querySelector('input[type="range"].ch-c');
     const alphaRange = __privateGet(this, _controls).querySelector('input[type="range"].ch-alp');
@@ -5437,11 +5459,13 @@ renderControls_fn = function() {
       }
     }));
   } else if (space === "hsl") {
+    const alphaControl = make("A", "ALP", 0, 100, 1);
+    if (__privateGet(this, _noAlpha).value) alphaControl.style.display = "none";
     __privateGet(this, _controls).append(
       make("H", "H", 0, 359, 1, "linear-gradient(to right in hsl longer hue, hsl(0 100% 50%), hsl(360 100% 50%))"),
       make("S", "S", 0, 100, 1, `linear-gradient(in hsl to right, hsl(${(_i = ch.H) != null ? _i : 0} 0% ${(_j = ch.L) != null ? _j : 50}% / 100%), hsl(${(_k = ch.H) != null ? _k : 0} 100% ${(_l = ch.L) != null ? _l : 50}% / 100%))`),
       make("L", "L", 0, 100, 1, `linear-gradient(in oklab to right, hsl(${(_m = ch.H) != null ? _m : 0} ${(_n = ch.S) != null ? _n : 100}% 0%), hsl(${(_o = ch.H) != null ? _o : 0} ${(_p = ch.S) != null ? _p : 100}% 100%))`),
-      make("A", "ALP", 0, 100, 1)
+      alphaControl
     );
     const sRange = __privateGet(this, _controls).querySelector('input[type="range"].ch-s');
     const lRange = __privateGet(this, _controls).querySelector('input[type="range"].ch-l');
@@ -5461,11 +5485,13 @@ renderControls_fn = function() {
       }
     }));
   } else if (space === "hwb") {
+    const alphaControl = make("A", "ALP", 0, 100, 1);
+    if (__privateGet(this, _noAlpha).value) alphaControl.style.display = "none";
     __privateGet(this, _controls).append(
       make("H", "H", 0, 359, 1, "linear-gradient(to right in hsl longer hue, hsl(0 100% 50%), hsl(360 100% 50%))"),
       make("W", "W", 0, 100, 1, "linear-gradient(to right in oklab, #fff0, #fff)", "black"),
       make("B", "B", 0, 100, 1, "linear-gradient(to right in oklab, #0000, #000)", "white"),
-      make("A", "ALP", 0, 100, 1)
+      alphaControl
     );
     const alphaRange = __privateGet(this, _controls).querySelector('input[type="range"].ch-alp');
     __privateSet(this, _controlsEffectCleanup, E(() => {
@@ -5477,11 +5503,13 @@ renderControls_fn = function() {
       }
     }));
   } else if (space === "srgb" || space === "hex") {
+    const alphaControl = make("A", "ALP", 0, 100, 1);
+    if (__privateGet(this, _noAlpha).value) alphaControl.style.display = "none";
     __privateGet(this, _controls).append(
       make("R", "R", 0, 100, 1, "linear-gradient(to right in oklab, #f000, #f00)", "black"),
       make("G", "G", 0, 100, 1, "linear-gradient(to right in oklab, #0f00, #0f0)", "black"),
       make("B", "B", 0, 100, 1, "linear-gradient(to right in oklab, #00f0, #00f)", "black"),
-      make("A", "ALP", 0, 100, 1)
+      alphaControl
     );
     const alphaRange = __privateGet(this, _controls).querySelector('input[type="range"].ch-alp');
     __privateSet(this, _controlsEffectCleanup, E(() => {
@@ -5493,11 +5521,13 @@ renderControls_fn = function() {
       }
     }));
   } else if (isRGBLike(space)) {
+    const alphaControl = make("A", "ALP", 0, 100, 1);
+    if (__privateGet(this, _noAlpha).value) alphaControl.style.display = "none";
     __privateGet(this, _controls).append(
       make("R", "R", 0, 100, 1, "linear-gradient(to right in oklab, #f000, #f00)", "black"),
       make("G", "G", 0, 100, 1, "linear-gradient(to right in oklab, #0f00, #0f0)", "black"),
       make("B", "B", 0, 100, 1, "linear-gradient(to right in oklab, #00f0, #00f)", "black"),
-      make("A", "ALP", 0, 100, 1)
+      alphaControl
     );
     const alphaRange = __privateGet(this, _controls).querySelector('input[type="range"].ch-alp');
     __privateSet(this, _controlsEffectCleanup, E(() => {

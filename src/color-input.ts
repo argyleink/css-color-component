@@ -41,7 +41,7 @@ if (typeof sheet.replaceSync === 'function') {
 }
 
 export class ColorInput extends HTMLElement {
-  static get observedAttributes() { return ['value', 'colorspace', 'theme'] }
+  static get observedAttributes() { return ['value', 'colorspace', 'theme', 'no-alpha'] }
 
   // ──────────────────────────────────────────────────────────────────────────────
   // State: Reactive signals (Preact Signals Core)
@@ -52,6 +52,7 @@ export class ColorInput extends HTMLElement {
   #open = signal(false)
   #anchor: Signal<HTMLElement | null> = signal(null)
   #error = signal<string | null>(null)
+  #noAlpha = signal(false)
 
   #contrast = computed(() => contrastColor(this.#value.value))
   #gamut = computed(() => detectGamut(this.#value.value))
@@ -107,6 +108,13 @@ export class ColorInput extends HTMLElement {
     this.#theme.value = next
     if (next === 'auto') this.removeAttribute('theme')
     else this.setAttribute('theme', next)
+  }
+
+  get noAlpha() { return this.#noAlpha.value }
+  set noAlpha(v: boolean) {
+    this.#noAlpha.value = !!v
+    if (v) this.setAttribute('no-alpha', '')
+    else this.removeAttribute('no-alpha')
   }
 
   get gamut() { return this.#gamut.value }
@@ -341,6 +349,10 @@ export class ColorInput extends HTMLElement {
     }
     if (name === 'theme') {
       this.#theme.value = (value as Theme) || 'auto'
+    }
+    if (name === 'no-alpha') {
+      this.#noAlpha.value = value !== null
+      if (this.#controls) this.#renderControls()
     }
   }
 
@@ -651,11 +663,13 @@ export class ColorInput extends HTMLElement {
     this.#controls.innerHTML = ''
 
     if (space === 'oklab') {
+      const alphaControl = make('A', 'ALP', 0, 100, 1)
+      if (this.#noAlpha.value) alphaControl.style.display = 'none'
       this.#controls.append(
         make('L', 'L', 0, 100, 1, 'linear-gradient(in oklab to right, black, white)'),
         make('A', 'A', -0.5, 0.5, 0.01, 'linear-gradient(to right in oklab, oklab(65% -.5 .5), oklab(65% .5 .5))'),
         make('B', 'B', -0.5, 0.5, 0.01, 'linear-gradient(to right in oklab, oklab(47% -.03 -.32), oklab(96% 0 .25))'),
-        make('A', 'ALP', 0, 100, 1)
+        alphaControl
       )
       const alphaRange = this.#controls.querySelector<HTMLInputElement>('input[type="range"].ch-alp')
       this.#controlsEffectCleanup = effect(() => {
@@ -667,11 +681,13 @@ export class ColorInput extends HTMLElement {
         }
       })
     } else if (space === 'oklch') {
+      const alphaControl = make('A', 'ALP', 0, 100, 1)
+      if (this.#noAlpha.value) alphaControl.style.display = 'none'
       this.#controls.append(
         make('L', 'L', 0, 100, 1, 'linear-gradient(in oklab to right, black, white)'),
         make('C', 'C', 0, 100, 1, `linear-gradient(in oklch to right, oklch(${ch.L ?? 0}% 1% ${ch.H ?? 0}), oklch(${ch.L ?? 0}% 100% ${ch.H ?? 0}))`),
         make('H', 'H', 0, 359, 1, 'linear-gradient(to right in oklch longer hue, oklch(90% 75% 0), oklch(90% 75% 0))'),
-        make('A', 'ALP', 0, 100, 1)
+        alphaControl
       )
       const cRange = this.#controls.querySelector<HTMLInputElement>('input[type="range"].ch-c')
       const alphaRange = this.#controls.querySelector<HTMLInputElement>('input[type="range"].ch-alp')
@@ -687,11 +703,13 @@ export class ColorInput extends HTMLElement {
         }
       })
     } else if (space === 'lab') {
+      const alphaControl = make('A', 'ALP', 0, 100, 1)
+      if (this.#noAlpha.value) alphaControl.style.display = 'none'
       this.#controls.append(
         make('L', 'L', 0, 100, 1, 'linear-gradient(in lab to right, black, white)'),
         make('A', 'A', -160, 160, 1, 'linear-gradient(to right in oklab, lab(85% -100 100), lab(55% 100 100))'),
         make('B', 'B', -160, 160, 1, 'linear-gradient(to right in oklab, lab(31% 70 -120), lab(96% 0 120))'),
-        make('A', 'ALP', 0, 100, 1)
+        alphaControl
       )
       const alphaRange = this.#controls.querySelector<HTMLInputElement>('input[type="range"].ch-alp')
       this.#controlsEffectCleanup = effect(() => {
@@ -703,11 +721,13 @@ export class ColorInput extends HTMLElement {
         }
       })
     } else if (space === 'lch') {
+      const alphaControl = make('A', 'ALP', 0, 100, 1)
+      if (this.#noAlpha.value) alphaControl.style.display = 'none'
       this.#controls.append(
         make('L', 'L', 0, 100, 1, 'linear-gradient(in lab to right, black, white)'),
         make('C', 'C', 0, 100, 1, `linear-gradient(in lch to right, lch(${ch.L ?? 0}% 1% ${ch.H ?? 0}), lch(${ch.L ?? 0}% 100% ${ch.H ?? 0}))`),
         make('H', 'H', 0, 359, 1, 'linear-gradient(to right in lch longer hue, lch(90% 75% 0), lch(90% 75% 0))'),
-        make('A', 'ALP', 0, 100, 1)
+        alphaControl
       )
       const cRange = this.#controls.querySelector<HTMLInputElement>('input[type="range"].ch-c')
       const alphaRange = this.#controls.querySelector<HTMLInputElement>('input[type="range"].ch-alp')
@@ -723,11 +743,13 @@ export class ColorInput extends HTMLElement {
         }
       })
     } else if (space === 'hsl') {
+      const alphaControl = make('A', 'ALP', 0, 100, 1)
+      if (this.#noAlpha.value) alphaControl.style.display = 'none'
       this.#controls.append(
         make('H', 'H', 0, 359, 1, 'linear-gradient(to right in hsl longer hue, hsl(0 100% 50%), hsl(360 100% 50%))'),
         make('S', 'S', 0, 100, 1, `linear-gradient(in hsl to right, hsl(${ch.H ?? 0} 0% ${ch.L ?? 50}% / 100%), hsl(${ch.H ?? 0} 100% ${ch.L ?? 50}% / 100%))`),
         make('L', 'L', 0, 100, 1, `linear-gradient(in oklab to right, hsl(${ch.H ?? 0} ${ch.S ?? 100}% 0%), hsl(${ch.H ?? 0} ${ch.S ?? 100}% 100%))`),
-        make('A', 'ALP', 0, 100, 1)
+        alphaControl
       )
       const sRange = this.#controls.querySelector<HTMLInputElement>('input[type="range"].ch-s')
       const lRange = this.#controls.querySelector<HTMLInputElement>('input[type="range"].ch-l')
@@ -747,11 +769,13 @@ export class ColorInput extends HTMLElement {
         }
       })
     } else if (space === 'hwb') {
+      const alphaControl = make('A', 'ALP', 0, 100, 1)
+      if (this.#noAlpha.value) alphaControl.style.display = 'none'
       this.#controls.append(
         make('H', 'H', 0, 359, 1, 'linear-gradient(to right in hsl longer hue, hsl(0 100% 50%), hsl(360 100% 50%))'),
         make('W', 'W', 0, 100, 1, 'linear-gradient(to right in oklab, #fff0, #fff)', 'black'),
         make('B', 'B', 0, 100, 1, 'linear-gradient(to right in oklab, #0000, #000)', 'white'),
-        make('A', 'ALP', 0, 100, 1)
+        alphaControl
       )
       const alphaRange = this.#controls.querySelector<HTMLInputElement>('input[type="range"].ch-alp')
       this.#controlsEffectCleanup = effect(() => {
@@ -763,11 +787,13 @@ export class ColorInput extends HTMLElement {
         }
       })
     } else if (space === 'srgb' || space === 'hex') {
+      const alphaControl = make('A', 'ALP', 0, 100, 1)
+      if (this.#noAlpha.value) alphaControl.style.display = 'none'
       this.#controls.append(
         make('R', 'R', 0, 100, 1, 'linear-gradient(to right in oklab, #f000, #f00)', 'black'),
         make('G', 'G', 0, 100, 1, 'linear-gradient(to right in oklab, #0f00, #0f0)', 'black'),
         make('B', 'B', 0, 100, 1, 'linear-gradient(to right in oklab, #00f0, #00f)', 'black'),
-        make('A', 'ALP', 0, 100, 1)
+        alphaControl
       )
       const alphaRange = this.#controls.querySelector<HTMLInputElement>('input[type="range"].ch-alp')
       this.#controlsEffectCleanup = effect(() => {
@@ -779,11 +805,13 @@ export class ColorInput extends HTMLElement {
         }
       })
     } else if (isRGBLike(space)) {
+      const alphaControl = make('A', 'ALP', 0, 100, 1)
+      if (this.#noAlpha.value) alphaControl.style.display = 'none'
       this.#controls.append(
         make('R', 'R', 0, 100, 1, 'linear-gradient(to right in oklab, #f000, #f00)', 'black'),
         make('G', 'G', 0, 100, 1, 'linear-gradient(to right in oklab, #0f00, #0f0)', 'black'),
         make('B', 'B', 0, 100, 1, 'linear-gradient(to right in oklab, #00f0, #00f)', 'black'),
-        make('A', 'ALP', 0, 100, 1)
+        alphaControl
       )
       const alphaRange = this.#controls.querySelector<HTMLInputElement>('input[type="range"].ch-alp')
       this.#controlsEffectCleanup = effect(() => {

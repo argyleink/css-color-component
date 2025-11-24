@@ -21,10 +21,19 @@ Try on [CodePen](https://codepen.io/argyleink/pen/dPGBYZg)
 ```
 
 ## API
-- Attributes: `value`, `theme` (auto|light|dark)
-- Properties: `value`, `colorspace`, `theme`, readonly: `gamut`, `contrastColor`
+- Attributes: `value`, `theme` (auto|light|dark), `no-alpha` (boolean)
+- Properties: `value`, `colorspace`, `theme`, `noAlpha`, readonly: `gamut`, `contrastColor`
 - Methods: `show()`, `close()`, `setAnchor(element)`
 - Events: `change`, `open`, `close`
+
+### Attributes
+
+#### `no-alpha`
+When present, hides the alpha channel control from the color picker. The alpha value will still be preserved in the color value, but users won't be able to modify it through the UI.
+
+```html
+<color-input value="oklch(75% 75% 180)" no-alpha></color-input>
+```
 
 ## Dev
 - Dev docs: `npm run dev` (serves docs/)
