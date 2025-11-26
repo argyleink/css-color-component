@@ -4990,14 +4990,13 @@ class ColorInput extends HTMLElement {
       }
     });
     (_a2 = __privateGet(this, _panel)) == null ? void 0 : _a2.addEventListener("toggle", () => {
-      var _a3, _b2;
+      var _a3;
       const el = __privateGet(this, _panel);
-      let isOpen = false;
+      let isOpen = !el.hasAttribute("hidden");
       try {
-        isOpen = (_b2 = (_a3 = el.matches) == null ? void 0 : _a3.call(el, ":popover-open")) != null ? _b2 : false;
+        isOpen = (_a3 = el.matches(":popover-open")) != null ? _a3 : false;
       } catch {
       }
-      isOpen = isOpen || !el.hasAttribute("hidden");
       __privateGet(this, _open).value = isOpen;
       if (isOpen) {
         __privateMethod(this, _ColorInput_instances, startReposition_fn).call(this);
