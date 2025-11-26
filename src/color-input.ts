@@ -1,12 +1,10 @@
 import { signal, computed, effect, Signal } from '@preact/signals-core'
 import Color from 'colorjs.io'
 import {
-  alphaToString,
   contrastColor,
   detectGamut,
   getColorJSSpaceID,
   isRGBLike,
-  rgbColor,
   reverseColorJSSpaceID,
   type Theme,
   type ColorSpace
@@ -254,11 +252,10 @@ export class ColorInput extends HTMLElement {
 
     this.#panel?.addEventListener('toggle', () => {
       const el = this.#panel as HTMLElement
-      let isOpen = false
+      let isOpen = !el.hasAttribute('hidden')
       try {
-        isOpen = el.matches?.(':popover-open') ?? false
+        isOpen = el.matches(':popover-open') ?? false
       } catch {}
-      isOpen = isOpen || !el.hasAttribute('hidden')
       this.#open.value = isOpen
       if (isOpen) {
         this.#startReposition()
