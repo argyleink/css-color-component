@@ -41,11 +41,8 @@
   "types": "dist/index.d.ts",
   "files": [
     "dist",
-    "README.md",
-    "LICENSE",
     "docs"
   ],
-  "sideEffects": false,
   "scripts": {
     "dev": "cd docs && npm run dev",
     "dev:component": "vite",
