@@ -254,7 +254,7 @@ button {
 }
 .gamut { font-size: 1rem; }
 
-.info { font-size: 1.25rem }
+.info { font-size: 0.75rem }
 
 /* Controls: dynamically generated sliders + numeric inputs for each channel in the selected color space */
 .controls {
