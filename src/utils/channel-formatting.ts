@@ -5,7 +5,10 @@ import type { ColorSpace } from '../color'
  * @example toFixed(1.5, 2) → "1.5"
  * @example toFixed(2.00, 2) → "2"
  */
-export function toFixed(n: number, digits = 0): string {
+export function toFixed(n: null | number, digits = 0): string {
+  if (n == null) {
+    return '0'
+  }
   return Number(n.toFixed(digits)).toString()
 }
 

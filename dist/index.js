@@ -22,7 +22,7 @@ function t() {
         var o2 = r.o;
         r.o = void 0;
         r.f &= -3;
-        if (!(8 & r.f) && c$1(r)) try {
+        if (!(8 & r.f) && c(r)) try {
           r.c();
         } catch (r2) {
           if (!t2) {
@@ -39,7 +39,7 @@ function t() {
   } else s--;
 }
 var o = void 0;
-function n$2(i2) {
+function n$1(i2) {
   var t2 = o;
   o = void 0;
   try {
@@ -92,7 +92,7 @@ u.prototype.S = function(i2) {
     i2.x = r;
     this.t = i2;
     if (void 0 !== r) r.e = i2;
-    else n$2(function() {
+    else n$1(function() {
       var i3;
       null == (i3 = t2.W) || i3.call(t2);
     });
@@ -112,7 +112,7 @@ u.prototype.U = function(i2) {
     }
     if (i2 === this.t) {
       this.t = o2;
-      if (void 0 === o2) n$2(function() {
+      if (void 0 === o2) n$1(function() {
         var i3;
         null == (i3 = t2.Z) || i3.call(t2);
       });
@@ -170,11 +170,11 @@ Object.defineProperty(u.prototype, "value", { get: function() {
 function d$1(i2, t2) {
   return new u(i2, t2);
 }
-function c$1(i2) {
+function c(i2) {
   for (var t2 = i2.s; void 0 !== t2; t2 = t2.n) if (t2.S.i !== t2.i || !t2.S.h() || t2.S.i !== t2.i) return true;
   return false;
 }
-function a$1(i2) {
+function a(i2) {
   for (var t2 = i2.s; void 0 !== t2; t2 = t2.n) {
     var r = t2.S.n;
     if (void 0 !== r) t2.r = r;
@@ -220,13 +220,13 @@ y.prototype.h = function() {
   if (this.g === v) return true;
   this.g = v;
   this.f |= 1;
-  if (this.i > 0 && !c$1(this)) {
+  if (this.i > 0 && !c(this)) {
     this.f &= -2;
     return true;
   }
   var i2 = o;
   try {
-    a$1(this);
+    a(this);
     o = this;
     var t2 = this.x();
     if (16 & this.f || this.v !== t2 || 0 === this.i) {
@@ -289,7 +289,7 @@ function _(i2) {
     } catch (t2) {
       i2.f &= -2;
       i2.f |= 8;
-      b$2(i2);
+      b$1(i2);
       throw t2;
     } finally {
       o = n2;
@@ -297,7 +297,7 @@ function _(i2) {
     }
   }
 }
-function b$2(i2) {
+function b$1(i2) {
   for (var t2 = i2.s; void 0 !== t2; t2 = t2.n) t2.S.U(t2);
   i2.x = void 0;
   i2.s = void 0;
@@ -308,7 +308,7 @@ function g$1(i2) {
   l(this);
   o = i2;
   this.f &= -2;
-  if (8 & this.f) b$2(this);
+  if (8 & this.f) b$1(this);
   t();
 }
 function p$1(i2, t2) {
@@ -335,7 +335,7 @@ p$1.prototype.S = function() {
   this.f |= 1;
   this.f &= -9;
   _(this);
-  a$1(this);
+  a(this);
   s++;
   var i2 = o;
   o = this;
@@ -350,7 +350,7 @@ p$1.prototype.N = function() {
 };
 p$1.prototype.d = function() {
   this.f |= 8;
-  if (!(1 & this.f)) b$2(this);
+  if (!(1 & this.f)) b$1(this);
 };
 p$1.prototype.dispose = function() {
   this.d();
@@ -367,36 +367,17 @@ function E(i2, t2) {
   o2[Symbol.dispose] = o2;
   return o2;
 }
-function multiplyMatrices(A, B) {
-  let m3 = A.length;
-  if (!Array.isArray(A[0])) {
-    A = [A];
-  }
-  if (!Array.isArray(B[0])) {
-    B = B.map((x) => [x]);
-  }
-  let p2 = B[0].length;
-  let B_cols = B[0].map((_2, i2) => B.map((x) => x[i2]));
-  let product = A.map((row) => B_cols.map((col) => {
-    let ret = 0;
-    if (!Array.isArray(row)) {
-      for (let c4 of col) {
-        ret += row * c4;
-      }
-      return ret;
-    }
-    for (let i2 = 0; i2 < row.length; i2++) {
-      ret += row[i2] * (col[i2] || 0);
-    }
-    return ret;
-  }));
-  if (m3 === 1) {
-    product = product[0];
-  }
-  if (p2 === 1) {
-    return product.map((x) => x[0]);
-  }
-  return product;
+function dot3(a2, b2) {
+  return a2[0] * b2[0] + a2[1] * b2[1] + a2[2] * b2[2];
+}
+function multiply_v3_m3x3(input, matrix, out = [0, 0, 0]) {
+  const x = dot3(input, matrix[0]);
+  const y2 = dot3(input, matrix[1]);
+  const z = dot3(input, matrix[2]);
+  out[0] = x;
+  out[1] = y2;
+  out[2] = z;
+  return out;
 }
 function isString(str) {
   return type(str) === "string";
@@ -405,17 +386,15 @@ function type(o2) {
   let str = Object.prototype.toString.call(o2);
   return (str.match(/^\[object\s+(.*?)\]$/)[1] || "").toLowerCase();
 }
-function serializeNumber(n2, { precision, unit }) {
+function serializeNumber(n2, { precision = 16, unit }) {
   if (isNone(n2)) {
     return "none";
   }
-  return toPrecision(n2, precision) + (unit != null ? unit : "");
+  n2 = +toPrecision(n2, precision);
+  return n2 + (unit != null ? unit : "");
 }
 function isNone(n2) {
-  return Number.isNaN(n2) || n2 instanceof Number && (n2 == null ? void 0 : n2.none);
-}
-function skipNone(n2) {
-  return isNone(n2) ? 0 : n2;
+  return n2 === null;
 }
 function toPrecision(n2, precision) {
   if (n2 === 0) {
@@ -428,67 +407,6 @@ function toPrecision(n2, precision) {
   }
   const multiplier = 10 ** (precision - digits);
   return Math.floor(n2 * multiplier + 0.5) / multiplier;
-}
-const angleFactor = {
-  deg: 1,
-  grad: 0.9,
-  rad: 180 / Math.PI,
-  turn: 360
-};
-function parseFunction(str) {
-  if (!str) {
-    return;
-  }
-  str = str.trim();
-  const isFunctionRegex = /^([a-z]+)\((.+?)\)$/i;
-  const isNumberRegex = /^-?[\d.]+$/;
-  const unitValueRegex = /%|deg|g?rad|turn$/;
-  const singleArgument = /\/?\s*(none|[-\w.]+(?:%|deg|g?rad|turn)?)/g;
-  let parts = str.match(isFunctionRegex);
-  if (parts) {
-    let args = [];
-    parts[2].replace(singleArgument, ($0, rawArg) => {
-      let match = rawArg.match(unitValueRegex);
-      let arg = rawArg;
-      if (match) {
-        let unit = match[0];
-        let unitlessArg = arg.slice(0, -unit.length);
-        if (unit === "%") {
-          arg = new Number(unitlessArg / 100);
-          arg.type = "<percentage>";
-        } else {
-          arg = new Number(unitlessArg * angleFactor[unit]);
-          arg.type = "<angle>";
-          arg.unit = unit;
-        }
-      } else if (isNumberRegex.test(arg)) {
-        arg = new Number(arg);
-        arg.type = "<number>";
-      } else if (arg === "none") {
-        arg = new Number(NaN);
-        arg.none = true;
-      }
-      if ($0.startsWith("/")) {
-        arg = arg instanceof Number ? arg : new Number(arg);
-        arg.alpha = true;
-      }
-      if (typeof arg === "object" && arg instanceof Number) {
-        arg.raw = rawArg;
-      }
-      args.push(arg);
-    });
-    return {
-      name: parts[1].toLowerCase(),
-      rawName: parts[1],
-      rawArgs: parts[2],
-      // An argument could be (as of css-color-4):
-      // a number, percentage, degrees (hue), ident (in color())
-      args
-    };
-  }
-}
-function last(arr) {
-  return arr[arr.length - 1];
 }
 function interpolate(start, end, p2) {
   if (isNaN(start)) {
@@ -503,21 +421,10 @@ function interpolateInv(start, end, value) {
   return (value - start) / (end - start);
 }
 function mapRange(from, to2, value) {
+  if (!from || !to2 || from === to2 || from[0] === to2[0] && from[1] === to2[1] || isNaN(value) || value === null) {
+    return value;
+  }
   return interpolate(to2[0], to2[1], interpolateInv(from[0], from[1], value));
-}
-function parseCoordGrammar(coordGrammars) {
-  return coordGrammars.map((coordGrammar2) => {
-    return coordGrammar2.split("|").map((type2) => {
-      type2 = type2.trim();
-      let range2 = type2.match(/^(<[a-z]+>)\[(-?[.\d]+),\s*(-?[.\d]+)\]?$/);
-      if (range2) {
-        let ret = new String(range2[1]);
-        ret.range = [+range2[2], +range2[3]];
-        return ret;
-      }
-      return type2;
-    });
-  });
 }
 function clamp(min, val, max2) {
   return Math.max(Math.min(max2, val), min);
@@ -542,27 +449,253 @@ function bisectLeft(arr, value, lo = 0, hi = arr.length) {
   }
   return lo;
 }
-var util = /* @__PURE__ */ Object.freeze({
-  __proto__: null,
-  bisectLeft,
-  clamp,
-  copySign,
-  interpolate,
-  interpolateInv,
-  isNone,
-  isString,
-  last,
-  mapRange,
-  multiplyMatrices,
-  parseCoordGrammar,
-  parseFunction,
-  serializeNumber,
-  skipNone,
-  spow,
-  toPrecision,
-  type,
-  zdiv
-});
+function isInstance(arg, constructor) {
+  var _a2;
+  if (arg instanceof constructor) {
+    return true;
+  }
+  const targetName = constructor.name;
+  while (arg) {
+    const proto = Object.getPrototypeOf(arg);
+    const constructorName = (_a2 = proto == null ? void 0 : proto.constructor) == null ? void 0 : _a2.name;
+    if (constructorName === targetName) {
+      return true;
+    }
+    if (!constructorName || constructorName === "Object") {
+      return false;
+    }
+    arg = proto;
+  }
+  return false;
+}
+class Type {
+  /**
+   * @param {any} type
+   * @param {import("./types.js").CoordMeta} coordMeta
+   */
+  constructor(type2, coordMeta) {
+    // Class properties - declared here so that type inference works
+    __publicField(this, "type");
+    __publicField(this, "coordMeta");
+    __publicField(this, "coordRange");
+    /** @type {[number, number]} */
+    __publicField(this, "range");
+    var _a2;
+    if (typeof type2 === "object") {
+      this.coordMeta = type2;
+    }
+    if (coordMeta) {
+      this.coordMeta = coordMeta;
+      this.coordRange = (_a2 = coordMeta.range) != null ? _a2 : coordMeta.refRange;
+    }
+    if (typeof type2 === "string") {
+      let params = type2.trim().match(/^(?<type><[a-z]+>)(\[(?<min>-?[.\d]+),\s*(?<max>-?[.\d]+)\])?$/);
+      if (!params) {
+        throw new TypeError(`Cannot parse ${type2} as a type definition.`);
+      }
+      this.type = params.groups.type;
+      let { min, max: max2 } = params.groups;
+      if (min || max2) {
+        this.range = [+min, +max2];
+      }
+    }
+  }
+  /** @returns {[number, number]} */
+  get computedRange() {
+    if (this.range) {
+      return this.range;
+    }
+    if (this.type === "<percentage>") {
+      return this.percentageRange();
+    } else if (this.type === "<angle>") {
+      return [0, 360];
+    }
+    return null;
+  }
+  get unit() {
+    if (this.type === "<percentage>") {
+      return "%";
+    } else if (this.type === "<angle>") {
+      return "deg";
+    }
+    return "";
+  }
+  /**
+   * Map a number to the internal representation
+   * @param {number} number
+   */
+  resolve(number) {
+    if (this.type === "<angle>") {
+      return number;
+    }
+    let fromRange = this.computedRange;
+    let toRange = this.coordRange;
+    if (this.type === "<percentage>") {
+      toRange != null ? toRange : toRange = this.percentageRange();
+    }
+    return mapRange(fromRange, toRange, number);
+  }
+  /**
+   * Serialize a number from the internal representation to a string
+   * @param {number} number
+   * @param {number} [precision]
+   */
+  serialize(number, precision) {
+    let toRange = this.type === "<percentage>" ? this.percentageRange(100) : this.computedRange;
+    let unit = this.unit;
+    number = mapRange(this.coordRange, toRange, number);
+    return serializeNumber(number, { unit, precision });
+  }
+  toString() {
+    let ret = this.type;
+    if (this.range) {
+      let [min = "", max2 = ""] = this.range;
+      ret += `[${min},${max2}]`;
+    }
+    return ret;
+  }
+  /**
+   * Returns a percentage range for values of this type
+   * @param {number} scale
+   * @returns {[number, number]}
+   */
+  percentageRange(scale = 1) {
+    let range;
+    if (this.coordMeta && this.coordMeta.range || this.coordRange && this.coordRange[0] >= 0) {
+      range = [0, 1];
+    } else {
+      range = [-1, 1];
+    }
+    return [range[0] * scale, range[1] * scale];
+  }
+  static get(type2, coordMeta) {
+    if (isInstance(type2, this)) {
+      return type2;
+    }
+    return new this(type2, coordMeta);
+  }
+}
+const instance = Symbol("instance");
+class Format {
+  /**
+   * @param {FormatInterface} format
+   * @param {ColorSpace} space
+   */
+  constructor(format, space = format.space) {
+    // Class properties - declared here so that type inference works
+    __publicField(this, "type");
+    __publicField(this, "name");
+    __publicField(this, "spaceCoords");
+    /** @type {Type[][]} */
+    __publicField(this, "coords");
+    /** @type {string | undefined} */
+    __publicField(this, "id");
+    /** @type {boolean | undefined} */
+    __publicField(this, "alpha");
+    format[instance] = this;
+    this.type = "function";
+    this.name = "color";
+    Object.assign(this, format);
+    this.space = space;
+    if (this.type === "custom") {
+      return;
+    }
+    this.spaceCoords = Object.values(space.coords);
+    if (!this.coords) {
+      this.coords = this.spaceCoords.map((coordMeta) => {
+        let ret = ["<number>", "<percentage>"];
+        if (coordMeta.type === "angle") {
+          ret.push("<angle>");
+        }
+        return ret;
+      });
+    }
+    this.coords = this.coords.map(
+      /** @param {string | string[] | Type[]} types */
+      (types, i2) => {
+        let coordMeta = this.spaceCoords[i2];
+        if (typeof types === "string") {
+          types = types.trim().split(/\s*\|\s*/);
+        }
+        return types.map((type2) => Type.get(type2, coordMeta));
+      }
+    );
+  }
+  /**
+   * @param {Coords} coords
+   * @param {number} precision
+   * @param {Type[]} types
+   */
+  serializeCoords(coords, precision, types) {
+    types = coords.map((_2, i2) => {
+      var _a2;
+      return Type.get((_a2 = types == null ? void 0 : types[i2]) != null ? _a2 : this.coords[i2][0], this.spaceCoords[i2]);
+    });
+    return coords.map((c4, i2) => types[i2].serialize(c4, precision));
+  }
+  /**
+   * Validates the coordinates of a color against a format's coord grammar and
+   * maps the coordinates to the range or refRange of the coordinates.
+   * @param {Coords} coords
+   * @param {[string, string, string]} types
+   */
+  coerceCoords(coords, types) {
+    return Object.entries(this.space.coords).map(([id, coordMeta], i2) => {
+      var _a2;
+      let arg = coords[i2];
+      if (isNone(arg) || isNaN(arg)) {
+        return arg;
+      }
+      let providedType = types[i2];
+      let type2 = this.coords[i2].find((c4) => c4.type == providedType);
+      if (!type2) {
+        let coordName = coordMeta.name || id;
+        throw new TypeError(
+          `${(_a2 = providedType != null ? providedType : (
+            /** @type {any} */
+            arg == null ? void 0 : arg.raw
+          )) != null ? _a2 : arg} not allowed for ${coordName} in ${this.name}()`
+        );
+      }
+      arg = type2.resolve(arg);
+      if (type2.range) {
+        types[i2] = type2.toString();
+      }
+      return arg;
+    });
+  }
+  /**
+   * @returns {boolean | Required<FormatInterface>["serialize"]}
+   */
+  canSerialize() {
+    return this.type === "function" || /** @type {any} */
+    this.serialize;
+  }
+  /**
+   * @param {string} str
+   * @returns {(import("./types.js").ColorConstructor) | undefined | null}
+   */
+  parse(str) {
+    return null;
+  }
+  /**
+   * @param {Format | FormatInterface} format
+   * @param {RemoveFirstElement<ConstructorParameters<typeof Format>>} args
+   * @returns {Format}
+   */
+  static get(format, ...args) {
+    if (!format || isInstance(format, this)) {
+      return (
+        /** @type {Format} */
+        format
+      );
+    }
+    if (format[instance]) {
+      return format[instance];
+    }
+    return new Format(format, ...args);
+  }
+}
 class Hooks {
   add(name, callback, first) {
     if (typeof arguments[0] != "string") {
@@ -586,19 +719,6 @@ class Hooks {
   }
 }
 const hooks = new Hooks();
-var defaults = {
-  gamut_mapping: "css",
-  precision: 5,
-  deltaE: "76",
-  // Default deltaE method
-  verbose: ((_c = (_b = (_a = globalThis == null ? void 0 : globalThis.process) == null ? void 0 : _a.env) == null ? void 0 : _b.NODE_ENV) == null ? void 0 : _c.toLowerCase()) !== "test",
-  warn: function warn(msg) {
-    var _a2, _b2;
-    if (this.verbose) {
-      (_b2 = (_a2 = globalThis == null ? void 0 : globalThis.console) == null ? void 0 : _a2.warn) == null ? void 0 : _b2.call(_a2, msg);
-    }
-  }
-};
 const WHITES = {
   // for compatibility, the four-digit chromaticity-derived ones everyone else uses
   D50: [0.3457 / 0.3585, 1, (1 - 0.3457 - 0.3585) / 0.3585],
@@ -610,11 +730,13 @@ function getWhite(name) {
   }
   return WHITES[name];
 }
-function adapt$2(W1, W2, XYZ, options = {}) {
+function adapt$1(W1, W2, XYZ, options = {}) {
   W1 = getWhite(W1);
   W2 = getWhite(W2);
   if (!W1 || !W2) {
-    throw new TypeError(`Missing white point to convert ${!W1 ? "from" : ""}${!W1 && !W2 ? "/" : ""}${!W2 ? "to" : ""}`);
+    throw new TypeError(
+      `Missing white point to convert ${!W1 ? "from" : ""}${!W1 && !W2 ? "/" : ""}${!W2 ? "to" : ""}`
+    );
   }
   if (W1 === W2) {
     return XYZ;
@@ -638,111 +760,106 @@ function adapt$2(W1, W2, XYZ, options = {}) {
   }
   hooks.run("chromatic-adaptation-end", env);
   if (env.M) {
-    return multiplyMatrices(env.M, env.XYZ);
+    return multiply_v3_m3x3(env.XYZ, env.M);
   } else {
     throw new TypeError("Only Bradford CAT with white points D50 and D65 supported for now.");
   }
 }
-const noneTypes = /* @__PURE__ */ new Set(["<number>", "<percentage>", "<angle>"]);
-function coerceCoords(space, format, name, coords) {
-  let types = Object.entries(space.coords).map(([id, coordMeta], i2) => {
-    let coordGrammar2 = format.coordGrammar[i2];
-    let arg = coords[i2];
-    let providedType = arg == null ? void 0 : arg.type;
-    let type2;
-    if (arg.none) {
-      type2 = coordGrammar2.find((c4) => noneTypes.has(c4));
-    } else {
-      type2 = coordGrammar2.find((c4) => c4 == providedType);
+const defaults = {
+  gamut_mapping: "css",
+  precision: 5,
+  deltaE: "76",
+  // Default deltaE method
+  verbose: ((_c = (_b = (_a = globalThis == null ? void 0 : globalThis.process) == null ? void 0 : _a.env) == null ? void 0 : _b.NODE_ENV) == null ? void 0 : _c.toLowerCase()) !== "test",
+  warn: function warn(msg) {
+    var _a2, _b2;
+    if (this.verbose) {
+      (_b2 = (_a2 = globalThis == null ? void 0 : globalThis.console) == null ? void 0 : _a2.warn) == null ? void 0 : _b2.call(_a2, msg);
     }
-    if (!type2) {
-      let coordName = coordMeta.name || id;
-      throw new TypeError(`${providedType != null ? providedType : arg.raw} not allowed for ${coordName} in ${name}()`);
-    }
-    let fromRange = type2.range;
-    if (providedType === "<percentage>") {
-      fromRange || (fromRange = [0, 1]);
-    }
-    let toRange = coordMeta.range || coordMeta.refRange;
-    if (fromRange && toRange) {
-      coords[i2] = mapRange(fromRange, toRange, coords[i2]);
-    }
-    return type2;
-  });
-  return types;
-}
-function parse(str, { meta } = {}) {
-  var _a2, _b2, _c2, _d, _e;
-  let env = { "str": (_a2 = String(str)) == null ? void 0 : _a2.trim() };
+  }
+};
+function parse(str, options) {
+  var _a2, _b2, _c2, _d;
+  let env = {
+    str: (_a2 = String(str)) == null ? void 0 : _a2.trim(),
+    options
+  };
   hooks.run("parse-start", env);
   if (env.color) {
     return env.color;
   }
   env.parsed = parseFunction(env.str);
+  let ret;
+  let meta = env.options ? (_b2 = env.options.parseMeta) != null ? _b2 : env.options.meta : null;
   if (env.parsed) {
     let name = env.parsed.name;
+    let format;
+    let space;
+    let coords = env.parsed.args;
+    let types = coords.map((c4, i2) => {
+      var _a3;
+      return (_a3 = env.parsed.argMeta[i2]) == null ? void 0 : _a3.type;
+    });
     if (name === "color") {
-      let id = env.parsed.args.shift();
+      let id = coords.shift();
+      types.shift();
       let alternateId = id.startsWith("--") ? id.substring(2) : `--${id}`;
       let ids = [id, alternateId];
-      let alpha = env.parsed.rawArgs.indexOf("/") > 0 ? env.parsed.args.pop() : 1;
-      for (let space of ColorSpace.all) {
-        let colorSpec = space.getFormat("color");
-        if (colorSpec) {
-          if (ids.includes(colorSpec.id) || ((_b2 = colorSpec.ids) == null ? void 0 : _b2.filter((specId) => ids.includes(specId)).length)) {
-            const coords = Object.keys(space.coords).map((_2, i2) => env.parsed.args[i2] || 0);
-            let types;
-            if (colorSpec.coordGrammar) {
-              types = coerceCoords(space, colorSpec, "color", coords);
-            }
-            if (meta) {
-              Object.assign(meta, { formatId: "color", types });
-            }
-            if (colorSpec.id.startsWith("--") && !id.startsWith("--")) {
-              defaults.warn(`${space.name} is a non-standard space and not currently supported in the CSS spec. Use prefixed color(${colorSpec.id}) instead of color(${id}).`);
-            }
-            if (id.startsWith("--") && !colorSpec.id.startsWith("--")) {
-              defaults.warn(`${space.name} is a standard space and supported in the CSS spec. Use color(${colorSpec.id}) instead of prefixed color(${id}).`);
-            }
-            return { spaceId: space.id, coords, alpha };
+      format = ColorSpace.findFormat({ name, id: ids, type: "function" });
+      if (!format) {
+        let didYouMean;
+        let registryId = id in ColorSpace.registry ? id : alternateId;
+        if (registryId in ColorSpace.registry) {
+          let cssId = (_d = (_c2 = ColorSpace.registry[registryId].formats) == null ? void 0 : _c2.color) == null ? void 0 : _d.id;
+          if (cssId) {
+            let altColor = str.replace("color(" + id, "color(" + cssId);
+            didYouMean = `Did you mean ${altColor}?`;
           }
         }
+        throw new TypeError(
+          `Cannot parse ${env.str}. ` + (didYouMean != null ? didYouMean : "Missing a plugin?")
+        );
       }
-      let didYouMean = "";
-      let registryId = id in ColorSpace.registry ? id : alternateId;
-      if (registryId in ColorSpace.registry) {
-        let cssId = (_d = (_c2 = ColorSpace.registry[registryId].formats) == null ? void 0 : _c2.color) == null ? void 0 : _d.id;
-        if (cssId) {
-          didYouMean = `Did you mean color(${cssId})?`;
-        }
+      space = format.space;
+      if (format.id.startsWith("--") && !id.startsWith("--")) {
+        defaults.warn(
+          `${space.name} is a non-standard space and not currently supported in the CSS spec. Use prefixed color(${format.id}) instead of color(${id}).`
+        );
       }
-      throw new TypeError(`Cannot parse color(${id}). ` + (didYouMean || "Missing a plugin?"));
+      if (id.startsWith("--") && !format.id.startsWith("--")) {
+        defaults.warn(
+          `${space.name} is a standard space and supported in the CSS spec. Use color(${format.id}) instead of prefixed color(${id}).`
+        );
+      }
     } else {
-      for (let space of ColorSpace.all) {
-        let format = space.getFormat(name);
-        if (format && format.type === "function") {
-          let alpha = 1;
-          if (format.lastAlpha || last(env.parsed.args).alpha) {
-            alpha = env.parsed.args.pop();
-          }
-          let coords = env.parsed.args;
-          let types;
-          if (format.coordGrammar) {
-            types = coerceCoords(space, format, name, coords);
-          }
-          if (meta) {
-            Object.assign(meta, { formatId: format.name, types });
-          }
-          return {
-            spaceId: space.id,
-            coords,
-            alpha
-          };
-        }
+      format = ColorSpace.findFormat({ name, type: "function" });
+      space = format.space;
+    }
+    if (meta) {
+      Object.assign(meta, {
+        format,
+        formatId: format.name,
+        types,
+        commas: env.parsed.commas
+      });
+    }
+    let alpha = 1;
+    if (env.parsed.lastAlpha) {
+      alpha = env.parsed.args.pop();
+      if (meta) {
+        meta.alphaType = types.pop();
       }
     }
+    let coordCount = format.coords.length;
+    if (coords.length !== coordCount) {
+      throw new TypeError(
+        `Expected ${coordCount} coordinates for ${space.id} in ${env.str}), got ${coords.length}`
+      );
+    }
+    coords = format.coerceCoords(coords, types);
+    ret = { spaceId: space.id, coords, alpha };
   } else {
-    for (let space of ColorSpace.all) {
+    spaceloop: for (let space of ColorSpace.all) {
       for (let formatId in space.formats) {
         let format = space.formats[formatId];
         if (format.type !== "custom") {
@@ -751,31 +868,115 @@ function parse(str, { meta } = {}) {
         if (format.test && !format.test(env.str)) {
           continue;
         }
-        let color = format.parse(env.str);
+        let formatObject = space.getFormat(format);
+        let color = formatObject.parse(env.str);
         if (color) {
-          (_e = color.alpha) != null ? _e : color.alpha = 1;
           if (meta) {
-            meta.formatId = formatId;
+            Object.assign(meta, { format: formatObject, formatId });
           }
-          return color;
+          ret = color;
+          break spaceloop;
         }
       }
     }
   }
-  throw new TypeError(`Could not parse ${str} as a color. Missing a plugin?`);
+  if (!ret) {
+    throw new TypeError(`Could not parse ${str} as a color. Missing a plugin?`);
+  }
+  ret.alpha = isNone(ret.alpha) ? ret.alpha : ret.alpha === void 0 ? 1 : clamp(0, ret.alpha, 1);
+  return ret;
 }
-function getColor(color) {
+const units = {
+  "%": 0.01,
+  deg: 1,
+  grad: 0.9,
+  rad: 180 / Math.PI,
+  turn: 360
+};
+const regex = {
+  // Need to list calc(NaN) explicitly as otherwise its ending paren would terminate the function call
+  function: /^([a-z]+)\(((?:calc\(NaN\)|.)+?)\)$/i,
+  number: /^([-+]?(?:[0-9]*\.)?[0-9]+(e[-+]?[0-9]+)?)$/i,
+  unitValue: RegExp(`(${Object.keys(units).join("|")})$`),
+  // NOTE The -+ are not just for prefix, but also for idents, and e+N notation!
+  singleArgument: /\/?\s*(none|NaN|calc\(NaN\)|[-+\w.]+(?:%|deg|g?rad|turn)?)/g
+};
+function parseArgument(rawArg) {
+  var _a2;
+  let meta = {};
+  let unit = (_a2 = rawArg.match(regex.unitValue)) == null ? void 0 : _a2[0];
+  let value = meta.raw = rawArg;
+  if (unit) {
+    meta.type = unit === "%" ? "<percentage>" : "<angle>";
+    meta.unit = unit;
+    meta.unitless = Number(value.slice(0, -unit.length));
+    value = meta.unitless * units[unit];
+  } else if (regex.number.test(value)) {
+    value = Number(value);
+    meta.type = "<number>";
+  } else if (value === "none") {
+    value = null;
+  } else if (value === "NaN" || value === "calc(NaN)") {
+    value = NaN;
+    meta.type = "<number>";
+  } else {
+    meta.type = "<ident>";
+  }
+  return { value: (
+    /** @type {number} */
+    value
+  ), meta: (
+    /** @type {ArgumentMeta} */
+    meta
+  ) };
+}
+function parseFunction(str) {
+  if (!str) {
+    return;
+  }
+  str = str.trim();
+  let parts = str.match(regex.function);
+  if (parts) {
+    let args = [];
+    let argMeta = [];
+    let lastAlpha = false;
+    let name = parts[1].toLowerCase();
+    let separators = parts[2].replace(regex.singleArgument, ($0, rawArg) => {
+      let { value, meta } = parseArgument(rawArg);
+      if (
+        // If there's a slash here, it's modern syntax
+        $0.startsWith("/") || // If there's still elements to process after there's already 3 in `args` (and the we're not dealing with "color()"), it's likely to be a legacy color like "hsl(0, 0%, 0%, 0.5)"
+        name !== "color" && args.length === 3
+      ) {
+        lastAlpha = true;
+      }
+      args.push(value);
+      argMeta.push(meta);
+      return "";
+    });
+    return {
+      name,
+      args,
+      argMeta,
+      lastAlpha,
+      commas: separators.includes(","),
+      rawName: parts[1],
+      rawArgs: parts[2]
+    };
+  }
+}
+function getColor(color, options) {
   if (Array.isArray(color)) {
-    return color.map(getColor);
+    return color.map((c4) => getColor(c4, options));
   }
   if (!color) {
     throw new TypeError("Empty color reference");
   }
   if (isString(color)) {
-    color = parse(color);
+    color = parse(color, options);
   }
   let space = color.space || color.spaceId;
-  if (!(space instanceof ColorSpace)) {
+  if (typeof space === "string") {
     color.space = ColorSpace.get(space);
   }
   if (color.alpha === void 0) {
@@ -783,7 +984,7 @@ function getColor(color) {
   }
   return color;
 }
-const ε$7 = 75e-6;
+const ε$4 = 75e-6;
 const _ColorSpace = class _ColorSpace {
   constructor(options) {
     var _a2, _b2, _c2, _d, _e, _f;
@@ -839,7 +1040,7 @@ const _ColorSpace = class _ColorSpace {
     });
     hooks.run("colorspace-init-end", this);
   }
-  inGamut(coords, { epsilon = ε$7 } = {}) {
+  inGamut(coords, { epsilon = ε$4 } = {}) {
     if (!this.equals(this.gamutSpace)) {
       coords = this.to(this.gamutSpace, coords);
       return this.gamutSpace.inGamut(coords, { epsilon });
@@ -848,7 +1049,7 @@ const _ColorSpace = class _ColorSpace {
     return coords.every((c4, i2) => {
       let meta = coordMeta[i2];
       if (meta.type !== "angle" && meta.range) {
-        if (Number.isNaN(c4)) {
+        if (isNone(c4)) {
           return true;
         }
         let [min, max2] = meta.range;
@@ -872,22 +1073,25 @@ const _ColorSpace = class _ColorSpace {
     }
     return false;
   }
+  /**
+   * Lookup a format in this color space
+   * @param {string | object | Format} format - Format id if string. If object, it's converted to a `Format` object and returned.
+   * @returns {Format}
+   */
   getFormat(format) {
-    if (typeof format === "object") {
-      format = processFormat(format, this);
-      return format;
+    if (!format) {
+      return null;
     }
-    let ret;
     if (format === "default") {
-      ret = Object.values(this.formats)[0];
-    } else {
-      ret = this.formats[format];
+      format = Object.values(this.formats)[0];
+    } else if (typeof format === "string") {
+      format = this.formats[format];
     }
-    if (ret) {
-      ret = processFormat(ret, this);
-      return ret;
+    let ret = Format.get(format, this);
+    if (ret !== format && format.name in this.formats) {
+      this.formats[format.name] = ret;
     }
-    return null;
+    return ret;
   }
   /**
    * Check if this color space is the same as another color space reference.
@@ -910,7 +1114,7 @@ const _ColorSpace = class _ColorSpace {
     if (this.equals(space)) {
       return coords;
     }
-    coords = coords.map((c4) => Number.isNaN(c4) ? 0 : c4);
+    coords = coords.map((c4) => isNone(c4) ? 0 : c4);
     let myPath = this.path;
     let otherPath = space.path;
     let connectionSpace, connectionSpaceIndex;
@@ -923,7 +1127,9 @@ const _ColorSpace = class _ColorSpace {
       }
     }
     if (!connectionSpace) {
-      throw new Error(`Cannot convert between color spaces ${this} and ${space}: no connection space was found`);
+      throw new Error(
+        `Cannot convert between color spaces ${this} and ${space}: no connection space was found`
+      );
     }
     for (let i2 = myPath.length - 1; i2 > connectionSpaceIndex; i2--) {
       coords = myPath[i2].toBase(coords);
@@ -949,8 +1155,8 @@ const _ColorSpace = class _ColorSpace {
     let ret = [];
     for (let id in this.coords) {
       let meta = this.coords[id];
-      let range2 = meta.range || meta.refRange;
-      ret.push((_a2 = range2 == null ? void 0 : range2.min) != null ? _a2 : 0);
+      let range = meta.range || meta.refRange;
+      ret.push((_a2 = range == null ? void 0 : range.min) != null ? _a2 : 0);
     }
     return ret;
   }
@@ -980,7 +1186,7 @@ const _ColorSpace = class _ColorSpace {
    * @param {ColorSpace | string} name
    */
   static get(space, ...alternatives) {
-    if (!space || space instanceof _ColorSpace) {
+    if (!space || isInstance(space, this)) {
       return space;
     }
     let argType = type(space);
@@ -995,6 +1201,41 @@ const _ColorSpace = class _ColorSpace {
       return _ColorSpace.get(...alternatives);
     }
     throw new TypeError(`${space} is not a valid color space`);
+  }
+  /**
+   * Look up all color spaces for a format that matches certain criteria
+   * @param {object | string} filters
+   * @param {Array<ColorSpace>} [spaces=ColorSpace.all]
+   * @returns {Format | null}
+   */
+  static findFormat(filters, spaces = _ColorSpace.all) {
+    var _a2, _b2;
+    if (!filters) {
+      return null;
+    }
+    if (typeof filters === "string") {
+      filters = { name: filters };
+    }
+    for (let space of spaces) {
+      for (let [name, format] of Object.entries(space.formats)) {
+        (_a2 = format.name) != null ? _a2 : format.name = name;
+        (_b2 = format.type) != null ? _b2 : format.type = "function";
+        let matches = (!filters.name || format.name === filters.name) && (!filters.type || format.type === filters.type);
+        if (filters.id) {
+          let ids = format.ids || [format.id];
+          let filterIds = Array.isArray(filters.id) ? filters.id : [filters.id];
+          matches && (matches = filterIds.some((id) => ids.includes(id)));
+        }
+        if (matches) {
+          let ret = Format.get(format, space);
+          if (ret !== format) {
+            space.formats[format.name] = ret;
+          }
+          return ret;
+        }
+      }
+    }
+    return null;
   }
   /**
    * Get metadata about a coordinate of a color space
@@ -1025,7 +1266,9 @@ const _ColorSpace = class _ColorSpace {
       space = workingSpace;
     }
     if (!space) {
-      throw new TypeError(`Cannot resolve coordinate reference ${ref}: No color space specified and relative references are not allowed here`);
+      throw new TypeError(
+        `Cannot resolve coordinate reference ${ref}: No color space specified and relative references are not allowed here`
+      );
     }
     coordType = type(coord);
     if (coordType === "number" || coordType === "string" && coord >= 0) {
@@ -1044,7 +1287,9 @@ const _ColorSpace = class _ColorSpace {
       }
       i2++;
     }
-    throw new TypeError(`No "${coord}" coordinate found in ${space.name}. Its coordinates are: ${Object.keys(space.coords).join(", ")}`);
+    throw new TypeError(
+      `No "${coord}" coordinate found in ${space.name}. Its coordinates are: ${Object.keys(space.coords).join(", ")}`
+    );
   }
 };
 __publicField(_ColorSpace, "registry", {});
@@ -1060,43 +1305,22 @@ function getPath(space) {
   }
   return ret;
 }
-function processFormat(format, { coords } = {}) {
-  if (format.coords && !format.coordGrammar) {
-    format.type || (format.type = "function");
-    format.name || (format.name = "color");
-    format.coordGrammar = parseCoordGrammar(format.coords);
-    let coordFormats = Object.entries(coords).map(([id, coordMeta], i2) => {
-      let outputType = format.coordGrammar[i2][0];
-      let fromRange = coordMeta.range || coordMeta.refRange;
-      let toRange = outputType.range, suffix = "";
-      if (outputType == "<percentage>") {
-        toRange = [0, 100];
-        suffix = "%";
-      } else if (outputType == "<angle>") {
-        suffix = "deg";
-      }
-      return { fromRange, toRange, suffix };
-    });
-    format.serializeCoords = (coords2, precision) => {
-      return coords2.map((c4, i2) => {
-        let { fromRange, toRange, suffix } = coordFormats[i2];
-        if (fromRange && toRange) {
-          c4 = mapRange(fromRange, toRange, c4);
-        }
-        c4 = serializeNumber(c4, { precision, unit: suffix });
-        return c4;
-      });
-    };
-  }
-  return format;
-}
-var xyz_d65 = new ColorSpace({
+const xyz_d65 = new ColorSpace({
   id: "xyz-d65",
   name: "XYZ D65",
   coords: {
-    x: { name: "X" },
-    y: { name: "Y" },
-    z: { name: "Z" }
+    x: {
+      refRange: [0, 1],
+      name: "X"
+    },
+    y: {
+      refRange: [0, 1],
+      name: "Y"
+    },
+    z: {
+      refRange: [0, 1],
+      name: "Z"
+    }
   },
   white: "D65",
   formats: {
@@ -1112,9 +1336,7 @@ class RGBColorSpace extends ColorSpace {
    * If coords are not specified, they will use the default RGB coords.
    * Instead of `fromBase()` and `toBase()` functions,
    * you can specify to/from XYZ matrices and have `toBase()` and `fromBase()` automatically generated.
-   * @param {*} options - Same options as {@link ColorSpace} plus:
-   * @param {number[][]} options.toXYZ_M - Matrix to convert to XYZ
-   * @param {number[][]} options.fromXYZ_M - Matrix to convert from XYZ
+   * @param {RGBOptions} options
    */
   constructor(options) {
     var _a2, _b2, _c2;
@@ -1139,39 +1361,53 @@ class RGBColorSpace extends ColorSpace {
     }
     if (options.toXYZ_M && options.fromXYZ_M) {
       (_a2 = options.toBase) != null ? _a2 : options.toBase = (rgb) => {
-        let xyz = multiplyMatrices(options.toXYZ_M, rgb);
+        let xyz = multiply_v3_m3x3(rgb, options.toXYZ_M);
         if (this.white !== this.base.white) {
-          xyz = adapt$2(this.white, this.base.white, xyz);
+          xyz = adapt$1(this.white, this.base.white, xyz);
         }
         return xyz;
       };
       (_b2 = options.fromBase) != null ? _b2 : options.fromBase = (xyz) => {
-        xyz = adapt$2(this.base.white, this.white, xyz);
-        return multiplyMatrices(options.fromXYZ_M, xyz);
+        xyz = adapt$1(this.base.white, this.white, xyz);
+        return multiply_v3_m3x3(xyz, options.fromXYZ_M);
       };
     }
     (_c2 = options.referred) != null ? _c2 : options.referred = "display";
     super(options);
   }
 }
-function getAll(color, space) {
+function getAll(color, options) {
   color = getColor(color);
+  let space = ColorSpace.get(options, options == null ? void 0 : options.space);
+  let precision = options == null ? void 0 : options.precision;
+  let coords;
   if (!space || color.space.equals(space)) {
-    return color.coords.slice();
+    coords = color.coords.slice();
+  } else {
+    coords = space.from(color);
   }
-  space = ColorSpace.get(space);
-  return space.from(color);
+  return precision === void 0 ? coords : coords.map((coord) => toPrecision(coord, precision));
 }
 function get(color, prop) {
+  var _a2;
   color = getColor(color);
+  if (prop === "alpha") {
+    return (_a2 = color.alpha) != null ? _a2 : 1;
+  }
   let { space, index } = ColorSpace.resolveCoord(prop, color.space);
   let coords = getAll(color, space);
   return coords[index];
 }
-function setAll(color, space, coords) {
+function setAll(color, space, coords, alpha) {
   color = getColor(color);
+  if (Array.isArray(space)) {
+    [space, coords, alpha] = [color.space, space, coords];
+  }
   space = ColorSpace.get(space);
-  color.coords = space.to(color.space, coords);
+  color.coords = space === color.space ? coords.slice() : space.to(color.space, coords);
+  if (alpha !== void 0) {
+    color.alpha = alpha;
+  }
   return color;
 }
 setAll.returns = "color";
@@ -1186,27 +1422,31 @@ function set(color, prop, value) {
     if (typeof value === "function") {
       value = value(get(color, prop));
     }
-    let { space, index } = ColorSpace.resolveCoord(prop, color.space);
-    let coords = getAll(color, space);
-    coords[index] = value;
-    setAll(color, space, coords);
+    if (prop === "alpha") {
+      color.alpha = value;
+    } else {
+      let { space, index } = ColorSpace.resolveCoord(prop, color.space);
+      let coords = getAll(color, space);
+      coords[index] = value;
+      setAll(color, space, coords);
+    }
   }
   return color;
 }
 set.returns = "color";
-var XYZ_D50 = new ColorSpace({
+const XYZ_D50 = new ColorSpace({
   id: "xyz-d50",
   name: "XYZ D50",
   white: "D50",
   base: xyz_d65,
-  fromBase: (coords) => adapt$2(xyz_d65.white, "D50", coords),
-  toBase: (coords) => adapt$2("D50", xyz_d65.white, coords)
+  fromBase: (coords) => adapt$1(xyz_d65.white, "D50", coords),
+  toBase: (coords) => adapt$1("D50", xyz_d65.white, coords)
 });
-const ε$6 = 216 / 24389;
+const ε$3 = 216 / 24389;
 const ε3$1 = 24 / 116;
-const κ$4 = 24389 / 27;
-let white$4 = WHITES.D50;
-var lab = new ColorSpace({
+const κ$2 = 24389 / 27;
+let white$3 = WHITES.D50;
+const lab = new ColorSpace({
   id: "lab",
   name: "Lab",
   coords: {
@@ -1223,78 +1463,51 @@ var lab = new ColorSpace({
   },
   // Assuming XYZ is relative to D50, convert to CIE Lab
   // from CIE standard, which now defines these as a rational fraction
-  white: white$4,
+  white: white$3,
   base: XYZ_D50,
   // Convert D50-adapted XYX to Lab
-  //  CIE 15.3:2004 section 8.2.1.1
+  // CIE 15.3:2004 section 8.2.1.1
   fromBase(XYZ) {
-    let xyz = XYZ.map((value, i2) => value / white$4[i2]);
-    let f2 = xyz.map((value) => value > ε$6 ? Math.cbrt(value) : (κ$4 * value + 16) / 116);
-    return [
-      116 * f2[1] - 16,
-      // L
-      500 * (f2[0] - f2[1]),
-      // a
-      200 * (f2[1] - f2[2])
-      // b
-    ];
+    let xyz = XYZ.map((value, i2) => value / white$3[i2]);
+    let f2 = xyz.map((value) => value > ε$3 ? Math.cbrt(value) : (κ$2 * value + 16) / 116);
+    let L = 116 * f2[1] - 16;
+    let a2 = 500 * (f2[0] - f2[1]);
+    let b2 = 200 * (f2[1] - f2[2]);
+    return [L, a2, b2];
   },
   // Convert Lab to D50-adapted XYZ
   // Same result as CIE 15.3:2004 Appendix D although the derivation is different
   // http://www.brucelindbloom.com/index.html?Eqn_RGB_XYZ_Matrix.html
   toBase(Lab) {
+    let [L, a2, b2] = Lab;
     let f2 = [];
-    f2[1] = (Lab[0] + 16) / 116;
-    f2[0] = Lab[1] / 500 + f2[1];
-    f2[2] = f2[1] - Lab[2] / 200;
+    f2[1] = (L + 16) / 116;
+    f2[0] = a2 / 500 + f2[1];
+    f2[2] = f2[1] - b2 / 200;
     let xyz = [
-      f2[0] > ε3$1 ? Math.pow(f2[0], 3) : (116 * f2[0] - 16) / κ$4,
-      Lab[0] > 8 ? Math.pow((Lab[0] + 16) / 116, 3) : Lab[0] / κ$4,
-      f2[2] > ε3$1 ? Math.pow(f2[2], 3) : (116 * f2[2] - 16) / κ$4
+      f2[0] > ε3$1 ? Math.pow(f2[0], 3) : (116 * f2[0] - 16) / κ$2,
+      Lab[0] > 8 ? Math.pow((Lab[0] + 16) / 116, 3) : Lab[0] / κ$2,
+      f2[2] > ε3$1 ? Math.pow(f2[2], 3) : (116 * f2[2] - 16) / κ$2
     ];
-    return xyz.map((value, i2) => value * white$4[i2]);
+    return xyz.map((value, i2) => value * white$3[i2]);
   },
   formats: {
-    "lab": {
-      coords: ["<number> | <percentage>", "<number> | <percentage>[-1,1]", "<number> | <percentage>[-1,1]"]
+    lab: {
+      coords: [
+        "<percentage> | <number>",
+        "<number> | <percentage>",
+        "<number> | <percentage>"
+      ]
     }
   }
 });
 function constrain(angle) {
+  if (typeof angle !== "number") {
+    return angle;
+  }
   return (angle % 360 + 360) % 360;
 }
-function adjust(arc, angles) {
-  if (arc === "raw") {
-    return angles;
-  }
-  let [a1, a2] = angles.map(constrain);
-  let angleDiff = a2 - a1;
-  if (arc === "increasing") {
-    if (angleDiff < 0) {
-      a2 += 360;
-    }
-  } else if (arc === "decreasing") {
-    if (angleDiff > 0) {
-      a1 += 360;
-    }
-  } else if (arc === "longer") {
-    if (-180 < angleDiff && angleDiff < 180) {
-      if (angleDiff > 0) {
-        a1 += 360;
-      } else {
-        a2 += 360;
-      }
-    }
-  } else if (arc === "shorter") {
-    if (angleDiff > 180) {
-      a1 += 360;
-    } else if (angleDiff < -180) {
-      a2 += 360;
-    }
-  }
-  return [a1, a2];
-}
-var lch = new ColorSpace({
+const lch = new ColorSpace({
   id: "lch",
   name: "LCH",
   coords: {
@@ -1314,43 +1527,30 @@ var lch = new ColorSpace({
   },
   base: lab,
   fromBase(Lab) {
+    if (this.ε === void 0) {
+      let range = Object.values(this.base.coords)[1].refRange;
+      let extent = range[1] - range[0];
+      this.ε = extent / 1e5;
+    }
     let [L, a2, b2] = Lab;
-    let hue;
-    const ε2 = 0.02;
-    if (Math.abs(a2) < ε2 && Math.abs(b2) < ε2) {
-      hue = NaN;
-    } else {
-      hue = Math.atan2(b2, a2) * 180 / Math.PI;
-    }
-    return [
-      L,
-      // L is still L
-      Math.sqrt(a2 ** 2 + b2 ** 2),
-      // Chroma
-      constrain(hue)
-      // Hue, in degrees [0 to 360)
-    ];
+    let isAchromatic = Math.abs(a2) < this.ε && Math.abs(b2) < this.ε;
+    let h2 = isAchromatic ? null : constrain(Math.atan2(b2, a2) * 180 / Math.PI);
+    let C = isAchromatic ? 0 : Math.sqrt(a2 ** 2 + b2 ** 2);
+    return [L, C, h2];
   },
-  toBase(LCH) {
-    let [Lightness, Chroma, Hue] = LCH;
-    if (Chroma < 0) {
-      Chroma = 0;
+  toBase(lch2) {
+    let [L, C, h2] = lch2;
+    let a2 = null, b2 = null;
+    if (!isNone(h2)) {
+      C = C < 0 ? 0 : C;
+      a2 = C * Math.cos(h2 * Math.PI / 180);
+      b2 = C * Math.sin(h2 * Math.PI / 180);
     }
-    if (isNaN(Hue)) {
-      Hue = 0;
-    }
-    return [
-      Lightness,
-      // L is still L
-      Chroma * Math.cos(Hue * Math.PI / 180),
-      // a
-      Chroma * Math.sin(Hue * Math.PI / 180)
-      // b
-    ];
+    return [L, a2, b2];
   },
   formats: {
-    "lch": {
-      coords: ["<number> | <percentage>", "<number> | <percentage>", "<number> | <angle>"]
+    lch: {
+      coords: ["<percentage> | <number>", "<number> | <percentage>", "<number> | <angle>"]
     }
   }
 });
@@ -1461,7 +1661,7 @@ const LabtoLMS_M = [
   [1, -0.1055613458156586, -0.0638541728258133],
   [1, -0.0894841775298119, -1.2914855480194092]
 ];
-var OKLab = new ColorSpace({
+const Oklab = new ColorSpace({
   id: "oklab",
   name: "Oklab",
   coords: {
@@ -1480,32 +1680,40 @@ var OKLab = new ColorSpace({
   white: "D65",
   base: xyz_d65,
   fromBase(XYZ) {
-    let LMS = multiplyMatrices(XYZtoLMS_M$1, XYZ);
-    let LMSg = LMS.map((val) => Math.cbrt(val));
-    return multiplyMatrices(LMStoLab_M, LMSg);
+    let LMS = multiply_v3_m3x3(XYZ, XYZtoLMS_M$1);
+    LMS[0] = Math.cbrt(LMS[0]);
+    LMS[1] = Math.cbrt(LMS[1]);
+    LMS[2] = Math.cbrt(LMS[2]);
+    return multiply_v3_m3x3(LMS, LMStoLab_M, LMS);
   },
-  toBase(OKLab2) {
-    let LMSg = multiplyMatrices(LabtoLMS_M, OKLab2);
-    let LMS = LMSg.map((val) => val ** 3);
-    return multiplyMatrices(LMStoXYZ_M$1, LMS);
+  toBase(OKLab) {
+    let LMSg = multiply_v3_m3x3(OKLab, LabtoLMS_M);
+    LMSg[0] = LMSg[0] ** 3;
+    LMSg[1] = LMSg[1] ** 3;
+    LMSg[2] = LMSg[2] ** 3;
+    return multiply_v3_m3x3(LMSg, LMStoXYZ_M$1, LMSg);
   },
   formats: {
-    "oklab": {
-      coords: ["<percentage> | <number>", "<number> | <percentage>[-1,1]", "<number> | <percentage>[-1,1]"]
+    oklab: {
+      coords: [
+        "<percentage> | <number>",
+        "<number> | <percentage>",
+        "<number> | <percentage>"
+      ]
     }
   }
 });
 function deltaEOK(color, sample) {
   [color, sample] = getColor([color, sample]);
-  let [L1, a1, b1] = OKLab.from(color);
-  let [L2, a2, b2] = OKLab.from(sample);
+  let [L1, a1, b1] = Oklab.from(color);
+  let [L2, a2, b2] = Oklab.from(sample);
   let ΔL = L1 - L2;
   let Δa = a1 - a2;
   let Δb = b1 - b2;
   return Math.sqrt(ΔL ** 2 + Δa ** 2 + Δb ** 2);
 }
-const ε$5 = 75e-6;
-function inGamut(color, space, { epsilon = ε$5 } = {}) {
+const ε$2 = 75e-6;
+function inGamut(color, space, { epsilon = ε$2 } = {}) {
   color = getColor(color);
   if (!space) {
     space = color.space;
@@ -1520,7 +1728,10 @@ function inGamut(color, space, { epsilon = ε$5 } = {}) {
 function clone(color) {
   return {
     space: color.space,
-    coords: color.coords.slice(),
+    coords: (
+      /** @type {Coords} */
+      color.coords.slice()
+    ),
     alpha: color.alpha
   };
 }
@@ -1528,13 +1739,15 @@ function distance(color1, color2, space = "lab") {
   space = ColorSpace.get(space);
   let coords1 = space.from(color1);
   let coords2 = space.from(color2);
-  return Math.sqrt(coords1.reduce((acc, c12, i2) => {
-    let c22 = coords2[i2];
-    if (isNaN(c12) || isNaN(c22)) {
-      return acc;
-    }
-    return acc + (c22 - c12) ** 2;
-  }, 0));
+  return Math.sqrt(
+    coords1.reduce((acc, c12, i2) => {
+      let c22 = coords2[i2];
+      if (isNone(c12) || isNone(c22)) {
+        return acc;
+      }
+      return acc + (c22 - c12) ** 2;
+    }, 0)
+  );
 }
 function deltaE76(color, sample) {
   return distance(color, sample, "lab");
@@ -1564,7 +1777,7 @@ function deltaECMC(color, sample, { l: l2 = 2, c: c4 = 1 } = {}) {
   }
   let SC = 0.0638 * C1 / (1 + 0.0131 * C1) + 0.638;
   let T;
-  if (Number.isNaN(H1)) {
+  if (isNone(H1)) {
     H1 = 0;
   }
   if (H1 >= 164 && H1 <= 345) {
@@ -1580,8 +1793,8 @@ function deltaECMC(color, sample, { l: l2 = 2, c: c4 = 1 } = {}) {
   dE += H2 / SH ** 2;
   return Math.sqrt(dE);
 }
-const Yw$1 = 203;
-var XYZ_Abs_D65 = new ColorSpace({
+const Yw = 203;
+const XYZ_Abs_D65 = new ColorSpace({
   // Absolute CIE XYZ, with a D65 whitepoint,
   // as used in most HDR colorspaces as a starting point.
   // SDR spaces are converted per BT.2048
@@ -1605,19 +1818,19 @@ var XYZ_Abs_D65 = new ColorSpace({
   },
   base: xyz_d65,
   fromBase(XYZ) {
-    return XYZ.map((v2) => Math.max(v2 * Yw$1, 0));
+    return XYZ.map((v2) => v2 * Yw);
   },
   toBase(AbsXYZ) {
-    return AbsXYZ.map((v2) => Math.max(v2 / Yw$1, 0));
+    return AbsXYZ.map((v2) => v2 / Yw);
   }
 });
-const b$1 = 1.15;
+const b = 1.15;
 const g = 0.66;
-const n$1 = 2610 / 2 ** 14;
-const ninv$1 = 2 ** 14 / 2610;
-const c1$2 = 3424 / 2 ** 12;
-const c2$2 = 2413 / 2 ** 7;
-const c3$2 = 2392 / 2 ** 7;
+const n = 2610 / 2 ** 14;
+const ninv = 2 ** 14 / 2610;
+const c1$1 = 3424 / 2 ** 12;
+const c2$1 = 2413 / 2 ** 7;
+const c3$1 = 2392 / 2 ** 7;
 const p = 1.7 * 2523 / 2 ** 5;
 const pinv = 2 ** 5 / (1.7 * 2523);
 const d = -0.56;
@@ -1638,11 +1851,11 @@ const ConetoIab_M = [
   [0.199076, 1.096799, -1.295875]
 ];
 const IabtoCone_M = [
-  [1, 0.1386050432715393, 0.05804731615611886],
-  [0.9999999999999999, -0.1386050432715393, -0.05804731615611886],
-  [0.9999999999999998, -0.09601924202631895, -0.8118918960560388]
+  [1, 0.13860504327153927, 0.05804731615611883],
+  [1, -0.1386050432715393, -0.058047316156118904],
+  [1, -0.09601924202631895, -0.811891896056039]
 ];
-var Jzazbz = new ColorSpace({
+const Jzazbz = new ColorSpace({
   id: "jzazbz",
   name: "Jzazbz",
   coords: {
@@ -1651,50 +1864,60 @@ var Jzazbz = new ColorSpace({
       name: "Jz"
     },
     az: {
-      refRange: [-0.5, 0.5]
+      refRange: [-0.21, 0.21]
     },
     bz: {
-      refRange: [-0.5, 0.5]
+      refRange: [-0.21, 0.21]
     }
   },
   base: XYZ_Abs_D65,
   fromBase(XYZ) {
     let [Xa, Ya, Za] = XYZ;
-    let Xm = b$1 * Xa - (b$1 - 1) * Za;
+    let Xm = b * Xa - (b - 1) * Za;
     let Ym = g * Ya - (g - 1) * Xa;
-    let LMS = multiplyMatrices(XYZtoCone_M, [Xm, Ym, Za]);
-    let PQLMS = LMS.map(function(val) {
-      let num = c1$2 + c2$2 * (val / 1e4) ** n$1;
-      let denom = 1 + c3$2 * (val / 1e4) ** n$1;
-      return (num / denom) ** p;
-    });
-    let [Iz, az, bz] = multiplyMatrices(ConetoIab_M, PQLMS);
+    let LMS = multiply_v3_m3x3([Xm, Ym, Za], XYZtoCone_M);
+    let PQLMS = (
+      /** @type {Vector3} } */
+      LMS.map(function(val) {
+        let num = c1$1 + c2$1 * spow(val / 1e4, n);
+        let denom = 1 + c3$1 * spow(val / 1e4, n);
+        return spow(num / denom, p);
+      })
+    );
+    let [Iz, az, bz] = multiply_v3_m3x3(PQLMS, ConetoIab_M);
     let Jz = (1 + d) * Iz / (1 + d * Iz) - d0;
     return [Jz, az, bz];
   },
   toBase(Jzazbz2) {
     let [Jz, az, bz] = Jzazbz2;
     let Iz = (Jz + d0) / (1 + d - d * (Jz + d0));
-    let PQLMS = multiplyMatrices(IabtoCone_M, [Iz, az, bz]);
-    let LMS = PQLMS.map(function(val) {
-      let num = c1$2 - val ** pinv;
-      let denom = c3$2 * val ** pinv - c2$2;
-      let x = 1e4 * (num / denom) ** ninv$1;
-      return x;
-    });
-    let [Xm, Ym, Za] = multiplyMatrices(ConetoXYZ_M, LMS);
-    let Xa = (Xm + (b$1 - 1) * Za) / b$1;
+    let PQLMS = multiply_v3_m3x3([Iz, az, bz], IabtoCone_M);
+    let LMS = (
+      /** @type {Vector3} } */
+      PQLMS.map(function(val) {
+        let num = c1$1 - spow(val, pinv);
+        let denom = c3$1 * spow(val, pinv) - c2$1;
+        let x = 1e4 * spow(num / denom, ninv);
+        return x;
+      })
+    );
+    let [Xm, Ym, Za] = multiply_v3_m3x3(LMS, ConetoXYZ_M);
+    let Xa = (Xm + (b - 1) * Za) / b;
     let Ya = (Ym + (g - 1) * Xa) / g;
     return [Xa, Ya, Za];
   },
   formats: {
     // https://drafts.csswg.org/css-color-hdr/#Jzazbz
-    "color": {
-      coords: ["<number> | <percentage>", "<number> | <percentage>[-1,1]", "<number> | <percentage>[-1,1]"]
+    jzazbz: {
+      coords: [
+        "<percentage> | <number>",
+        "<number> | <percentage>",
+        "<number> | <percentage>"
+      ]
     }
   }
 });
-var jzczhz = new ColorSpace({
+const jzczhz = new ColorSpace({
   id: "jzczhz",
   name: "JzCzHz",
   coords: {
@@ -1703,7 +1926,7 @@ var jzczhz = new ColorSpace({
       name: "Jz"
     },
     cz: {
-      refRange: [0, 1],
+      refRange: [0, 0.26],
       name: "Chroma"
     },
     hz: {
@@ -1713,33 +1936,13 @@ var jzczhz = new ColorSpace({
     }
   },
   base: Jzazbz,
-  fromBase(jzazbz) {
-    let [Jz, az, bz] = jzazbz;
-    let hue;
-    const ε2 = 2e-4;
-    if (Math.abs(az) < ε2 && Math.abs(bz) < ε2) {
-      hue = NaN;
-    } else {
-      hue = Math.atan2(bz, az) * 180 / Math.PI;
+  fromBase: lch.fromBase,
+  toBase: lch.toBase,
+  formats: {
+    // https://drafts.csswg.org/css-color-hdr/#JzCzhz
+    jzczhz: {
+      coords: ["<percentage> | <number>", "<number> | <percentage>", "<number> | <angle>"]
     }
-    return [
-      Jz,
-      // Jz is still Jz
-      Math.sqrt(az ** 2 + bz ** 2),
-      // Chroma
-      constrain(hue)
-      // Hue, in degrees [0 to 360)
-    ];
-  },
-  toBase(jzczhz2) {
-    return [
-      jzczhz2[0],
-      // Jz is still Jz
-      jzczhz2[1] * Math.cos(jzczhz2[2] * Math.PI / 180),
-      // az
-      jzczhz2[1] * Math.sin(jzczhz2[2] * Math.PI / 180)
-      // bz
-    ];
   }
 });
 function deltaEJz(color, sample) {
@@ -1748,21 +1951,21 @@ function deltaEJz(color, sample) {
   let [Jz2, Cz2, Hz2] = jzczhz.from(sample);
   let ΔJ = Jz1 - Jz2;
   let ΔC = Cz1 - Cz2;
-  if (Number.isNaN(Hz1) && Number.isNaN(Hz2)) {
+  if (isNone(Hz1) && isNone(Hz2)) {
     Hz1 = 0;
     Hz2 = 0;
-  } else if (Number.isNaN(Hz1)) {
+  } else if (isNone(Hz1)) {
     Hz1 = Hz2;
-  } else if (Number.isNaN(Hz2)) {
+  } else if (isNone(Hz2)) {
     Hz2 = Hz1;
   }
   let Δh = Hz1 - Hz2;
   let ΔH = 2 * Math.sqrt(Cz1 * Cz2) * Math.sin(Δh / 2 * (Math.PI / 180));
   return Math.sqrt(ΔJ ** 2 + ΔC ** 2 + ΔH ** 2);
 }
-const c1$1 = 3424 / 4096;
-const c2$1 = 2413 / 128;
-const c3$1 = 2392 / 128;
+const c1 = 3424 / 4096;
+const c2 = 2413 / 128;
+const c3 = 2392 / 128;
 const m1$1 = 2610 / 16384;
 const m2 = 2523 / 32;
 const im1 = 16384 / 2610;
@@ -1787,7 +1990,7 @@ const LMStoXYZ_M = [
   [0.3647385209748072, 0.6805660249472273, -0.0453045459220347],
   [-0.0497472075358123, -0.0492609666966131, 1.1880659249923042]
 ];
-var ictcp = new ColorSpace({
+const ictcp = new ColorSpace({
   id: "ictcp",
   name: "ICTCP",
   // From BT.2100-2 page 7:
@@ -1817,29 +2020,44 @@ var ictcp = new ColorSpace({
   },
   base: XYZ_Abs_D65,
   fromBase(XYZ) {
-    let LMS = multiplyMatrices(XYZtoLMS_M, XYZ);
+    let LMS = multiply_v3_m3x3(XYZ, XYZtoLMS_M);
     return LMStoICtCp(LMS);
   },
   toBase(ICtCp) {
     let LMS = ICtCptoLMS(ICtCp);
-    return multiplyMatrices(LMStoXYZ_M, LMS);
+    return multiply_v3_m3x3(LMS, LMStoXYZ_M);
+  },
+  formats: {
+    ictcp: {
+      coords: [
+        "<percentage> | <number>",
+        "<number> | <percentage>",
+        "<number> | <percentage>"
+      ]
+    }
   }
 });
 function LMStoICtCp(LMS) {
-  let PQLMS = LMS.map(function(val) {
-    let num = c1$1 + c2$1 * (val / 1e4) ** m1$1;
-    let denom = 1 + c3$1 * (val / 1e4) ** m1$1;
-    return (num / denom) ** m2;
-  });
-  return multiplyMatrices(LMStoIPT_M, PQLMS);
+  let PQLMS = (
+    /** @type {Vector3} */
+    LMS.map(function(val) {
+      let num = c1 + c2 * (val / 1e4) ** m1$1;
+      let denom = 1 + c3 * (val / 1e4) ** m1$1;
+      return (num / denom) ** m2;
+    })
+  );
+  return multiply_v3_m3x3(PQLMS, LMStoIPT_M);
 }
 function ICtCptoLMS(ICtCp) {
-  let PQLMS = multiplyMatrices(IPTtoLMS_M, ICtCp);
-  let LMS = PQLMS.map(function(val) {
-    let num = Math.max(val ** im2 - c1$1, 0);
-    let denom = c2$1 - c3$1 * val ** im2;
-    return 1e4 * (num / denom) ** im1;
-  });
+  let PQLMS = multiply_v3_m3x3(ICtCp, IPTtoLMS_M);
+  let LMS = (
+    /** @type {Vector3} */
+    PQLMS.map(function(val) {
+      let num = Math.max(val ** im2 - c1, 0);
+      let denom = c2 - c3 * val ** im2;
+      return 1e4 * (num / denom) ** im1;
+    })
+  );
   return LMS;
 }
 function deltaEITP(color, sample) {
@@ -1848,7 +2066,17 @@ function deltaEITP(color, sample) {
   let [I2, T2, P2] = ictcp.from(sample);
   return 720 * Math.sqrt((I1 - I2) ** 2 + 0.25 * (T1 - T2) ** 2 + (P1 - P2) ** 2);
 }
-const white$3 = WHITES.D65;
+function deltaEOK2(color, sample) {
+  [color, sample] = getColor([color, sample]);
+  let abscale = 2;
+  let [L1, a1, b1] = Oklab.from(color);
+  let [L2, a2, b2] = Oklab.from(sample);
+  let ΔL = L1 - L2;
+  let Δa = abscale * (a1 - a2);
+  let Δb = abscale * (b1 - b2);
+  return Math.sqrt(ΔL ** 2 + Δa ** 2 + Δb ** 2);
+}
+const white$2 = WHITES.D65;
 const adaptedCoef = 0.42;
 const adaptedCoefInv = 1 / adaptedCoef;
 const tau = 2 * Math.PI;
@@ -1880,19 +2108,25 @@ const hueQuadMap = {
 };
 const rad2deg = 180 / Math.PI;
 const deg2rad$1 = Math.PI / 180;
-function adapt$1(coords, fl) {
-  const temp = coords.map((c4) => {
-    const x = spow(fl * Math.abs(c4) * 0.01, adaptedCoef);
-    return 400 * copySign(x, c4) / (x + 27.13);
-  });
+function adapt(coords, fl) {
+  const temp = (
+    /** @type {[number, number, number]} */
+    coords.map((c4) => {
+      const x = spow(fl * Math.abs(c4) * 0.01, adaptedCoef);
+      return 400 * copySign(x, c4) / (x + 27.13);
+    })
+  );
   return temp;
 }
 function unadapt(adapted, fl) {
   const constant = 100 / fl * 27.13 ** adaptedCoefInv;
-  return adapted.map((c4) => {
-    const cabs = Math.abs(c4);
-    return copySign(constant * spow(cabs / (400 - cabs), adaptedCoefInv), c4);
-  });
+  return (
+    /** @type {[number, number, number]} */
+    adapted.map((c4) => {
+      const cabs = Math.abs(c4);
+      return copySign(constant * spow(cabs / (400 - cabs), adaptedCoefInv), c4);
+    })
+  );
 }
 function hueQuadrature(h2) {
   let hp = constrain(h2);
@@ -1912,26 +2146,27 @@ function invHueQuadrature(H) {
   Hp = Hp % 100;
   const [hi, hii] = hueQuadMap.h.slice(i2, i2 + 2);
   const [ei, eii] = hueQuadMap.e.slice(i2, i2 + 2);
-  return constrain(
-    (Hp * (eii * hi - ei * hii) - 100 * hi * eii) / (Hp * (eii - ei) - 100 * eii)
-  );
+  return constrain((Hp * (eii * hi - ei * hii) - 100 * hi * eii) / (Hp * (eii - ei) - 100 * eii));
 }
 function environment(refWhite, adaptingLuminance, backgroundLuminance, surround, discounting) {
   const env = {};
   env.discounting = discounting;
   env.refWhite = refWhite;
   env.surround = surround;
-  const xyzW = refWhite.map((c4) => {
-    return c4 * 100;
-  });
+  const xyzW = (
+    /** @type {Vector3} */
+    refWhite.map((c4) => {
+      return c4 * 100;
+    })
+  );
   env.la = adaptingLuminance;
   env.yb = backgroundLuminance;
   const yw = xyzW[1];
-  const rgbW = multiplyMatrices(cat16, xyzW);
-  surround = surroundMap[env.surround];
-  const f2 = surround[0];
-  env.c = surround[1];
-  env.nc = surround[2];
+  const rgbW = multiply_v3_m3x3(xyzW, cat16);
+  let values = surroundMap[env.surround];
+  const f2 = values[0];
+  env.c = values[1];
+  env.nc = values[2];
   const k = 1 / (5 * env.la + 1);
   const k4 = k ** 4;
   env.fl = k4 * env.la + 0.1 * (1 - k4) * (1 - k4) * Math.cbrt(5 * env.la);
@@ -1940,69 +2175,62 @@ function environment(refWhite, adaptingLuminance, backgroundLuminance, surround,
   env.z = 1.48 + Math.sqrt(env.n);
   env.nbb = 0.725 * env.n ** -0.2;
   env.ncb = env.nbb;
-  const d2 = Math.max(
-    Math.min(f2 * (1 - 1 / 3.6 * Math.exp((-env.la - 42) / 92)), 1),
-    0
-  );
-  env.dRgb = rgbW.map((c4) => {
+  const d2 = Math.max(Math.min(f2 * (1 - 1 / 3.6 * Math.exp((-env.la - 42) / 92)), 1), 0);
+  env.dRgb = /** @type {[number, number, number]} */
+  rgbW.map((c4) => {
     return interpolate(1, yw / c4, d2);
   });
-  env.dRgbInv = env.dRgb.map((c4) => {
+  env.dRgbInv = /** @type {[number, number, number]} */
+  env.dRgb.map((c4) => {
     return 1 / c4;
   });
-  const rgbCW = rgbW.map((c4, i2) => {
-    return c4 * env.dRgb[i2];
-  });
-  const rgbAW = adapt$1(rgbCW, env.fl);
+  const rgbCW = (
+    /** @type {[number, number, number]} */
+    rgbW.map((c4, i2) => {
+      return c4 * env.dRgb[i2];
+    })
+  );
+  const rgbAW = adapt(rgbCW, env.fl);
   env.aW = env.nbb * (2 * rgbAW[0] + rgbAW[1] + 0.05 * rgbAW[2]);
   return env;
 }
-const viewingConditions$1 = environment(
-  white$3,
-  64 / Math.PI * 0.2,
-  20,
-  "average",
-  false
-);
-function fromCam16(cam162, env) {
-  if (!(cam162.J !== void 0 ^ cam162.Q !== void 0)) {
+const viewingConditions$1 = environment(white$2, 64 / Math.PI * 0.2, 20, "average", false);
+function fromCam16(cam16, env) {
+  if (!(cam16.J !== void 0 ^ cam16.Q !== void 0)) {
     throw new Error("Conversion requires one and only one: 'J' or 'Q'");
   }
-  if (!(cam162.C !== void 0 ^ cam162.M !== void 0 ^ cam162.s !== void 0)) {
+  if (!(cam16.C !== void 0 ^ cam16.M !== void 0 ^ cam16.s !== void 0)) {
     throw new Error("Conversion requires one and only one: 'C', 'M' or 's'");
   }
-  if (!(cam162.h !== void 0 ^ cam162.H !== void 0)) {
+  if (!(cam16.h !== void 0 ^ cam16.H !== void 0)) {
     throw new Error("Conversion requires one and only one: 'h' or 'H'");
   }
-  if (cam162.J === 0 || cam162.Q === 0) {
+  if (cam16.J === 0 || cam16.Q === 0) {
     return [0, 0, 0];
   }
   let hRad = 0;
-  if (cam162.h !== void 0) {
-    hRad = constrain(cam162.h) * deg2rad$1;
+  if (cam16.h !== void 0) {
+    hRad = constrain(cam16.h) * deg2rad$1;
   } else {
-    hRad = invHueQuadrature(cam162.H) * deg2rad$1;
+    hRad = invHueQuadrature(cam16.H) * deg2rad$1;
   }
   const cosh = Math.cos(hRad);
   const sinh = Math.sin(hRad);
   let Jroot = 0;
-  if (cam162.J !== void 0) {
-    Jroot = spow(cam162.J, 1 / 2) * 0.1;
-  } else if (cam162.Q !== void 0) {
-    Jroot = 0.25 * env.c * cam162.Q / ((env.aW + 4) * env.flRoot);
+  if (cam16.J !== void 0) {
+    Jroot = spow(cam16.J, 1 / 2) * 0.1;
+  } else if (cam16.Q !== void 0) {
+    Jroot = 0.25 * env.c * cam16.Q / ((env.aW + 4) * env.flRoot);
   }
   let alpha = 0;
-  if (cam162.C !== void 0) {
-    alpha = cam162.C / Jroot;
-  } else if (cam162.M !== void 0) {
-    alpha = cam162.M / env.flRoot / Jroot;
-  } else if (cam162.s !== void 0) {
-    alpha = 4e-4 * cam162.s ** 2 * (env.aW + 4) / env.c;
+  if (cam16.C !== void 0) {
+    alpha = cam16.C / Jroot;
+  } else if (cam16.M !== void 0) {
+    alpha = cam16.M / env.flRoot / Jroot;
+  } else if (cam16.s !== void 0) {
+    alpha = 4e-4 * cam16.s ** 2 * (env.aW + 4) / env.c;
   }
-  const t2 = spow(
-    alpha * Math.pow(1.64 - Math.pow(0.29, env.n), -0.73),
-    10 / 9
-  );
+  const t2 = spow(alpha * Math.pow(1.64 - Math.pow(0.29, env.n), -0.73), 10 / 9);
   const et = 0.25 * (Math.cos(hRad + 2) + 3.8);
   const A = env.aW * spow(Jroot, 2 / env.c / env.z);
   const p1 = 5e4 / 13 * env.nc * env.ncb * et;
@@ -2011,26 +2239,35 @@ function fromCam16(cam162, env) {
   const a2 = r * cosh;
   const b2 = r * sinh;
   const rgb_c = unadapt(
-    multiplyMatrices(m1, [p2, a2, b2]).map((c4) => {
+    /** @type {Vector3} */
+    multiply_v3_m3x3([p2, a2, b2], m1).map((c4) => {
       return c4 * 1 / 1403;
     }),
     env.fl
   );
-  return multiplyMatrices(
-    cat16Inv,
-    rgb_c.map((c4, i2) => {
-      return c4 * env.dRgbInv[i2];
+  return (
+    /** @type {Vector3} */
+    multiply_v3_m3x3(
+      /** @type {Vector3} */
+      rgb_c.map((c4, i2) => {
+        return c4 * env.dRgbInv[i2];
+      }),
+      cat16Inv
+    ).map((c4) => {
+      return c4 / 100;
     })
-  ).map((c4) => {
-    return c4 / 100;
-  });
+  );
 }
 function toCam16(xyzd65, env) {
-  const xyz100 = xyzd65.map((c4) => {
-    return c4 * 100;
-  });
-  const rgbA = adapt$1(
-    multiplyMatrices(cat16, xyz100).map((c4, i2) => {
+  const xyz100 = (
+    /** @type {Vector3} */
+    xyzd65.map((c4) => {
+      return c4 * 100;
+    })
+  );
+  const rgbA = adapt(
+    /** @type {[number, number, number]} */
+    multiply_v3_m3x3(xyz100, cat16).map((c4, i2) => {
       return c4 * env.dRgb[i2];
     }),
     env.fl
@@ -2039,10 +2276,7 @@ function toCam16(xyzd65, env) {
   const b2 = (rgbA[0] + rgbA[1] - 2 * rgbA[2]) / 9;
   const hRad = (Math.atan2(b2, a2) % tau + tau) % tau;
   const et = 0.25 * (Math.cos(hRad + 2) + 3.8);
-  const t2 = 5e4 / 13 * env.nc * env.ncb * zdiv(
-    et * Math.sqrt(a2 ** 2 + b2 ** 2),
-    rgbA[0] + rgbA[1] + 1.05 * rgbA[2] + 0.305
-  );
+  const t2 = 5e4 / 13 * env.nc * env.ncb * zdiv(et * Math.sqrt(a2 ** 2 + b2 ** 2), rgbA[0] + rgbA[1] + 1.05 * rgbA[2] + 0.305);
   const alpha = spow(t2, 0.9) * Math.pow(1.64 - Math.pow(0.29, env.n), 0.73);
   const A = env.nbb * (2 * rgbA[0] + rgbA[1] + 0.05 * rgbA[2]);
   const Jroot = spow(A / env.aW, 0.5 * env.c * env.z);
@@ -2055,7 +2289,7 @@ function toCam16(xyzd65, env) {
   const s2 = 50 * spow(env.c * alpha / (env.aW + 4), 1 / 2);
   return { J, C, h: h2, s: s2, Q, M, H };
 }
-var cam16 = new ColorSpace({
+new ColorSpace({
   id: "cam16-jmh",
   cssId: "--cam16-jmh",
   name: "CAM16-JMh",
@@ -2076,25 +2310,26 @@ var cam16 = new ColorSpace({
   },
   base: xyz_d65,
   fromBase(xyz) {
-    const cam162 = toCam16(xyz, viewingConditions$1);
-    return [cam162.J, cam162.M, cam162.h];
+    if (this.ε === void 0) {
+      this.ε = Object.values(this.coords)[1].refRange[1] / 1e5;
+    }
+    const cam16 = toCam16(xyz, viewingConditions$1);
+    const isAchromatic = Math.abs(cam16.M) < this.ε;
+    return [cam16.J, isAchromatic ? 0 : cam16.M, isAchromatic ? null : cam16.h];
   },
-  toBase(cam162) {
-    return fromCam16(
-      { J: cam162[0], M: cam162[1], h: cam162[2] },
-      viewingConditions$1
-    );
+  toBase(cam16) {
+    return fromCam16({ J: cam16[0], M: cam16[1], h: cam16[2] }, viewingConditions$1);
   }
 });
-const white$2 = WHITES.D65;
-const ε$4 = 216 / 24389;
-const κ$3 = 24389 / 27;
+const white$1 = WHITES.D65;
+const ε$1 = 216 / 24389;
+const κ$1 = 24389 / 27;
 function toLstar(y2) {
-  const fy = y2 > ε$4 ? Math.cbrt(y2) : (κ$3 * y2 + 16) / 116;
+  const fy = y2 > ε$1 ? Math.cbrt(y2) : (κ$1 * y2 + 16) / 116;
   return 116 * fy - 16;
 }
 function fromLstar(lstar) {
-  return lstar > 8 ? Math.pow((lstar + 16) / 116, 3) : lstar / κ$3;
+  return lstar > 8 ? Math.pow((lstar + 16) / 116, 3) : lstar / κ$1;
 }
 function fromHct(coords, env) {
   let [h2, c4, t2] = coords;
@@ -2112,15 +2347,15 @@ function fromHct(coords, env) {
   const threshold = 2e-12;
   const max_attempts = 15;
   let attempt = 0;
-  let last2 = Infinity;
+  let last = Infinity;
   while (attempt <= max_attempts) {
     xyz = fromCam16({ J: j, C: c4, h: h2 }, env);
     const delta = Math.abs(xyz[1] - y2);
-    if (delta < last2) {
+    if (delta < last) {
       if (delta <= threshold) {
         return xyz;
       }
-      last2 = delta;
+      last = delta;
     }
     j = j - (xyz[1] - y2) * j / (2 * xyz[1]);
     attempt += 1;
@@ -2132,17 +2367,17 @@ function toHct(xyz, env) {
   if (t2 === 0) {
     return [0, 0, 0];
   }
-  const cam162 = toCam16(xyz, viewingConditions);
-  return [constrain(cam162.h), cam162.C, t2];
+  const cam16 = toCam16(xyz, viewingConditions);
+  return [constrain(cam16.h), cam16.C, t2];
 }
 const viewingConditions = environment(
-  white$2,
+  white$1,
   200 / Math.PI * fromLstar(50),
   fromLstar(50) * 100,
   "average",
   false
 );
-var hct = new ColorSpace({
+const hct = new ColorSpace({
   id: "hct",
   name: "HCT",
   coords: {
@@ -2162,7 +2397,15 @@ var hct = new ColorSpace({
   },
   base: xyz_d65,
   fromBase(xyz) {
-    return toHct(xyz);
+    if (this.ε === void 0) {
+      this.ε = Object.values(this.coords)[1].refRange[1] / 1e5;
+    }
+    let hct2 = toHct(xyz);
+    if (hct2[1] < this.ε) {
+      hct2[1] = 0;
+      hct2[0] = null;
+    }
+    return hct2;
   },
   toBase(hct2) {
     return fromHct(hct2, viewingConditions);
@@ -2192,13 +2435,14 @@ function deltaEHCT(color, sample) {
   let [t2, a2, b2] = convertUcsAb(hct.from(sample));
   return Math.sqrt((t1 - t2) ** 2 + (a1 - a2) ** 2 + (b1 - b2) ** 2);
 }
-var deltaEMethods = {
+const deltaEMethods = {
   deltaE76,
   deltaECMC,
   deltaE2000,
   deltaEJz,
   deltaEITP,
   deltaEOK,
+  deltaEOK2,
   deltaEHCT
 };
 function calcEpsilon(jnd) {
@@ -2206,7 +2450,7 @@ function calcEpsilon(jnd) {
   return Math.max(parseFloat(`1e${order - 2}`), 1e-6);
 }
 const GMAPPRESET = {
-  "hct": {
+  hct: {
     method: "hct.c",
     jnd: 2,
     deltaEMethod: "hct",
@@ -2224,7 +2468,7 @@ function toGamut(color, {
   space = void 0,
   deltaEMethod = "",
   jnd = 2,
-  blackWhiteClamp = {}
+  blackWhiteClamp = void 0
 } = {}) {
   color = getColor(color);
   if (isString(arguments[1])) {
@@ -2234,7 +2478,10 @@ function toGamut(color, {
   }
   space = ColorSpace.get(space);
   if (inGamut(color, space, { epsilon: 0 })) {
-    return color;
+    return (
+      /** @type {PlainColorObject} */
+      color
+    );
   }
   let spaceColor;
   if (method === "css") {
@@ -2246,16 +2493,19 @@ function toGamut(color, {
       }
       let de = deltaE2000;
       if (deltaEMethod !== "") {
-        for (let m3 in deltaEMethods) {
-          if ("deltae" + deltaEMethod.toLowerCase() === m3.toLowerCase()) {
-            de = deltaEMethods[m3];
+        for (let m in deltaEMethods) {
+          if ("deltae" + deltaEMethod.toLowerCase() === m.toLowerCase()) {
+            de = deltaEMethods[m];
             break;
           }
         }
       }
+      if (jnd === 0) {
+        jnd = 1e-16;
+      }
       let clipped = toGamut(to(color, space), { method: "clip", space });
       if (de(color, clipped) > jnd) {
-        if (Object.keys(blackWhiteClamp).length === 3) {
+        if (blackWhiteClamp && Object.keys(blackWhiteClamp).length === 3) {
           let channelMeta = ColorSpace.resolveCoord(blackWhiteClamp.channel);
           let channel = get(to(color, channelMeta.space), channelMeta.id);
           if (isNone(channel)) {
@@ -2284,8 +2534,8 @@ function toGamut(color, {
         while (high - low > ε2) {
           let clipped2 = clone(mappedColor);
           clipped2 = toGamut(clipped2, { space, method: "clip" });
-          let deltaE2 = de(mappedColor, clipped2);
-          if (deltaE2 - jnd < ε2) {
+          let deltaE = de(mappedColor, clipped2);
+          if (deltaE - jnd < ε2) {
             low = get(mappedColor, coordId);
           } else {
             high = get(mappedColor, coordId);
@@ -2299,9 +2549,12 @@ function toGamut(color, {
     } else {
       spaceColor = to(color, space);
     }
-    if (method === "clip" || !inGamut(spaceColor, space, { epsilon: 0 })) {
+    if (method === "clip" || // Dumb coord clipping
+    // finish off smarter gamut mapping with clip to get rid of ε, see #17
+    !inGamut(spaceColor, space, { epsilon: 0 })) {
       let bounds = Object.values(space.coords).map((c4) => c4.range || []);
-      spaceColor.coords = spaceColor.coords.map((c4, i2) => {
+      spaceColor.coords = /** @type {[number, number, number]} */
+      spaceColor.coords.map((c4, i2) => {
         let [min, max2] = bounds[i2];
         if (min !== void 0) {
           c4 = Math.max(min, c4);
@@ -2317,12 +2570,15 @@ function toGamut(color, {
     spaceColor = to(spaceColor, color.space);
   }
   color.coords = spaceColor.coords;
-  return color;
+  return (
+    /** @type {PlainColorObject} */
+    color
+  );
 }
 toGamut.returns = "color";
 const COLORS = {
-  WHITE: { space: OKLab, coords: [1, 0, 0] },
-  BLACK: { space: OKLab, coords: [0, 0, 0] }
+  WHITE: { space: Oklab, coords: [1, 0, 0], alpha: 1 },
+  BLACK: { space: Oklab, coords: [0, 0, 0], alpha: 1 }
 };
 function toGamutCSS(origin, { space } = {}) {
   const JND = 0.02;
@@ -2353,8 +2609,12 @@ function toGamutCSS(origin, { space } = {}) {
   }
   function clip(_color) {
     const destColor = to(_color, space);
-    const spaceCoords = Object.values(space.coords);
-    destColor.coords = destColor.coords.map((coord, index) => {
+    const spaceCoords = Object.values(
+      /** @type {ColorSpace} */
+      space.coords
+    );
+    destColor.coords = /** @type {[number, number, number]} */
+    destColor.coords.map((coord, index) => {
       if ("range" in spaceCoords[index]) {
         const [min2, max3] = spaceCoords[index].range;
         return clamp(min2, coord, max3);
@@ -2405,284 +2665,313 @@ function to(color, space, { inGamut: inGamut2 } = {}) {
   return ret;
 }
 to.returns = "color";
-function serialize(color, {
-  precision = defaults.precision,
-  format = "default",
-  inGamut: inGamut$1 = true,
-  ...customOptions
-} = {}) {
-  var _a2, _b2, _c2;
+function serialize(color, options = {}) {
+  var _a2, _b2, _c2, _d;
+  let {
+    precision = defaults.precision,
+    format,
+    inGamut: inGamut$1 = true,
+    coords: coordFormat,
+    alpha: alphaFormat,
+    commas
+  } = options;
   let ret;
-  color = getColor(color);
+  let colorWithMeta = (
+    /** @type {PlainColorObject & ParseOptions} */
+    getColor(color)
+  );
   let formatId = format;
-  format = (_b2 = (_a2 = color.space.getFormat(format)) != null ? _a2 : color.space.getFormat("default")) != null ? _b2 : ColorSpace.DEFAULT_FORMAT;
-  let coords = color.coords.slice();
+  let parseMeta = colorWithMeta.parseMeta;
+  if (parseMeta && !format) {
+    if (parseMeta.format.canSerialize()) {
+      format = parseMeta.format;
+      formatId = parseMeta.formatId;
+    }
+    coordFormat != null ? coordFormat : coordFormat = parseMeta.types;
+    alphaFormat != null ? alphaFormat : alphaFormat = parseMeta.alphaType;
+    commas != null ? commas : commas = parseMeta.commas;
+  }
+  if (formatId) {
+    format = (_a2 = colorWithMeta.space.getFormat(format)) != null ? _a2 : ColorSpace.findFormat(formatId);
+  }
+  if (!format) {
+    format = (_b2 = colorWithMeta.space.getFormat("default")) != null ? _b2 : ColorSpace.DEFAULT_FORMAT;
+    formatId = format.name;
+  }
+  if (format && format.space && format.space !== colorWithMeta.space) {
+    colorWithMeta = to(colorWithMeta, format.space);
+  }
+  let coords = colorWithMeta.coords.slice();
   inGamut$1 || (inGamut$1 = format.toGamut);
-  if (inGamut$1 && !inGamut(color)) {
-    coords = toGamut(clone(color), inGamut$1 === true ? void 0 : inGamut$1).coords;
+  if (inGamut$1 && !inGamut(colorWithMeta)) {
+    coords = toGamut(clone(colorWithMeta), inGamut$1 === true ? void 0 : inGamut$1).coords;
   }
   if (format.type === "custom") {
-    customOptions.precision = precision;
     if (format.serialize) {
-      ret = format.serialize(coords, color.alpha, customOptions);
+      ret = format.serialize(coords, colorWithMeta.alpha, options);
     } else {
-      throw new TypeError(`format ${formatId} can only be used to parse colors, not for serialization`);
+      throw new TypeError(
+        `format ${formatId} can only be used to parse colors, not for serialization`
+      );
     }
   } else {
     let name = format.name || "color";
-    if (format.serializeCoords) {
-      coords = format.serializeCoords(coords, precision);
-    } else {
-      if (precision !== null) {
-        coords = coords.map((c4) => {
-          return serializeNumber(c4, { precision });
-        });
-      }
-    }
-    let args = [...coords];
+    let args = format.serializeCoords(coords, precision, coordFormat);
     if (name === "color") {
-      let cssId = format.id || ((_c2 = format.ids) == null ? void 0 : _c2[0]) || color.space.id;
+      let cssId = format.id || ((_c2 = format.ids) == null ? void 0 : _c2[0]) || colorWithMeta.space.cssId || colorWithMeta.space.id;
       args.unshift(cssId);
     }
-    let alpha = color.alpha;
-    if (precision !== null) {
-      alpha = serializeNumber(alpha, { precision });
+    let alpha = colorWithMeta.alpha;
+    if (alphaFormat !== void 0 && !(typeof alphaFormat === "object")) {
+      alphaFormat = typeof alphaFormat === "string" ? { type: alphaFormat } : { include: alphaFormat };
     }
-    let strAlpha = color.alpha >= 1 || format.noAlpha ? "" : `${format.commas ? "," : " /"} ${alpha}`;
-    ret = `${name}(${args.join(format.commas ? ", " : " ")}${strAlpha})`;
+    let alphaType = (_d = alphaFormat == null ? void 0 : alphaFormat.type) != null ? _d : "<number>";
+    let serializeAlpha = (alphaFormat == null ? void 0 : alphaFormat.include) === true || format.alpha === true || (alphaFormat == null ? void 0 : alphaFormat.include) !== false && format.alpha !== false && alpha < 1;
+    let strAlpha = "";
+    commas != null ? commas : commas = format.commas;
+    if (serializeAlpha) {
+      if (precision !== null) {
+        let unit;
+        if (alphaType === "<percentage>") {
+          unit = "%";
+          alpha *= 100;
+        }
+        alpha = serializeNumber(alpha, { precision, unit });
+      }
+      strAlpha = `${commas ? "," : " /"} ${alpha}`;
+    }
+    ret = `${name}(${args.join(commas ? ", " : " ")}${strAlpha})`;
   }
   return ret;
 }
-const toXYZ_M$5 = [
+const toXYZ_M$4 = [
   [0.6369580483012914, 0.14461690358620832, 0.1688809751641721],
   [0.2627002120112671, 0.6779980715188708, 0.05930171646986196],
   [0, 0.028072693049087428, 1.060985057710791]
 ];
-const fromXYZ_M$5 = [
+const fromXYZ_M$4 = [
   [1.716651187971268, -0.355670783776392, -0.25336628137366],
   [-0.666684351832489, 1.616481236634939, 0.0157685458139111],
   [0.017639857445311, -0.042770613257809, 0.942103121235474]
 ];
-var REC2020Linear = new RGBColorSpace({
+const REC_2020_Linear = new RGBColorSpace({
   id: "rec2020-linear",
   cssId: "--rec2020-linear",
   name: "Linear REC.2020",
   white: "D65",
-  toXYZ_M: toXYZ_M$5,
-  fromXYZ_M: fromXYZ_M$5
+  toXYZ_M: toXYZ_M$4,
+  fromXYZ_M: fromXYZ_M$4
 });
-const α = 1.09929682680944;
-const β = 0.018053968510807;
-var REC2020 = new RGBColorSpace({
+const REC2020 = new RGBColorSpace({
   id: "rec2020",
   name: "REC.2020",
-  base: REC2020Linear,
-  // Non-linear transfer function from Rec. ITU-R BT.2020-2 table 4
+  base: REC_2020_Linear,
+  //  Reference electro-optical transfer function from Rec. ITU-R BT.1886 Annex 1
+  //  with b (black lift) = 0 and a (user gain) = 1
+  //  defined over the extended range, not clamped
   toBase(RGB) {
     return RGB.map(function(val) {
-      if (val < β * 4.5) {
-        return val / 4.5;
-      }
-      return Math.pow((val + α - 1) / α, 1 / 0.45);
+      let sign = val < 0 ? -1 : 1;
+      let abs = val * sign;
+      return sign * Math.pow(abs, 2.4);
     });
   },
   fromBase(RGB) {
     return RGB.map(function(val) {
-      if (val >= β) {
-        return α * Math.pow(val, 0.45) - (α - 1);
-      }
-      return 4.5 * val;
+      let sign = val < 0 ? -1 : 1;
+      let abs = val * sign;
+      return sign * Math.pow(abs, 1 / 2.4);
     });
   }
 });
-const toXYZ_M$4 = [
+const toXYZ_M$3 = [
   [0.4865709486482162, 0.26566769316909306, 0.1982172852343625],
   [0.2289745640697488, 0.6917385218365064, 0.079286914093745],
   [0, 0.04511338185890264, 1.043944368900976]
 ];
-const fromXYZ_M$4 = [
+const fromXYZ_M$3 = [
   [2.493496911941425, -0.9313836179191239, -0.40271078445071684],
   [-0.8294889695615747, 1.7626640603183463, 0.023624685841943577],
   [0.03584583024378447, -0.07617238926804182, 0.9568845240076872]
 ];
-var P3Linear = new RGBColorSpace({
+const P3Linear = new RGBColorSpace({
   id: "p3-linear",
-  cssId: "--display-p3-linear",
+  cssId: "display-p3-linear",
   name: "Linear P3",
-  white: "D65",
-  toXYZ_M: toXYZ_M$4,
-  fromXYZ_M: fromXYZ_M$4
-});
-const toXYZ_M$3 = [
-  [0.41239079926595934, 0.357584339383878, 0.1804807884018343],
-  [0.21263900587151027, 0.715168678767756, 0.07219231536073371],
-  [0.01933081871559182, 0.11919477979462598, 0.9505321522496607]
-];
-const fromXYZ_M$3 = [
-  [3.2409699419045226, -1.537383177570094, -0.4986107602930034],
-  [-0.9692436362808796, 1.8759675015077202, 0.04155505740717559],
-  [0.05563007969699366, -0.20397695888897652, 1.0569715142428786]
-];
-var sRGBLinear = new RGBColorSpace({
-  id: "srgb-linear",
-  name: "Linear sRGB",
   white: "D65",
   toXYZ_M: toXYZ_M$3,
   fromXYZ_M: fromXYZ_M$3
 });
-var KEYWORDS = {
-  "aliceblue": [240 / 255, 248 / 255, 1],
-  "antiquewhite": [250 / 255, 235 / 255, 215 / 255],
-  "aqua": [0, 1, 1],
-  "aquamarine": [127 / 255, 1, 212 / 255],
-  "azure": [240 / 255, 1, 1],
-  "beige": [245 / 255, 245 / 255, 220 / 255],
-  "bisque": [1, 228 / 255, 196 / 255],
-  "black": [0, 0, 0],
-  "blanchedalmond": [1, 235 / 255, 205 / 255],
-  "blue": [0, 0, 1],
-  "blueviolet": [138 / 255, 43 / 255, 226 / 255],
-  "brown": [165 / 255, 42 / 255, 42 / 255],
-  "burlywood": [222 / 255, 184 / 255, 135 / 255],
-  "cadetblue": [95 / 255, 158 / 255, 160 / 255],
-  "chartreuse": [127 / 255, 1, 0],
-  "chocolate": [210 / 255, 105 / 255, 30 / 255],
-  "coral": [1, 127 / 255, 80 / 255],
-  "cornflowerblue": [100 / 255, 149 / 255, 237 / 255],
-  "cornsilk": [1, 248 / 255, 220 / 255],
-  "crimson": [220 / 255, 20 / 255, 60 / 255],
-  "cyan": [0, 1, 1],
-  "darkblue": [0, 0, 139 / 255],
-  "darkcyan": [0, 139 / 255, 139 / 255],
-  "darkgoldenrod": [184 / 255, 134 / 255, 11 / 255],
-  "darkgray": [169 / 255, 169 / 255, 169 / 255],
-  "darkgreen": [0, 100 / 255, 0],
-  "darkgrey": [169 / 255, 169 / 255, 169 / 255],
-  "darkkhaki": [189 / 255, 183 / 255, 107 / 255],
-  "darkmagenta": [139 / 255, 0, 139 / 255],
-  "darkolivegreen": [85 / 255, 107 / 255, 47 / 255],
-  "darkorange": [1, 140 / 255, 0],
-  "darkorchid": [153 / 255, 50 / 255, 204 / 255],
-  "darkred": [139 / 255, 0, 0],
-  "darksalmon": [233 / 255, 150 / 255, 122 / 255],
-  "darkseagreen": [143 / 255, 188 / 255, 143 / 255],
-  "darkslateblue": [72 / 255, 61 / 255, 139 / 255],
-  "darkslategray": [47 / 255, 79 / 255, 79 / 255],
-  "darkslategrey": [47 / 255, 79 / 255, 79 / 255],
-  "darkturquoise": [0, 206 / 255, 209 / 255],
-  "darkviolet": [148 / 255, 0, 211 / 255],
-  "deeppink": [1, 20 / 255, 147 / 255],
-  "deepskyblue": [0, 191 / 255, 1],
-  "dimgray": [105 / 255, 105 / 255, 105 / 255],
-  "dimgrey": [105 / 255, 105 / 255, 105 / 255],
-  "dodgerblue": [30 / 255, 144 / 255, 1],
-  "firebrick": [178 / 255, 34 / 255, 34 / 255],
-  "floralwhite": [1, 250 / 255, 240 / 255],
-  "forestgreen": [34 / 255, 139 / 255, 34 / 255],
-  "fuchsia": [1, 0, 1],
-  "gainsboro": [220 / 255, 220 / 255, 220 / 255],
-  "ghostwhite": [248 / 255, 248 / 255, 1],
-  "gold": [1, 215 / 255, 0],
-  "goldenrod": [218 / 255, 165 / 255, 32 / 255],
-  "gray": [128 / 255, 128 / 255, 128 / 255],
-  "green": [0, 128 / 255, 0],
-  "greenyellow": [173 / 255, 1, 47 / 255],
-  "grey": [128 / 255, 128 / 255, 128 / 255],
-  "honeydew": [240 / 255, 1, 240 / 255],
-  "hotpink": [1, 105 / 255, 180 / 255],
-  "indianred": [205 / 255, 92 / 255, 92 / 255],
-  "indigo": [75 / 255, 0, 130 / 255],
-  "ivory": [1, 1, 240 / 255],
-  "khaki": [240 / 255, 230 / 255, 140 / 255],
-  "lavender": [230 / 255, 230 / 255, 250 / 255],
-  "lavenderblush": [1, 240 / 255, 245 / 255],
-  "lawngreen": [124 / 255, 252 / 255, 0],
-  "lemonchiffon": [1, 250 / 255, 205 / 255],
-  "lightblue": [173 / 255, 216 / 255, 230 / 255],
-  "lightcoral": [240 / 255, 128 / 255, 128 / 255],
-  "lightcyan": [224 / 255, 1, 1],
-  "lightgoldenrodyellow": [250 / 255, 250 / 255, 210 / 255],
-  "lightgray": [211 / 255, 211 / 255, 211 / 255],
-  "lightgreen": [144 / 255, 238 / 255, 144 / 255],
-  "lightgrey": [211 / 255, 211 / 255, 211 / 255],
-  "lightpink": [1, 182 / 255, 193 / 255],
-  "lightsalmon": [1, 160 / 255, 122 / 255],
-  "lightseagreen": [32 / 255, 178 / 255, 170 / 255],
-  "lightskyblue": [135 / 255, 206 / 255, 250 / 255],
-  "lightslategray": [119 / 255, 136 / 255, 153 / 255],
-  "lightslategrey": [119 / 255, 136 / 255, 153 / 255],
-  "lightsteelblue": [176 / 255, 196 / 255, 222 / 255],
-  "lightyellow": [1, 1, 224 / 255],
-  "lime": [0, 1, 0],
-  "limegreen": [50 / 255, 205 / 255, 50 / 255],
-  "linen": [250 / 255, 240 / 255, 230 / 255],
-  "magenta": [1, 0, 1],
-  "maroon": [128 / 255, 0, 0],
-  "mediumaquamarine": [102 / 255, 205 / 255, 170 / 255],
-  "mediumblue": [0, 0, 205 / 255],
-  "mediumorchid": [186 / 255, 85 / 255, 211 / 255],
-  "mediumpurple": [147 / 255, 112 / 255, 219 / 255],
-  "mediumseagreen": [60 / 255, 179 / 255, 113 / 255],
-  "mediumslateblue": [123 / 255, 104 / 255, 238 / 255],
-  "mediumspringgreen": [0, 250 / 255, 154 / 255],
-  "mediumturquoise": [72 / 255, 209 / 255, 204 / 255],
-  "mediumvioletred": [199 / 255, 21 / 255, 133 / 255],
-  "midnightblue": [25 / 255, 25 / 255, 112 / 255],
-  "mintcream": [245 / 255, 1, 250 / 255],
-  "mistyrose": [1, 228 / 255, 225 / 255],
-  "moccasin": [1, 228 / 255, 181 / 255],
-  "navajowhite": [1, 222 / 255, 173 / 255],
-  "navy": [0, 0, 128 / 255],
-  "oldlace": [253 / 255, 245 / 255, 230 / 255],
-  "olive": [128 / 255, 128 / 255, 0],
-  "olivedrab": [107 / 255, 142 / 255, 35 / 255],
-  "orange": [1, 165 / 255, 0],
-  "orangered": [1, 69 / 255, 0],
-  "orchid": [218 / 255, 112 / 255, 214 / 255],
-  "palegoldenrod": [238 / 255, 232 / 255, 170 / 255],
-  "palegreen": [152 / 255, 251 / 255, 152 / 255],
-  "paleturquoise": [175 / 255, 238 / 255, 238 / 255],
-  "palevioletred": [219 / 255, 112 / 255, 147 / 255],
-  "papayawhip": [1, 239 / 255, 213 / 255],
-  "peachpuff": [1, 218 / 255, 185 / 255],
-  "peru": [205 / 255, 133 / 255, 63 / 255],
-  "pink": [1, 192 / 255, 203 / 255],
-  "plum": [221 / 255, 160 / 255, 221 / 255],
-  "powderblue": [176 / 255, 224 / 255, 230 / 255],
-  "purple": [128 / 255, 0, 128 / 255],
-  "rebeccapurple": [102 / 255, 51 / 255, 153 / 255],
-  "red": [1, 0, 0],
-  "rosybrown": [188 / 255, 143 / 255, 143 / 255],
-  "royalblue": [65 / 255, 105 / 255, 225 / 255],
-  "saddlebrown": [139 / 255, 69 / 255, 19 / 255],
-  "salmon": [250 / 255, 128 / 255, 114 / 255],
-  "sandybrown": [244 / 255, 164 / 255, 96 / 255],
-  "seagreen": [46 / 255, 139 / 255, 87 / 255],
-  "seashell": [1, 245 / 255, 238 / 255],
-  "sienna": [160 / 255, 82 / 255, 45 / 255],
-  "silver": [192 / 255, 192 / 255, 192 / 255],
-  "skyblue": [135 / 255, 206 / 255, 235 / 255],
-  "slateblue": [106 / 255, 90 / 255, 205 / 255],
-  "slategray": [112 / 255, 128 / 255, 144 / 255],
-  "slategrey": [112 / 255, 128 / 255, 144 / 255],
-  "snow": [1, 250 / 255, 250 / 255],
-  "springgreen": [0, 1, 127 / 255],
-  "steelblue": [70 / 255, 130 / 255, 180 / 255],
-  "tan": [210 / 255, 180 / 255, 140 / 255],
-  "teal": [0, 128 / 255, 128 / 255],
-  "thistle": [216 / 255, 191 / 255, 216 / 255],
-  "tomato": [1, 99 / 255, 71 / 255],
-  "turquoise": [64 / 255, 224 / 255, 208 / 255],
-  "violet": [238 / 255, 130 / 255, 238 / 255],
-  "wheat": [245 / 255, 222 / 255, 179 / 255],
-  "white": [1, 1, 1],
-  "whitesmoke": [245 / 255, 245 / 255, 245 / 255],
-  "yellow": [1, 1, 0],
-  "yellowgreen": [154 / 255, 205 / 255, 50 / 255]
+const toXYZ_M$2 = [
+  [0.41239079926595934, 0.357584339383878, 0.1804807884018343],
+  [0.21263900587151027, 0.715168678767756, 0.07219231536073371],
+  [0.01933081871559182, 0.11919477979462598, 0.9505321522496607]
+];
+const fromXYZ_M$2 = [
+  [3.2409699419045226, -1.537383177570094, -0.4986107602930034],
+  [-0.9692436362808796, 1.8759675015077202, 0.04155505740717559],
+  [0.05563007969699366, -0.20397695888897652, 1.0569715142428786]
+];
+const sRGBLinear = new RGBColorSpace({
+  id: "srgb-linear",
+  name: "Linear sRGB",
+  white: "D65",
+  toXYZ_M: toXYZ_M$2,
+  fromXYZ_M: fromXYZ_M$2
+});
+const KEYWORDS = {
+  aliceblue: [240 / 255, 248 / 255, 1],
+  antiquewhite: [250 / 255, 235 / 255, 215 / 255],
+  aqua: [0, 1, 1],
+  aquamarine: [127 / 255, 1, 212 / 255],
+  azure: [240 / 255, 1, 1],
+  beige: [245 / 255, 245 / 255, 220 / 255],
+  bisque: [1, 228 / 255, 196 / 255],
+  black: [0, 0, 0],
+  blanchedalmond: [1, 235 / 255, 205 / 255],
+  blue: [0, 0, 1],
+  blueviolet: [138 / 255, 43 / 255, 226 / 255],
+  brown: [165 / 255, 42 / 255, 42 / 255],
+  burlywood: [222 / 255, 184 / 255, 135 / 255],
+  cadetblue: [95 / 255, 158 / 255, 160 / 255],
+  chartreuse: [127 / 255, 1, 0],
+  chocolate: [210 / 255, 105 / 255, 30 / 255],
+  coral: [1, 127 / 255, 80 / 255],
+  cornflowerblue: [100 / 255, 149 / 255, 237 / 255],
+  cornsilk: [1, 248 / 255, 220 / 255],
+  crimson: [220 / 255, 20 / 255, 60 / 255],
+  cyan: [0, 1, 1],
+  darkblue: [0, 0, 139 / 255],
+  darkcyan: [0, 139 / 255, 139 / 255],
+  darkgoldenrod: [184 / 255, 134 / 255, 11 / 255],
+  darkgray: [169 / 255, 169 / 255, 169 / 255],
+  darkgreen: [0, 100 / 255, 0],
+  darkgrey: [169 / 255, 169 / 255, 169 / 255],
+  darkkhaki: [189 / 255, 183 / 255, 107 / 255],
+  darkmagenta: [139 / 255, 0, 139 / 255],
+  darkolivegreen: [85 / 255, 107 / 255, 47 / 255],
+  darkorange: [1, 140 / 255, 0],
+  darkorchid: [153 / 255, 50 / 255, 204 / 255],
+  darkred: [139 / 255, 0, 0],
+  darksalmon: [233 / 255, 150 / 255, 122 / 255],
+  darkseagreen: [143 / 255, 188 / 255, 143 / 255],
+  darkslateblue: [72 / 255, 61 / 255, 139 / 255],
+  darkslategray: [47 / 255, 79 / 255, 79 / 255],
+  darkslategrey: [47 / 255, 79 / 255, 79 / 255],
+  darkturquoise: [0, 206 / 255, 209 / 255],
+  darkviolet: [148 / 255, 0, 211 / 255],
+  deeppink: [1, 20 / 255, 147 / 255],
+  deepskyblue: [0, 191 / 255, 1],
+  dimgray: [105 / 255, 105 / 255, 105 / 255],
+  dimgrey: [105 / 255, 105 / 255, 105 / 255],
+  dodgerblue: [30 / 255, 144 / 255, 1],
+  firebrick: [178 / 255, 34 / 255, 34 / 255],
+  floralwhite: [1, 250 / 255, 240 / 255],
+  forestgreen: [34 / 255, 139 / 255, 34 / 255],
+  fuchsia: [1, 0, 1],
+  gainsboro: [220 / 255, 220 / 255, 220 / 255],
+  ghostwhite: [248 / 255, 248 / 255, 1],
+  gold: [1, 215 / 255, 0],
+  goldenrod: [218 / 255, 165 / 255, 32 / 255],
+  gray: [128 / 255, 128 / 255, 128 / 255],
+  green: [0, 128 / 255, 0],
+  greenyellow: [173 / 255, 1, 47 / 255],
+  grey: [128 / 255, 128 / 255, 128 / 255],
+  honeydew: [240 / 255, 1, 240 / 255],
+  hotpink: [1, 105 / 255, 180 / 255],
+  indianred: [205 / 255, 92 / 255, 92 / 255],
+  indigo: [75 / 255, 0, 130 / 255],
+  ivory: [1, 1, 240 / 255],
+  khaki: [240 / 255, 230 / 255, 140 / 255],
+  lavender: [230 / 255, 230 / 255, 250 / 255],
+  lavenderblush: [1, 240 / 255, 245 / 255],
+  lawngreen: [124 / 255, 252 / 255, 0],
+  lemonchiffon: [1, 250 / 255, 205 / 255],
+  lightblue: [173 / 255, 216 / 255, 230 / 255],
+  lightcoral: [240 / 255, 128 / 255, 128 / 255],
+  lightcyan: [224 / 255, 1, 1],
+  lightgoldenrodyellow: [250 / 255, 250 / 255, 210 / 255],
+  lightgray: [211 / 255, 211 / 255, 211 / 255],
+  lightgreen: [144 / 255, 238 / 255, 144 / 255],
+  lightgrey: [211 / 255, 211 / 255, 211 / 255],
+  lightpink: [1, 182 / 255, 193 / 255],
+  lightsalmon: [1, 160 / 255, 122 / 255],
+  lightseagreen: [32 / 255, 178 / 255, 170 / 255],
+  lightskyblue: [135 / 255, 206 / 255, 250 / 255],
+  lightslategray: [119 / 255, 136 / 255, 153 / 255],
+  lightslategrey: [119 / 255, 136 / 255, 153 / 255],
+  lightsteelblue: [176 / 255, 196 / 255, 222 / 255],
+  lightyellow: [1, 1, 224 / 255],
+  lime: [0, 1, 0],
+  limegreen: [50 / 255, 205 / 255, 50 / 255],
+  linen: [250 / 255, 240 / 255, 230 / 255],
+  magenta: [1, 0, 1],
+  maroon: [128 / 255, 0, 0],
+  mediumaquamarine: [102 / 255, 205 / 255, 170 / 255],
+  mediumblue: [0, 0, 205 / 255],
+  mediumorchid: [186 / 255, 85 / 255, 211 / 255],
+  mediumpurple: [147 / 255, 112 / 255, 219 / 255],
+  mediumseagreen: [60 / 255, 179 / 255, 113 / 255],
+  mediumslateblue: [123 / 255, 104 / 255, 238 / 255],
+  mediumspringgreen: [0, 250 / 255, 154 / 255],
+  mediumturquoise: [72 / 255, 209 / 255, 204 / 255],
+  mediumvioletred: [199 / 255, 21 / 255, 133 / 255],
+  midnightblue: [25 / 255, 25 / 255, 112 / 255],
+  mintcream: [245 / 255, 1, 250 / 255],
+  mistyrose: [1, 228 / 255, 225 / 255],
+  moccasin: [1, 228 / 255, 181 / 255],
+  navajowhite: [1, 222 / 255, 173 / 255],
+  navy: [0, 0, 128 / 255],
+  oldlace: [253 / 255, 245 / 255, 230 / 255],
+  olive: [128 / 255, 128 / 255, 0],
+  olivedrab: [107 / 255, 142 / 255, 35 / 255],
+  orange: [1, 165 / 255, 0],
+  orangered: [1, 69 / 255, 0],
+  orchid: [218 / 255, 112 / 255, 214 / 255],
+  palegoldenrod: [238 / 255, 232 / 255, 170 / 255],
+  palegreen: [152 / 255, 251 / 255, 152 / 255],
+  paleturquoise: [175 / 255, 238 / 255, 238 / 255],
+  palevioletred: [219 / 255, 112 / 255, 147 / 255],
+  papayawhip: [1, 239 / 255, 213 / 255],
+  peachpuff: [1, 218 / 255, 185 / 255],
+  peru: [205 / 255, 133 / 255, 63 / 255],
+  pink: [1, 192 / 255, 203 / 255],
+  plum: [221 / 255, 160 / 255, 221 / 255],
+  powderblue: [176 / 255, 224 / 255, 230 / 255],
+  purple: [128 / 255, 0, 128 / 255],
+  rebeccapurple: [102 / 255, 51 / 255, 153 / 255],
+  red: [1, 0, 0],
+  rosybrown: [188 / 255, 143 / 255, 143 / 255],
+  royalblue: [65 / 255, 105 / 255, 225 / 255],
+  saddlebrown: [139 / 255, 69 / 255, 19 / 255],
+  salmon: [250 / 255, 128 / 255, 114 / 255],
+  sandybrown: [244 / 255, 164 / 255, 96 / 255],
+  seagreen: [46 / 255, 139 / 255, 87 / 255],
+  seashell: [1, 245 / 255, 238 / 255],
+  sienna: [160 / 255, 82 / 255, 45 / 255],
+  silver: [192 / 255, 192 / 255, 192 / 255],
+  skyblue: [135 / 255, 206 / 255, 235 / 255],
+  slateblue: [106 / 255, 90 / 255, 205 / 255],
+  slategray: [112 / 255, 128 / 255, 144 / 255],
+  slategrey: [112 / 255, 128 / 255, 144 / 255],
+  snow: [1, 250 / 255, 250 / 255],
+  springgreen: [0, 1, 127 / 255],
+  steelblue: [70 / 255, 130 / 255, 180 / 255],
+  tan: [210 / 255, 180 / 255, 140 / 255],
+  teal: [0, 128 / 255, 128 / 255],
+  thistle: [216 / 255, 191 / 255, 216 / 255],
+  tomato: [1, 99 / 255, 71 / 255],
+  turquoise: [64 / 255, 224 / 255, 208 / 255],
+  violet: [238 / 255, 130 / 255, 238 / 255],
+  wheat: [245 / 255, 222 / 255, 179 / 255],
+  white: [1, 1, 1],
+  whitesmoke: [245 / 255, 245 / 255, 245 / 255],
+  yellow: [1, 1, 0],
+  yellowgreen: [154 / 255, 205 / 255, 50 / 255]
 };
 let coordGrammar = Array(3).fill("<percentage> | <number>[0, 255]");
 let coordGrammarNumber = Array(3).fill("<number>[0, 255]");
-var sRGB = new RGBColorSpace({
+const sRGB = new RGBColorSpace({
   id: "srgb",
   name: "sRGB",
   base: sRGBLinear,
@@ -2707,32 +2996,32 @@ var sRGB = new RGBColorSpace({
     });
   },
   formats: {
-    "rgb": {
+    rgb: {
       coords: coordGrammar
     },
-    "rgb_number": {
+    rgb_number: {
       name: "rgb",
       commas: true,
       coords: coordGrammarNumber,
-      noAlpha: true
+      alpha: false
     },
-    "color": {
+    color: {
       /* use defaults */
     },
-    "rgba": {
+    rgba: {
       coords: coordGrammar,
       commas: true,
-      lastAlpha: true
+      alpha: true
     },
-    "rgba_number": {
+    rgba_number: {
       name: "rgba",
       commas: true,
       coords: coordGrammarNumber
     },
-    "hex": {
+    hex: {
       type: "custom",
       toGamut: true,
-      test: (str) => /^#([a-f0-9]{3,4}){1,2}$/i.test(str),
+      test: (str) => /^#(([a-f0-9]{2}){3,4}|[a-f0-9]{3,4})$/i.test(str),
       parse(str) {
         if (str.length <= 5) {
           str = str.replace(/[a-f0-9]/gi, "$&$&");
@@ -2743,18 +3032,26 @@ var sRGB = new RGBColorSpace({
         });
         return {
           spaceId: "srgb",
-          coords: rgba.slice(0, 3),
-          alpha: rgba.slice(3)[0]
+          coords: (
+            /** @type {Coords} */
+            rgba.slice(0, 3)
+          ),
+          alpha: (
+            /** @type {number} */
+            rgba.slice(3)[0]
+          )
         };
       },
       serialize: (coords, alpha, {
-        collapse = true
+        collapse = true,
         // collapse to 3-4 digit hex when possible?
+        alpha: alphaFormat
       } = {}) => {
-        if (alpha < 1) {
+        if (alphaFormat !== false && alpha < 1 || alphaFormat === true) {
           coords.push(alpha);
         }
-        coords = coords.map((c4) => Math.round(c4 * 255));
+        coords = /** @type {[number, number, number]} */
+        coords.map((c4) => Math.round(c4 * 255));
         let collapsible = collapse && coords.every((c4) => c4 % 17 === 0);
         let hex = coords.map((c4) => {
           if (collapsible) {
@@ -2765,7 +3062,7 @@ var sRGB = new RGBColorSpace({
         return "#" + hex;
       }
     },
-    "keyword": {
+    keyword: {
       type: "custom",
       test: (str) => /^[a-z]+$/i.test(str),
       parse(str) {
@@ -2784,7 +3081,7 @@ var sRGB = new RGBColorSpace({
     }
   }
 });
-var P3 = new RGBColorSpace({
+const P3 = new RGBColorSpace({
   id: "p3",
   cssId: "display-p3",
   name: "P3",
@@ -2793,73 +3090,9 @@ var P3 = new RGBColorSpace({
   fromBase: sRGB.fromBase,
   toBase: sRGB.toBase
 });
-defaults.display_space = sRGB;
-let supportsNone;
-if (typeof CSS !== "undefined" && CSS.supports) {
-  for (let space of [lab, REC2020, P3]) {
-    let coords = space.getMinCoords();
-    let color = { space, coords, alpha: 1 };
-    let str = serialize(color);
-    if (CSS.supports("color", str)) {
-      defaults.display_space = space;
-      break;
-    }
-  }
-}
-function display(color, { space = defaults.display_space, ...options } = {}) {
-  let ret = serialize(color, options);
-  if (typeof CSS === "undefined" || CSS.supports("color", ret) || !defaults.display_space) {
-    ret = new String(ret);
-    ret.color = color;
-  } else {
-    let fallbackColor = color;
-    let hasNone = color.coords.some(isNone) || isNone(color.alpha);
-    if (hasNone) {
-      if (!(supportsNone != null ? supportsNone : supportsNone = CSS.supports("color", "hsl(none 50% 50%)"))) {
-        fallbackColor = clone(color);
-        fallbackColor.coords = fallbackColor.coords.map(skipNone);
-        fallbackColor.alpha = skipNone(fallbackColor.alpha);
-        ret = serialize(fallbackColor, options);
-        if (CSS.supports("color", ret)) {
-          ret = new String(ret);
-          ret.color = fallbackColor;
-          return ret;
-        }
-      }
-    }
-    fallbackColor = to(fallbackColor, space);
-    ret = new String(serialize(fallbackColor, options));
-    ret.color = fallbackColor;
-  }
-  return ret;
-}
-function equals(color1, color2) {
-  color1 = getColor(color1);
-  color2 = getColor(color2);
-  return color1.space === color2.space && color1.alpha === color2.alpha && color1.coords.every((c4, i2) => c4 === color2.coords[i2]);
-}
 function getLuminance(color) {
   return get(color, [xyz_d65, "y"]);
 }
-function setLuminance(color, value) {
-  set(color, [xyz_d65, "y"], value);
-}
-function register$2(Color2) {
-  Object.defineProperty(Color2.prototype, "luminance", {
-    get() {
-      return getLuminance(this);
-    },
-    set(value) {
-      setLuminance(this, value);
-    }
-  });
-}
-var luminance = /* @__PURE__ */ Object.freeze({
-  __proto__: null,
-  getLuminance,
-  register: register$2,
-  setLuminance
-});
 function contrastWCAG21(color1, color2) {
   color1 = getColor(color1);
   color2 = getColor(color2);
@@ -2900,10 +3133,14 @@ function contrastAPCA(background, foreground) {
   let Sapc;
   let R, G, B;
   foreground = to(foreground, "srgb");
-  [R, G, B] = foreground.coords;
+  [R, G, B] = foreground.coords.map((c4) => {
+    return isNone(c4) ? 0 : c4;
+  });
   let lumTxt = linearize(R) * 0.2126729 + linearize(G) * 0.7151522 + linearize(B) * 0.072175;
   background = to(background, "srgb");
-  [R, G, B] = background.coords;
+  [R, G, B] = background.coords.map((c4) => {
+    return isNone(c4) ? 0 : c4;
+  });
   let lumBg = linearize(R) * 0.2126729 + linearize(G) * 0.7151522 + linearize(B) * 0.072175;
   let Ytxt = fclamp(lumTxt);
   let Ybg = fclamp(lumBg);
@@ -2957,11 +3194,11 @@ function contrastLstar(color1, color2) {
   let L2 = get(color2, [lab, "l"]);
   return Math.abs(L1 - L2);
 }
-const ε$3 = 216 / 24389;
+const ε = 216 / 24389;
 const ε3 = 24 / 116;
-const κ$2 = 24389 / 27;
-let white$1 = WHITES.D65;
-var lab_d65 = new ColorSpace({
+const κ = 24389 / 27;
+let white = WHITES.D65;
+const lab_d65 = new ColorSpace({
   id: "lab-d65",
   name: "Lab D65",
   coords: {
@@ -2978,13 +3215,13 @@ var lab_d65 = new ColorSpace({
   },
   // Assuming XYZ is relative to D65, convert to CIE Lab
   // from CIE standard, which now defines these as a rational fraction
-  white: white$1,
+  white,
   base: xyz_d65,
   // Convert D65-adapted XYZ to Lab
   //  CIE 15.3:2004 section 8.2.1.1
   fromBase(XYZ) {
-    let xyz = XYZ.map((value, i2) => value / white$1[i2]);
-    let f2 = xyz.map((value) => value > ε$3 ? Math.cbrt(value) : (κ$2 * value + 16) / 116);
+    let xyz = XYZ.map((value, i2) => value / white[i2]);
+    let f2 = xyz.map((value) => value > ε ? Math.cbrt(value) : (κ * value + 16) / 116);
     return [
       116 * f2[1] - 16,
       // L
@@ -3003,15 +3240,19 @@ var lab_d65 = new ColorSpace({
     f2[0] = Lab[1] / 500 + f2[1];
     f2[2] = f2[1] - Lab[2] / 200;
     let xyz = [
-      f2[0] > ε3 ? Math.pow(f2[0], 3) : (116 * f2[0] - 16) / κ$2,
-      Lab[0] > 8 ? Math.pow((Lab[0] + 16) / 116, 3) : Lab[0] / κ$2,
-      f2[2] > ε3 ? Math.pow(f2[2], 3) : (116 * f2[2] - 16) / κ$2
+      f2[0] > ε3 ? Math.pow(f2[0], 3) : (116 * f2[0] - 16) / κ,
+      Lab[0] > 8 ? Math.pow((Lab[0] + 16) / 116, 3) : Lab[0] / κ,
+      f2[2] > ε3 ? Math.pow(f2[2], 3) : (116 * f2[2] - 16) / κ
     ];
-    return xyz.map((value, i2) => value * white$1[i2]);
+    return xyz.map((value, i2) => value * white[i2]);
   },
   formats: {
     "lab-d65": {
-      coords: ["<number> | <percentage>", "<number> | <percentage>[-1,1]", "<number> | <percentage>[-1,1]"]
+      coords: [
+        "<number> | <percentage>",
+        "<number> | <percentage>",
+        "<number> | <percentage>"
+      ]
     }
   }
 });
@@ -3025,7 +3266,7 @@ function contrastDeltaPhi(color1, color2) {
   let contrast2 = Math.pow(deltaPhiStar, 1 / phi) * Math.SQRT2 - 40;
   return contrast2 < 7.5 ? 0 : contrast2;
 }
-var contrastMethods = /* @__PURE__ */ Object.freeze({
+const contrastAlgorithms = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
   __proto__: null,
   contrastAPCA,
   contrastDeltaPhi,
@@ -3033,219 +3274,28 @@ var contrastMethods = /* @__PURE__ */ Object.freeze({
   contrastMichelson,
   contrastWCAG21,
   contrastWeber
-});
-function contrast(background, foreground, o2 = {}) {
+}, Symbol.toStringTag, { value: "Module" }));
+function contrast(background, foreground, o2) {
   if (isString(o2)) {
     o2 = { algorithm: o2 };
   }
-  let { algorithm, ...rest } = o2;
+  let { algorithm, ...rest } = o2 || {};
   if (!algorithm) {
-    let algorithms = Object.keys(contrastMethods).map((a2) => a2.replace(/^contrast/, "")).join(", ");
-    throw new TypeError(`contrast() function needs a contrast algorithm. Please specify one of: ${algorithms}`);
+    let algorithms = Object.keys(contrastAlgorithms).map((a2) => a2.replace(/^contrast/, "")).join(", ");
+    throw new TypeError(
+      `contrast() function needs a contrast algorithm. Please specify one of: ${algorithms}`
+    );
   }
   background = getColor(background);
   foreground = getColor(foreground);
-  for (let a2 in contrastMethods) {
+  for (let a2 in contrastAlgorithms) {
     if ("contrast" + algorithm.toLowerCase() === a2.toLowerCase()) {
-      return contrastMethods[a2](background, foreground, rest);
+      return contrastAlgorithms[a2](background, foreground, rest);
     }
   }
   throw new TypeError(`Unknown contrast algorithm: ${algorithm}`);
 }
-function uv(color) {
-  let [X, Y, Z] = getAll(color, xyz_d65);
-  let denom = X + 15 * Y + 3 * Z;
-  return [4 * X / denom, 9 * Y / denom];
-}
-function xy(color) {
-  let [X, Y, Z] = getAll(color, xyz_d65);
-  let sum = X + Y + Z;
-  return [X / sum, Y / sum];
-}
-function register$1(Color2) {
-  Object.defineProperty(Color2.prototype, "uv", {
-    get() {
-      return uv(this);
-    }
-  });
-  Object.defineProperty(Color2.prototype, "xy", {
-    get() {
-      return xy(this);
-    }
-  });
-}
-var chromaticity = /* @__PURE__ */ Object.freeze({
-  __proto__: null,
-  register: register$1,
-  uv,
-  xy
-});
-function deltaE(c12, c22, o2 = {}) {
-  if (isString(o2)) {
-    o2 = { method: o2 };
-  }
-  let { method = defaults.deltaE, ...rest } = o2;
-  for (let m3 in deltaEMethods) {
-    if ("deltae" + method.toLowerCase() === m3.toLowerCase()) {
-      return deltaEMethods[m3](c12, c22, rest);
-    }
-  }
-  throw new TypeError(`Unknown deltaE method: ${method}`);
-}
-function lighten(color, amount = 0.25) {
-  let space = ColorSpace.get("oklch", "lch");
-  let lightness = [space, "l"];
-  return set(color, lightness, (l2) => l2 * (1 + amount));
-}
-function darken(color, amount = 0.25) {
-  let space = ColorSpace.get("oklch", "lch");
-  let lightness = [space, "l"];
-  return set(color, lightness, (l2) => l2 * (1 - amount));
-}
-var variations = /* @__PURE__ */ Object.freeze({
-  __proto__: null,
-  darken,
-  lighten
-});
-function mix(c12, c22, p2 = 0.5, o2 = {}) {
-  [c12, c22] = [getColor(c12), getColor(c22)];
-  if (type(p2) === "object") {
-    [p2, o2] = [0.5, p2];
-  }
-  let r = range(c12, c22, o2);
-  return r(p2);
-}
-function steps(c12, c22, options = {}) {
-  let colorRange;
-  if (isRange(c12)) {
-    [colorRange, options] = [c12, c22];
-    [c12, c22] = colorRange.rangeArgs.colors;
-  }
-  let {
-    maxDeltaE,
-    deltaEMethod,
-    steps: steps2 = 2,
-    maxSteps = 1e3,
-    ...rangeOptions
-  } = options;
-  if (!colorRange) {
-    [c12, c22] = [getColor(c12), getColor(c22)];
-    colorRange = range(c12, c22, rangeOptions);
-  }
-  let totalDelta = deltaE(c12, c22);
-  let actualSteps = maxDeltaE > 0 ? Math.max(steps2, Math.ceil(totalDelta / maxDeltaE) + 1) : steps2;
-  let ret = [];
-  if (maxSteps !== void 0) {
-    actualSteps = Math.min(actualSteps, maxSteps);
-  }
-  if (actualSteps === 1) {
-    ret = [{ p: 0.5, color: colorRange(0.5) }];
-  } else {
-    let step = 1 / (actualSteps - 1);
-    ret = Array.from({ length: actualSteps }, (_2, i2) => {
-      let p2 = i2 * step;
-      return { p: p2, color: colorRange(p2) };
-    });
-  }
-  if (maxDeltaE > 0) {
-    let maxDelta = ret.reduce((acc, cur, i2) => {
-      if (i2 === 0) {
-        return 0;
-      }
-      let ΔΕ = deltaE(cur.color, ret[i2 - 1].color, deltaEMethod);
-      return Math.max(acc, ΔΕ);
-    }, 0);
-    while (maxDelta > maxDeltaE) {
-      maxDelta = 0;
-      for (let i2 = 1; i2 < ret.length && ret.length < maxSteps; i2++) {
-        let prev = ret[i2 - 1];
-        let cur = ret[i2];
-        let p2 = (cur.p + prev.p) / 2;
-        let color = colorRange(p2);
-        maxDelta = Math.max(maxDelta, deltaE(color, prev.color), deltaE(color, cur.color));
-        ret.splice(i2, 0, { p: p2, color: colorRange(p2) });
-        i2++;
-      }
-    }
-  }
-  ret = ret.map((a2) => a2.color);
-  return ret;
-}
-function range(color1, color2, options = {}) {
-  if (isRange(color1)) {
-    let [r, options2] = [color1, color2];
-    return range(...r.rangeArgs.colors, { ...r.rangeArgs.options, ...options2 });
-  }
-  let { space, outputSpace, progression, premultiplied } = options;
-  color1 = getColor(color1);
-  color2 = getColor(color2);
-  color1 = clone(color1);
-  color2 = clone(color2);
-  let rangeArgs = { colors: [color1, color2], options };
-  if (space) {
-    space = ColorSpace.get(space);
-  } else {
-    space = ColorSpace.registry[defaults.interpolationSpace] || color1.space;
-  }
-  outputSpace = outputSpace ? ColorSpace.get(outputSpace) : space;
-  color1 = to(color1, space);
-  color2 = to(color2, space);
-  color1 = toGamut(color1);
-  color2 = toGamut(color2);
-  if (space.coords.h && space.coords.h.type === "angle") {
-    let arc = options.hue = options.hue || "shorter";
-    let hue = [space, "h"];
-    let [θ1, θ2] = [get(color1, hue), get(color2, hue)];
-    if (isNaN(θ1) && !isNaN(θ2)) {
-      θ1 = θ2;
-    } else if (isNaN(θ2) && !isNaN(θ1)) {
-      θ2 = θ1;
-    }
-    [θ1, θ2] = adjust(arc, [θ1, θ2]);
-    set(color1, hue, θ1);
-    set(color2, hue, θ2);
-  }
-  if (premultiplied) {
-    color1.coords = color1.coords.map((c4) => c4 * color1.alpha);
-    color2.coords = color2.coords.map((c4) => c4 * color2.alpha);
-  }
-  return Object.assign((p2) => {
-    p2 = progression ? progression(p2) : p2;
-    let coords = color1.coords.map((start, i2) => {
-      let end = color2.coords[i2];
-      return interpolate(start, end, p2);
-    });
-    let alpha = interpolate(color1.alpha, color2.alpha, p2);
-    let ret = { space, coords, alpha };
-    if (premultiplied) {
-      ret.coords = ret.coords.map((c4) => c4 / alpha);
-    }
-    if (outputSpace !== space) {
-      ret = to(ret, outputSpace);
-    }
-    return ret;
-  }, {
-    rangeArgs
-  });
-}
-function isRange(val) {
-  return type(val) === "function" && !!val.rangeArgs;
-}
-defaults.interpolationSpace = "lab";
-function register(Color2) {
-  Color2.defineFunction("mix", mix, { returns: "color" });
-  Color2.defineFunction("range", range, { returns: "function<color>" });
-  Color2.defineFunction("steps", steps, { returns: "array<color>" });
-}
-var interpolation = /* @__PURE__ */ Object.freeze({
-  __proto__: null,
-  isRange,
-  mix,
-  range,
-  register,
-  steps
-});
-var HSL = new ColorSpace({
+const hsl = new ColorSpace({
   id: "hsl",
   name: "HSL",
   coords: {
@@ -3269,7 +3319,7 @@ var HSL = new ColorSpace({
     let max2 = Math.max(...rgb);
     let min = Math.min(...rgb);
     let [r, g2, b2] = rgb;
-    let [h2, s2, l2] = [NaN, 0, (min + max2) / 2];
+    let [h2, s2, l2] = [null, 0, (min + max2) / 2];
     let d2 = max2 - min;
     if (d2 !== 0) {
       s2 = l2 === 0 || l2 === 1 ? 0 : (max2 - l2) / Math.min(l2, 1 - l2);
@@ -3295,8 +3345,8 @@ var HSL = new ColorSpace({
     return [h2, s2 * 100, l2 * 100];
   },
   // Adapted from https://en.wikipedia.org/wiki/HSL_and_HSV#HSL_to_RGB_alternative
-  toBase: (hsl) => {
-    let [h2, s2, l2] = hsl;
+  toBase: (hsl2) => {
+    let [h2, s2, l2] = hsl2;
     h2 = h2 % 360;
     if (h2 < 0) {
       h2 += 360;
@@ -3311,17 +3361,17 @@ var HSL = new ColorSpace({
     return [f2(0), f2(8), f2(4)];
   },
   formats: {
-    "hsl": {
-      coords: ["<number> | <angle>", "<percentage>", "<percentage>"]
+    hsl: {
+      coords: ["<number> | <angle>", "<percentage> | <number>", "<percentage> | <number>"]
     },
-    "hsla": {
-      coords: ["<number> | <angle>", "<percentage>", "<percentage>"],
+    hsla: {
+      coords: ["<number> | <angle>", "<percentage> | <number>", "<percentage> | <number>"],
       commas: true,
-      lastAlpha: true
+      alpha: true
     }
   }
 });
-var HSV = new ColorSpace({
+const HSV = new ColorSpace({
   id: "hsv",
   name: "HSV",
   coords: {
@@ -3339,33 +3389,49 @@ var HSV = new ColorSpace({
       name: "Value"
     }
   },
-  base: HSL,
-  // https://en.wikipedia.org/wiki/HSL_and_HSV#Interconversion
-  fromBase(hsl) {
-    let [h2, s2, l2] = hsl;
-    s2 /= 100;
-    l2 /= 100;
-    let v2 = l2 + s2 * Math.min(l2, 1 - l2);
-    return [
-      h2,
-      // h is the same
-      v2 === 0 ? 0 : 200 * (1 - l2 / v2),
-      // s
-      100 * v2
-    ];
+  base: sRGB,
+  // https://en.wikipedia.org/wiki/HSL_and_HSV#Formal_derivation
+  fromBase(rgb) {
+    let max2 = Math.max(...rgb);
+    let min = Math.min(...rgb);
+    let [r, g2, b2] = rgb;
+    let [h2, s2, v2] = [null, 0, max2];
+    let d2 = max2 - min;
+    if (d2 !== 0) {
+      switch (max2) {
+        case r:
+          h2 = (g2 - b2) / d2 + (g2 < b2 ? 6 : 0);
+          break;
+        case g2:
+          h2 = (b2 - r) / d2 + 2;
+          break;
+        case b2:
+          h2 = (r - g2) / d2 + 4;
+      }
+      h2 = h2 * 60;
+    }
+    if (v2) {
+      s2 = d2 / v2;
+    }
+    if (h2 >= 360) {
+      h2 -= 360;
+    }
+    return [h2, s2 * 100, v2 * 100];
   },
-  // https://en.wikipedia.org/wiki/HSL_and_HSV#Interconversion
+  // Adapted from https://en.wikipedia.org/wiki/HSL_and_HSV#HSV_to_RGB_alternative
   toBase(hsv) {
     let [h2, s2, v2] = hsv;
+    h2 = h2 % 360;
+    if (h2 < 0) {
+      h2 += 360;
+    }
     s2 /= 100;
     v2 /= 100;
-    let l2 = v2 * (1 - s2 / 2);
-    return [
-      h2,
-      // h is the same
-      l2 === 0 || l2 === 1 ? 0 : (v2 - l2) / Math.min(l2, 1 - l2) * 100,
-      l2 * 100
-    ];
+    function f2(n2) {
+      let k = (n2 + h2 / 60) % 6;
+      return v2 - v2 * s2 * Math.max(0, Math.min(k, 4 - k, 1));
+    }
+    return [f2(5), f2(3), f2(1)];
   },
   formats: {
     color: {
@@ -3374,7 +3440,7 @@ var HSV = new ColorSpace({
     }
   }
 });
-var hwb = new ColorSpace({
+const hwb = new ColorSpace({
   id: "hwb",
   name: "HWB",
   coords: {
@@ -3411,30 +3477,30 @@ var hwb = new ColorSpace({
     return [h2, s2 * 100, v2 * 100];
   },
   formats: {
-    "hwb": {
+    hwb: {
       coords: ["<number> | <angle>", "<percentage> | <number>", "<percentage> | <number>"]
     }
   }
 });
-const toXYZ_M$2 = [
+const toXYZ_M$1 = [
   [0.5766690429101305, 0.1855582379065463, 0.1882286462349947],
   [0.29734497525053605, 0.6273635662554661, 0.07529145849399788],
   [0.02703136138641234, 0.07068885253582723, 0.9913375368376388]
 ];
-const fromXYZ_M$2 = [
+const fromXYZ_M$1 = [
   [2.0415879038107465, -0.5650069742788596, -0.34473135077832956],
   [-0.9692436362808795, 1.8759675015077202, 0.04155505740717557],
   [0.013444280632031142, -0.11836239223101838, 1.0151749943912054]
 ];
-var A98Linear = new RGBColorSpace({
+const A98Linear = new RGBColorSpace({
   id: "a98rgb-linear",
   cssId: "--a98-rgb-linear",
   name: "Linear Adobe® 98 RGB compatible",
   white: "D65",
-  toXYZ_M: toXYZ_M$2,
-  fromXYZ_M: fromXYZ_M$2
+  toXYZ_M: toXYZ_M$1,
+  fromXYZ_M: fromXYZ_M$1
 });
-var a98rgb = new RGBColorSpace({
+const a98rgb = new RGBColorSpace({
   id: "a98rgb",
   cssId: "a98-rgb",
   name: "Adobe® 98 RGB compatible",
@@ -3442,42 +3508,56 @@ var a98rgb = new RGBColorSpace({
   toBase: (RGB) => RGB.map((val) => Math.pow(Math.abs(val), 563 / 256) * Math.sign(val)),
   fromBase: (RGB) => RGB.map((val) => Math.pow(Math.abs(val), 256 / 563) * Math.sign(val))
 });
-const toXYZ_M$1 = [
+const toXYZ_M = [
   [0.7977666449006423, 0.13518129740053308, 0.0313477341283922],
   [0.2880748288194013, 0.711835234241873, 8993693872564e-17],
   [0, 0, 0.8251046025104602]
 ];
-const fromXYZ_M$1 = [
+const fromXYZ_M = [
   [1.3457868816471583, -0.25557208737979464, -0.05110186497554526],
   [-0.5446307051249019, 1.5082477428451468, 0.02052744743642139],
   [0, 0, 1.2119675456389452]
 ];
-var ProPhotoLinear = new RGBColorSpace({
+const ProPhotoLinear = new RGBColorSpace({
   id: "prophoto-linear",
   cssId: "--prophoto-rgb-linear",
   name: "Linear ProPhoto",
   white: "D50",
   base: XYZ_D50,
-  toXYZ_M: toXYZ_M$1,
-  fromXYZ_M: fromXYZ_M$1
+  toXYZ_M,
+  fromXYZ_M
 });
 const Et = 1 / 512;
 const Et2 = 16 / 512;
-var prophoto = new RGBColorSpace({
+const prophoto = new RGBColorSpace({
   id: "prophoto",
   cssId: "prophoto-rgb",
   name: "ProPhoto",
   base: ProPhotoLinear,
   toBase(RGB) {
-    return RGB.map((v2) => v2 < Et2 ? v2 / 16 : v2 ** 1.8);
+    return RGB.map((v2) => {
+      let sign = v2 < 0 ? -1 : 1;
+      let abs = v2 * sign;
+      if (abs < Et2) {
+        return v2 / 16;
+      }
+      return sign * abs ** 1.8;
+    });
   },
   fromBase(RGB) {
-    return RGB.map((v2) => v2 >= Et ? v2 ** (1 / 1.8) : 16 * v2);
+    return RGB.map((v2) => {
+      let sign = v2 < 0 ? -1 : 1;
+      let abs = v2 * sign;
+      if (abs >= Et) {
+        return sign * abs ** (1 / 1.8);
+      }
+      return 16 * v2;
+    });
   }
 });
-var oklch = new ColorSpace({
+const oklch = new ColorSpace({
   id: "oklch",
-  name: "Oklch",
+  name: "OkLCh",
   coords: {
     l: {
       refRange: [0, 1],
@@ -3494,876 +3574,41 @@ var oklch = new ColorSpace({
     }
   },
   white: "D65",
-  base: OKLab,
-  fromBase(oklab) {
-    let [L, a2, b2] = oklab;
-    let h2;
-    const ε2 = 2e-4;
-    if (Math.abs(a2) < ε2 && Math.abs(b2) < ε2) {
-      h2 = NaN;
-    } else {
-      h2 = Math.atan2(b2, a2) * 180 / Math.PI;
-    }
-    return [
-      L,
-      // OKLab L is still L
-      Math.sqrt(a2 ** 2 + b2 ** 2),
-      // Chroma
-      constrain(h2)
-      // Hue, in degrees [0 to 360)
-    ];
-  },
-  // Convert from polar form
-  toBase(oklch2) {
-    let [L, C, h2] = oklch2;
-    let a2, b2;
-    if (isNaN(h2)) {
-      a2 = 0;
-      b2 = 0;
-    } else {
-      a2 = C * Math.cos(h2 * Math.PI / 180);
-      b2 = C * Math.sin(h2 * Math.PI / 180);
-    }
-    return [L, a2, b2];
-  },
+  base: Oklab,
+  fromBase: lch.fromBase,
+  toBase: lch.toBase,
   formats: {
-    "oklch": {
-      coords: ["<percentage> | <number>", "<number> | <percentage>[0,1]", "<number> | <angle>"]
+    oklch: {
+      coords: ["<percentage> | <number>", "<number> | <percentage>", "<number> | <angle>"]
     }
   }
 });
-let white = WHITES.D65;
-const ε$2 = 216 / 24389;
-const κ$1 = 24389 / 27;
-const [U_PRIME_WHITE, V_PRIME_WHITE] = uv({ space: xyz_d65, coords: white });
-var Luv = new ColorSpace({
-  id: "luv",
-  name: "Luv",
-  coords: {
-    l: {
-      refRange: [0, 100],
-      name: "Lightness"
-    },
-    // Reference ranges from https://facelessuser.github.io/coloraide/colors/luv/
-    u: {
-      refRange: [-215, 215]
-    },
-    v: {
-      refRange: [-215, 215]
-    }
-  },
-  white,
-  base: xyz_d65,
-  // Convert D65-adapted XYZ to Luv
-  // https://en.wikipedia.org/wiki/CIELUV#The_forward_transformation
-  fromBase(XYZ) {
-    let xyz = [skipNone(XYZ[0]), skipNone(XYZ[1]), skipNone(XYZ[2])];
-    let y2 = xyz[1];
-    let [up, vp] = uv({ space: xyz_d65, coords: xyz });
-    if (!Number.isFinite(up) || !Number.isFinite(vp)) {
-      return [0, 0, 0];
-    }
-    let L = y2 <= ε$2 ? κ$1 * y2 : 116 * Math.cbrt(y2) - 16;
-    return [
-      L,
-      13 * L * (up - U_PRIME_WHITE),
-      13 * L * (vp - V_PRIME_WHITE)
-    ];
-  },
-  // Convert Luv to D65-adapted XYZ
-  // https://en.wikipedia.org/wiki/CIELUV#The_reverse_transformation
-  toBase(Luv2) {
-    let [L, u2, v2] = Luv2;
-    if (L === 0 || isNone(L)) {
-      return [0, 0, 0];
-    }
-    u2 = skipNone(u2);
-    v2 = skipNone(v2);
-    let up = u2 / (13 * L) + U_PRIME_WHITE;
-    let vp = v2 / (13 * L) + V_PRIME_WHITE;
-    let y2 = L <= 8 ? L / κ$1 : Math.pow((L + 16) / 116, 3);
-    return [
-      y2 * (9 * up / (4 * vp)),
-      y2,
-      y2 * ((12 - 3 * up - 20 * vp) / (4 * vp))
-    ];
-  },
-  formats: {
-    color: {
-      id: "--luv",
-      coords: ["<number> | <percentage>", "<number> | <percentage>[-1,1]", "<number> | <percentage>[-1,1]"]
-    }
-  }
-});
-var LCHuv = new ColorSpace({
-  id: "lchuv",
-  name: "LChuv",
-  coords: {
-    l: {
-      refRange: [0, 100],
-      name: "Lightness"
-    },
-    c: {
-      refRange: [0, 220],
-      name: "Chroma"
-    },
-    h: {
-      refRange: [0, 360],
-      type: "angle",
-      name: "Hue"
-    }
-  },
-  base: Luv,
-  fromBase(Luv2) {
-    let [L, u2, v2] = Luv2;
-    let hue;
-    const ε2 = 0.02;
-    if (Math.abs(u2) < ε2 && Math.abs(v2) < ε2) {
-      hue = NaN;
-    } else {
-      hue = Math.atan2(v2, u2) * 180 / Math.PI;
-    }
-    return [
-      L,
-      // L is still L
-      Math.sqrt(u2 ** 2 + v2 ** 2),
-      // Chroma
-      constrain(hue)
-      // Hue, in degrees [0 to 360)
-    ];
-  },
-  toBase(LCH) {
-    let [Lightness, Chroma, Hue] = LCH;
-    if (Chroma < 0) {
-      Chroma = 0;
-    }
-    if (isNaN(Hue)) {
-      Hue = 0;
-    }
-    return [
-      Lightness,
-      // L is still L
-      Chroma * Math.cos(Hue * Math.PI / 180),
-      // u
-      Chroma * Math.sin(Hue * Math.PI / 180)
-      // v
-    ];
-  },
-  formats: {
-    color: {
-      id: "--lchuv",
-      coords: ["<number> | <percentage>", "<number> | <percentage>", "<number> | <angle>"]
-    }
-  }
-});
-const ε$1 = 216 / 24389;
-const κ = 24389 / 27;
-const m_r0 = fromXYZ_M$3[0][0];
-const m_r1 = fromXYZ_M$3[0][1];
-const m_r2 = fromXYZ_M$3[0][2];
-const m_g0 = fromXYZ_M$3[1][0];
-const m_g1 = fromXYZ_M$3[1][1];
-const m_g2 = fromXYZ_M$3[1][2];
-const m_b0 = fromXYZ_M$3[2][0];
-const m_b1 = fromXYZ_M$3[2][1];
-const m_b2 = fromXYZ_M$3[2][2];
-function distanceFromOriginAngle(slope, intercept, angle) {
-  const d2 = intercept / (Math.sin(angle) - slope * Math.cos(angle));
-  return d2 < 0 ? Infinity : d2;
-}
-function calculateBoundingLines(l2) {
-  const sub1 = Math.pow(l2 + 16, 3) / 1560896;
-  const sub2 = sub1 > ε$1 ? sub1 : l2 / κ;
-  const s1r = sub2 * (284517 * m_r0 - 94839 * m_r2);
-  const s2r = sub2 * (838422 * m_r2 + 769860 * m_r1 + 731718 * m_r0);
-  const s3r = sub2 * (632260 * m_r2 - 126452 * m_r1);
-  const s1g = sub2 * (284517 * m_g0 - 94839 * m_g2);
-  const s2g = sub2 * (838422 * m_g2 + 769860 * m_g1 + 731718 * m_g0);
-  const s3g = sub2 * (632260 * m_g2 - 126452 * m_g1);
-  const s1b = sub2 * (284517 * m_b0 - 94839 * m_b2);
-  const s2b = sub2 * (838422 * m_b2 + 769860 * m_b1 + 731718 * m_b0);
-  const s3b = sub2 * (632260 * m_b2 - 126452 * m_b1);
-  return {
-    r0s: s1r / s3r,
-    r0i: s2r * l2 / s3r,
-    r1s: s1r / (s3r + 126452),
-    r1i: (s2r - 769860) * l2 / (s3r + 126452),
-    g0s: s1g / s3g,
-    g0i: s2g * l2 / s3g,
-    g1s: s1g / (s3g + 126452),
-    g1i: (s2g - 769860) * l2 / (s3g + 126452),
-    b0s: s1b / s3b,
-    b0i: s2b * l2 / s3b,
-    b1s: s1b / (s3b + 126452),
-    b1i: (s2b - 769860) * l2 / (s3b + 126452)
-  };
-}
-function calcMaxChromaHsluv(lines, h2) {
-  const hueRad = h2 / 360 * Math.PI * 2;
-  const r0 = distanceFromOriginAngle(lines.r0s, lines.r0i, hueRad);
-  const r1 = distanceFromOriginAngle(lines.r1s, lines.r1i, hueRad);
-  const g0 = distanceFromOriginAngle(lines.g0s, lines.g0i, hueRad);
-  const g1 = distanceFromOriginAngle(lines.g1s, lines.g1i, hueRad);
-  const b0 = distanceFromOriginAngle(lines.b0s, lines.b0i, hueRad);
-  const b1 = distanceFromOriginAngle(lines.b1s, lines.b1i, hueRad);
-  return Math.min(r0, r1, g0, g1, b0, b1);
-}
-var hsluv = new ColorSpace({
-  id: "hsluv",
-  name: "HSLuv",
-  coords: {
-    h: {
-      refRange: [0, 360],
-      type: "angle",
-      name: "Hue"
-    },
-    s: {
-      range: [0, 100],
-      name: "Saturation"
-    },
-    l: {
-      range: [0, 100],
-      name: "Lightness"
-    }
-  },
-  base: LCHuv,
-  gamutSpace: sRGB,
-  // Convert LCHuv to HSLuv
-  fromBase(lch2) {
-    let [l2, c4, h2] = [skipNone(lch2[0]), skipNone(lch2[1]), skipNone(lch2[2])];
-    let s2;
-    if (l2 > 99.9999999) {
-      s2 = 0;
-      l2 = 100;
-    } else if (l2 < 1e-8) {
-      s2 = 0;
-      l2 = 0;
-    } else {
-      let lines = calculateBoundingLines(l2);
-      let max2 = calcMaxChromaHsluv(lines, h2);
-      s2 = c4 / max2 * 100;
-    }
-    return [h2, s2, l2];
-  },
-  // Convert HSLuv to LCHuv
-  toBase(hsl) {
-    let [h2, s2, l2] = [skipNone(hsl[0]), skipNone(hsl[1]), skipNone(hsl[2])];
-    let c4;
-    if (l2 > 99.9999999) {
-      l2 = 100;
-      c4 = 0;
-    } else if (l2 < 1e-8) {
-      l2 = 0;
-      c4 = 0;
-    } else {
-      let lines = calculateBoundingLines(l2);
-      let max2 = calcMaxChromaHsluv(lines, h2);
-      c4 = max2 / 100 * s2;
-    }
-    return [l2, c4, h2];
-  },
-  formats: {
-    color: {
-      id: "--hsluv",
-      coords: ["<number> | <angle>", "<percentage> | <number>", "<percentage> | <number>"]
-    }
-  }
-});
-fromXYZ_M$3[0][0];
-fromXYZ_M$3[0][1];
-fromXYZ_M$3[0][2];
-fromXYZ_M$3[1][0];
-fromXYZ_M$3[1][1];
-fromXYZ_M$3[1][2];
-fromXYZ_M$3[2][0];
-fromXYZ_M$3[2][1];
-fromXYZ_M$3[2][2];
-function distanceFromOrigin(slope, intercept) {
-  return Math.abs(intercept) / Math.sqrt(Math.pow(slope, 2) + 1);
-}
-function calcMaxChromaHpluv(lines) {
-  let r0 = distanceFromOrigin(lines.r0s, lines.r0i);
-  let r1 = distanceFromOrigin(lines.r1s, lines.r1i);
-  let g0 = distanceFromOrigin(lines.g0s, lines.g0i);
-  let g1 = distanceFromOrigin(lines.g1s, lines.g1i);
-  let b0 = distanceFromOrigin(lines.b0s, lines.b0i);
-  let b1 = distanceFromOrigin(lines.b1s, lines.b1i);
-  return Math.min(r0, r1, g0, g1, b0, b1);
-}
-var hpluv = new ColorSpace({
-  id: "hpluv",
-  name: "HPLuv",
-  coords: {
-    h: {
-      refRange: [0, 360],
-      type: "angle",
-      name: "Hue"
-    },
-    s: {
-      range: [0, 100],
-      name: "Saturation"
-    },
-    l: {
-      range: [0, 100],
-      name: "Lightness"
-    }
-  },
-  base: LCHuv,
-  gamutSpace: "self",
-  // Convert LCHuv to HPLuv
-  fromBase(lch2) {
-    let [l2, c4, h2] = [skipNone(lch2[0]), skipNone(lch2[1]), skipNone(lch2[2])];
-    let s2;
-    if (l2 > 99.9999999) {
-      s2 = 0;
-      l2 = 100;
-    } else if (l2 < 1e-8) {
-      s2 = 0;
-      l2 = 0;
-    } else {
-      let lines = calculateBoundingLines(l2);
-      let max2 = calcMaxChromaHpluv(lines);
-      s2 = c4 / max2 * 100;
-    }
-    return [h2, s2, l2];
-  },
-  // Convert HPLuv to LCHuv
-  toBase(hsl) {
-    let [h2, s2, l2] = [skipNone(hsl[0]), skipNone(hsl[1]), skipNone(hsl[2])];
-    let c4;
-    if (l2 > 99.9999999) {
-      l2 = 100;
-      c4 = 0;
-    } else if (l2 < 1e-8) {
-      l2 = 0;
-      c4 = 0;
-    } else {
-      let lines = calculateBoundingLines(l2);
-      let max2 = calcMaxChromaHpluv(lines);
-      c4 = max2 / 100 * s2;
-    }
-    return [l2, c4, h2];
-  },
-  formats: {
-    color: {
-      id: "--hpluv",
-      coords: ["<number> | <angle>", "<percentage> | <number>", "<percentage> | <number>"]
-    }
-  }
-});
-const Yw = 203;
-const n = 2610 / 2 ** 14;
-const ninv = 2 ** 14 / 2610;
-const m = 2523 / 2 ** 5;
-const minv = 2 ** 5 / 2523;
-const c1 = 3424 / 2 ** 12;
-const c2 = 2413 / 2 ** 7;
-const c3 = 2392 / 2 ** 7;
-var rec2100Pq = new RGBColorSpace({
-  id: "rec2100pq",
-  cssId: "rec2100-pq",
-  name: "REC.2100-PQ",
-  base: REC2020Linear,
-  toBase(RGB) {
-    return RGB.map(function(val) {
-      let x = (Math.max(val ** minv - c1, 0) / (c2 - c3 * val ** minv)) ** ninv;
-      return x * 1e4 / Yw;
-    });
-  },
-  fromBase(RGB) {
-    return RGB.map(function(val) {
-      let x = Math.max(val * Yw / 1e4, 0);
-      let num = c1 + c2 * x ** n;
-      let denom = 1 + c3 * x ** n;
-      return (num / denom) ** m;
-    });
-  }
-});
-const a = 0.17883277;
-const b = 0.28466892;
-const c = 0.55991073;
-const scale = 3.7743;
-var rec2100Hlg = new RGBColorSpace({
-  id: "rec2100hlg",
-  cssId: "rec2100-hlg",
-  name: "REC.2100-HLG",
-  referred: "scene",
-  base: REC2020Linear,
-  toBase(RGB) {
-    return RGB.map(function(val) {
-      if (val <= 0.5) {
-        return val ** 2 / 3 * scale;
-      }
-      return (Math.exp((val - c) / a) + b) / 12 * scale;
-    });
-  },
-  fromBase(RGB) {
-    return RGB.map(function(val) {
-      val /= scale;
-      if (val <= 1 / 12) {
-        return Math.sqrt(3 * val);
-      }
-      return a * Math.log(12 * val - b) + c;
-    });
-  }
-});
-const CATs = {};
-hooks.add("chromatic-adaptation-start", (env) => {
-  if (env.options.method) {
-    env.M = adapt(env.W1, env.W2, env.options.method);
-  }
-});
-hooks.add("chromatic-adaptation-end", (env) => {
-  if (!env.M) {
-    env.M = adapt(env.W1, env.W2, env.options.method);
-  }
-});
-function defineCAT({ id, toCone_M, fromCone_M }) {
-  CATs[id] = arguments[0];
-}
-function adapt(W1, W2, id = "Bradford") {
-  let method = CATs[id];
-  let [ρs, γs, βs] = multiplyMatrices(method.toCone_M, W1);
-  let [ρd, γd, βd] = multiplyMatrices(method.toCone_M, W2);
-  let scale2 = [
-    [ρd / ρs, 0, 0],
-    [0, γd / γs, 0],
-    [0, 0, βd / βs]
-  ];
-  let scaled_cone_M = multiplyMatrices(scale2, method.toCone_M);
-  let adapt_M = multiplyMatrices(method.fromCone_M, scaled_cone_M);
-  return adapt_M;
-}
-defineCAT({
-  id: "von Kries",
-  toCone_M: [
-    [0.40024, 0.7076, -0.08081],
-    [-0.2263, 1.16532, 0.0457],
-    [0, 0, 0.91822]
-  ],
-  fromCone_M: [
-    [1.8599363874558397, -1.1293816185800916, 0.21989740959619328],
-    [0.3611914362417676, 0.6388124632850422, -6370596838649899e-21],
-    [0, 0, 1.0890636230968613]
-  ]
-});
-defineCAT({
-  id: "Bradford",
-  // Convert an array of XYZ values in the range 0.0 - 1.0
-  // to cone fundamentals
-  toCone_M: [
-    [0.8951, 0.2664, -0.1614],
-    [-0.7502, 1.7135, 0.0367],
-    [0.0389, -0.0685, 1.0296]
-  ],
-  // and back
-  fromCone_M: [
-    [0.9869929054667121, -0.14705425642099013, 0.15996265166373122],
-    [0.4323052697233945, 0.5183602715367774, 0.049291228212855594],
-    [-0.00852866457517732, 0.04004282165408486, 0.96848669578755]
-  ]
-});
-defineCAT({
-  id: "CAT02",
-  // with complete chromatic adaptation to W2, so D = 1.0
-  toCone_M: [
-    [0.7328, 0.4296, -0.1624],
-    [-0.7036, 1.6975, 61e-4],
-    [3e-3, 0.0136, 0.9834]
-  ],
-  fromCone_M: [
-    [1.0961238208355142, -0.27886900021828726, 0.18274517938277307],
-    [0.4543690419753592, 0.4735331543074117, 0.07209780371722911],
-    [-0.009627608738429355, -0.00569803121611342, 1.0153256399545427]
-  ]
-});
-defineCAT({
-  id: "CAT16",
-  toCone_M: [
-    [0.401288, 0.650173, -0.051461],
-    [-0.250268, 1.204414, 0.045854],
-    [-2079e-6, 0.048952, 0.953127]
-  ],
-  // the extra precision is needed to avoid roundtripping errors
-  fromCone_M: [
-    [1.862067855087233, -1.0112546305316845, 0.14918677544445172],
-    [0.3875265432361372, 0.6214474419314753, -0.008973985167612521],
-    [-0.01584149884933386, -0.03412293802851557, 1.0499644368778496]
-  ]
-});
-Object.assign(WHITES, {
-  // whitepoint values from ASTM E308-01 with 10nm spacing, 1931 2 degree observer
-  // all normalized to Y (luminance) = 1.00000
-  // Illuminant A is a tungsten electric light, giving a very warm, orange light.
-  A: [1.0985, 1, 0.35585],
-  // Illuminant C was an early approximation to daylight: illuminant A with a blue filter.
-  C: [0.98074, 1, 1.18232],
-  // The daylight series of illuminants simulate natural daylight.
-  // The color temperature (in degrees Kelvin/100) ranges from
-  // cool, overcast daylight (D50) to bright, direct sunlight (D65).
-  D55: [0.95682, 1, 0.92149],
-  D75: [0.94972, 1, 1.22638],
-  // Equal-energy illuminant, used in two-stage CAT16
-  E: [1, 1, 1],
-  // The F series of illuminants represent fluorescent lights
-  F2: [0.99186, 1, 0.67393],
-  F7: [0.95041, 1, 1.08747],
-  F11: [1.00962, 1, 0.6435]
-});
-WHITES.ACES = [0.32168 / 0.33767, 1, (1 - 0.32168 - 0.33767) / 0.33767];
-const toXYZ_M = [
-  [0.6624541811085053, 0.13400420645643313, 0.1561876870049078],
-  [0.27222871678091454, 0.6740817658111484, 0.05368951740793705],
-  [-0.005574649490394108, 0.004060733528982826, 1.0103391003129971]
-];
-const fromXYZ_M = [
-  [1.6410233796943257, -0.32480329418479, -0.23642469523761225],
-  [-0.6636628587229829, 1.6153315916573379, 0.016756347685530137],
-  [0.011721894328375376, -0.008284441996237409, 0.9883948585390215]
-];
-var ACEScg = new RGBColorSpace({
-  id: "acescg",
-  cssId: "--acescg",
-  name: "ACEScg",
-  // ACEScg – A scene-referred, linear-light encoding of ACES Data
-  // https://docs.acescentral.com/specifications/acescg/
-  // uses the AP1 primaries, see section 4.3.1 Color primaries
-  coords: {
-    r: {
-      range: [0, 65504],
-      name: "Red"
-    },
-    g: {
-      range: [0, 65504],
-      name: "Green"
-    },
-    b: {
-      range: [0, 65504],
-      name: "Blue"
-    }
-  },
-  referred: "scene",
-  white: WHITES.ACES,
-  toXYZ_M,
-  fromXYZ_M
-});
-const ε = 2 ** -16;
-const ACES_min_nonzero = -0.35828683;
-const ACES_cc_max = (Math.log2(65504) + 9.72) / 17.52;
-var acescc = new RGBColorSpace({
-  id: "acescc",
-  cssId: "--acescc",
-  name: "ACEScc",
-  // see S-2014-003 ACEScc – A Logarithmic Encoding of ACES Data
-  // https://docs.acescentral.com/specifications/acescc/
-  // uses the AP1 primaries, see section 4.3.1 Color primaries
-  // Appendix A: "Very small ACES scene referred values below 7 1/4 stops
-  // below 18% middle gray are encoded as negative ACEScc values.
-  // These values should be preserved per the encoding in Section 4.4
-  // so that all positive ACES values are maintained."
-  coords: {
-    r: {
-      range: [ACES_min_nonzero, ACES_cc_max],
-      name: "Red"
-    },
-    g: {
-      range: [ACES_min_nonzero, ACES_cc_max],
-      name: "Green"
-    },
-    b: {
-      range: [ACES_min_nonzero, ACES_cc_max],
-      name: "Blue"
-    }
-  },
-  referred: "scene",
-  base: ACEScg,
-  // from section 4.4.2 Decoding Function
-  toBase(RGB) {
-    const low = (9.72 - 15) / 17.52;
-    return RGB.map(function(val) {
-      if (val <= low) {
-        return (2 ** (val * 17.52 - 9.72) - ε) * 2;
-      } else if (val < ACES_cc_max) {
-        return 2 ** (val * 17.52 - 9.72);
-      } else {
-        return 65504;
-      }
-    });
-  },
-  // Non-linear encoding function from S-2014-003, section 4.4.1 Encoding Function
-  fromBase(RGB) {
-    return RGB.map(function(val) {
-      if (val <= 0) {
-        return (Math.log2(ε) + 9.72) / 17.52;
-      } else if (val < ε) {
-        return (Math.log2(ε + val * 0.5) + 9.72) / 17.52;
-      } else {
-        return (Math.log2(val) + 9.72) / 17.52;
-      }
-    });
-  }
-  // encoded media white (rgb 1,1,1) => linear  [ 222.861, 222.861, 222.861 ]
-  // encoded media black (rgb 0,0,0) => linear [ 0.0011857, 0.0011857, 0.0011857]
-});
-var spaces = /* @__PURE__ */ Object.freeze({
-  __proto__: null,
-  A98RGB: a98rgb,
-  A98RGB_Linear: A98Linear,
-  ACEScc: acescc,
-  ACEScg,
-  CAM16_JMh: cam16,
-  HCT: hct,
-  HPLuv: hpluv,
-  HSL,
-  HSLuv: hsluv,
-  HSV,
-  HWB: hwb,
-  ICTCP: ictcp,
-  JzCzHz: jzczhz,
-  Jzazbz,
-  LCH: lch,
-  LCHuv,
-  Lab: lab,
-  Lab_D65: lab_d65,
-  Luv,
-  OKLCH: oklch,
-  OKLab,
-  P3,
-  P3_Linear: P3Linear,
-  ProPhoto: prophoto,
-  ProPhoto_Linear: ProPhotoLinear,
-  REC_2020: REC2020,
-  REC_2020_Linear: REC2020Linear,
-  REC_2100_HLG: rec2100Hlg,
-  REC_2100_PQ: rec2100Pq,
-  XYZ_ABS_D65: XYZ_Abs_D65,
-  XYZ_D50,
-  XYZ_D65: xyz_d65,
-  sRGB,
-  sRGB_Linear: sRGBLinear
-});
-class Color {
-  /**
-   * Creates an instance of Color.
-   * Signatures:
-   * - `new Color(stringToParse)`
-   * - `new Color(otherColor)`
-   * - `new Color({space, coords, alpha})`
-   * - `new Color(space, coords, alpha)`
-   * - `new Color(spaceId, coords, alpha)`
-   */
-  constructor(...args) {
-    let color;
-    if (args.length === 1) {
-      color = getColor(args[0]);
-    }
-    let space, coords, alpha;
-    if (color) {
-      space = color.space || color.spaceId;
-      coords = color.coords;
-      alpha = color.alpha;
-    } else {
-      [space, coords, alpha] = args;
-    }
-    Object.defineProperty(this, "space", {
-      value: ColorSpace.get(space),
-      writable: false,
-      enumerable: true,
-      configurable: true
-      // see note in https://262.ecma-international.org/8.0/#sec-proxy-object-internal-methods-and-internal-slots-get-p-receiver
-    });
-    this.coords = coords ? coords.slice() : [0, 0, 0];
-    this.alpha = alpha > 1 || alpha === void 0 ? 1 : alpha < 0 ? 0 : alpha;
-    for (let i2 = 0; i2 < this.coords.length; i2++) {
-      if (this.coords[i2] === "NaN") {
-        this.coords[i2] = NaN;
-      }
-    }
-    for (let id in this.space.coords) {
-      Object.defineProperty(this, id, {
-        get: () => this.get(id),
-        set: (value) => this.set(id, value)
-      });
-    }
-  }
-  get spaceId() {
-    return this.space.id;
-  }
-  clone() {
-    return new Color(this.space, this.coords, this.alpha);
-  }
-  toJSON() {
-    return {
-      spaceId: this.spaceId,
-      coords: this.coords,
-      alpha: this.alpha
-    };
-  }
-  display(...args) {
-    let ret = display(this, ...args);
-    ret.color = new Color(ret.color);
-    return ret;
-  }
-  /**
-   * Get a color from the argument passed
-   * Basically gets us the same result as new Color(color) but doesn't clone an existing color object
-   */
-  static get(color, ...args) {
-    if (color instanceof Color) {
-      return color;
-    }
-    return new Color(color, ...args);
-  }
-  static defineFunction(name, code, o2 = code) {
-    let { instance = true, returns } = o2;
-    let func = function(...args) {
-      let ret = code(...args);
-      if (returns === "color") {
-        ret = Color.get(ret);
-      } else if (returns === "function<color>") {
-        let f2 = ret;
-        ret = function(...args2) {
-          let ret2 = f2(...args2);
-          return Color.get(ret2);
-        };
-        Object.assign(ret, f2);
-      } else if (returns === "array<color>") {
-        ret = ret.map((c4) => Color.get(c4));
-      }
-      return ret;
-    };
-    if (!(name in Color)) {
-      Color[name] = func;
-    }
-    if (instance) {
-      Color.prototype[name] = function(...args) {
-        return func(this, ...args);
-      };
-    }
-  }
-  static defineFunctions(o2) {
-    for (let name in o2) {
-      Color.defineFunction(name, o2[name], o2[name]);
-    }
-  }
-  static extend(exports) {
-    if (exports.register) {
-      exports.register(Color);
-    } else {
-      for (let name in exports) {
-        Color.defineFunction(name, exports[name]);
-      }
-    }
-  }
-}
-Color.defineFunctions({
-  get,
-  getAll,
-  set,
-  setAll,
-  to,
-  equals,
-  inGamut,
-  toGamut,
-  distance,
-  toString: serialize
-});
-Object.assign(Color, {
-  util,
-  hooks,
-  WHITES,
-  Space: ColorSpace,
-  spaces: ColorSpace.registry,
-  parse,
-  // Global defaults one may want to configure
-  defaults
-});
-for (let key of Object.keys(spaces)) {
-  ColorSpace.register(spaces[key]);
-}
-for (let id in ColorSpace.registry) {
-  addSpaceAccessors(id, ColorSpace.registry[id]);
-}
-hooks.add("colorspace-init-end", (space) => {
-  var _a2;
-  addSpaceAccessors(space.id, space);
-  (_a2 = space.aliases) == null ? void 0 : _a2.forEach((alias) => {
-    addSpaceAccessors(alias, space);
-  });
-});
-function addSpaceAccessors(id, space) {
-  let propId = id.replace(/-/g, "_");
-  Object.defineProperty(Color.prototype, propId, {
-    // Convert coords to coords in another colorspace and return them
-    // Source colorspace: this.spaceId
-    // Target colorspace: id
-    get() {
-      let ret = this.getAll(id);
-      if (typeof Proxy === "undefined") {
-        return ret;
-      }
-      return new Proxy(ret, {
-        has: (obj, property) => {
-          try {
-            ColorSpace.resolveCoord([space, property]);
-            return true;
-          } catch (e2) {
-          }
-          return Reflect.has(obj, property);
-        },
-        get: (obj, property, receiver) => {
-          if (property && typeof property !== "symbol" && !(property in obj)) {
-            let { index } = ColorSpace.resolveCoord([space, property]);
-            if (index >= 0) {
-              return obj[index];
-            }
-          }
-          return Reflect.get(obj, property, receiver);
-        },
-        set: (obj, property, value, receiver) => {
-          if (property && typeof property !== "symbol" && !(property in obj) || property >= 0) {
-            let { index } = ColorSpace.resolveCoord([space, property]);
-            if (index >= 0) {
-              obj[index] = value;
-              this.setAll(id, obj);
-              return true;
-            }
-          }
-          return Reflect.set(obj, property, value, receiver);
-        }
-      });
-    },
-    // Convert coords in another colorspace to internal coords and set them
-    // Target colorspace: this.spaceId
-    // Source colorspace: id
-    set(coords) {
-      this.setAll(id, coords);
-    },
-    configurable: true,
-    enumerable: true
-  });
-}
-Color.extend(deltaEMethods);
-Color.extend({ deltaE });
-Object.assign(Color, { deltaEMethods });
-Color.extend(variations);
-Color.extend({ contrast });
-Color.extend(chromaticity);
-Color.extend(luminance);
-Color.extend(interpolation);
-Color.extend(contrastMethods);
+ColorSpace.register(sRGB);
+ColorSpace.register(sRGBLinear);
+ColorSpace.register(hsl);
+ColorSpace.register(hwb);
+ColorSpace.register(lab);
+ColorSpace.register(lch);
+ColorSpace.register(Oklab);
+ColorSpace.register(oklch);
+ColorSpace.register(P3);
+ColorSpace.register(a98rgb);
+ColorSpace.register(prophoto);
+ColorSpace.register(REC2020);
+ColorSpace.register(xyz_d65);
+ColorSpace.register(XYZ_D50);
 function contrastColor(c4) {
   var _a2, _b2;
   try {
-    const color = new Color(c4);
+    const color = parse(c4);
     let wh;
     let bl;
     try {
-      wh = (_a2 = color.contrast("white", "WCAG21")) != null ? _a2 : color.contrastLstar("white");
-      bl = (_b2 = color.contrast("black", "WCAG21")) != null ? _b2 : color.contrastLstar("black");
+      wh = (_a2 = contrast(color, "white", "WCAG21")) != null ? _a2 : contrastLstar(color, "white");
+      bl = (_b2 = contrast(color, "black", "WCAG21")) != null ? _b2 : contrastLstar(color, "black");
     } catch {
-      wh = color.contrastLstar("white");
-      bl = color.contrastLstar("black");
+      wh = contrastLstar(color, "white");
+      bl = contrastLstar(color, "black");
     }
     return wh > bl ? "white" : "black";
   } catch {
@@ -4374,15 +3619,15 @@ function detectGamut(colorStr) {
   let gamut = "srgb";
   if (!colorStr || colorStr.startsWith("#")) return gamut;
   try {
-    const c4 = new Color(colorStr);
-    const srgb = new Color("srgb", c4.to("srgb").coords);
-    const p3 = new Color("p3", c4.to("p3").coords);
-    const rec2020 = new Color("rec2020", c4.to("rec2020").coords);
-    const xyz = new Color("xyz", c4.to("xyz").coords);
-    if (xyz.inGamut()) gamut = "xyz";
-    if (rec2020.inGamut()) gamut = "rec2020";
-    if (p3.inGamut()) gamut = "p3";
-    if (srgb.inGamut()) gamut = "srgb";
+    const c4 = parse(colorStr);
+    const srgb = { spaceId: "srgb", coords: to(c4, "srgb").coords, alpha: null };
+    const p3 = { spaceId: "p3", coords: to(c4, "p3").coords, alpha: null };
+    const rec2020 = { spaceId: "rec2020", coords: to(c4, "rec2020").coords, alpha: null };
+    const xyz = { spaceId: "xyz", coords: to(c4, "xyz").coords, alpha: null };
+    if (inGamut(xyz)) gamut = "xyz";
+    if (inGamut(rec2020)) gamut = "rec2020";
+    if (inGamut(p3)) gamut = "p3";
+    if (inGamut(srgb)) gamut = "srgb";
   } catch {
   }
   return gamut;
@@ -4417,6 +3662,9 @@ function rgbColor(space, r, g2, b2, a2) {
   return `color(${s2} ${r}% ${g2}% ${b2}%${alphaToString(a2)})`;
 }
 function toFixed(n2, digits = 0) {
+  if (n2 == null) {
+    return "0";
+  }
   return Number(n2.toFixed(digits)).toString();
 }
 function formatChannel(space, key, val) {
@@ -4511,63 +3759,69 @@ function gencolor(space, ch) {
   }
 }
 function parseIntoChannels(space, colorStr) {
-  let c4 = new Color(colorStr);
+  var _a2, _b2, _c2, _d, _e;
+  let c4 = getColor(parse(colorStr));
   const actualSpace = space === "hex" ? "srgb" : space;
   const targetId = getColorJSSpaceID(actualSpace);
   if (c4.space.id !== targetId) {
-    c4 = c4.to(targetId);
+    c4 = to(c4, targetId);
   }
   const id = reverseColorJSSpaceID(c4.space.id);
   const s2 = id === "rgb" ? "srgb" : id;
   const ch = {};
+  const alpha = (_a2 = c4.alpha) != null ? _a2 : 1;
   if (s2 === "oklab") {
     const [l2, a2, b2] = c4.coords;
-    ch.L = toFixed(l2 * 100);
+    ch.L = toFixed((l2 != null ? l2 : 0) * 100);
     ch.A = toFixed(a2, 2);
     ch.B = toFixed(b2, 2);
-    ch.ALP = toFixed(c4.alpha * 100);
+    ch.ALP = toFixed(alpha * 100);
   } else if (s2 === "oklch") {
     const [l2, cc, h2] = c4.coords;
-    ch.L = toFixed(l2 * 100);
-    ch.C = toFixed(Math.min(100, cc * 100), 0);
-    ch.H = isNaN(h2) ? "0" : toFixed(h2);
-    ch.ALP = toFixed(c4.alpha * 100);
+    ch.L = toFixed((l2 != null ? l2 : 0) * 100);
+    ch.C = toFixed(Math.min(100, (cc != null ? cc : 0) * 100), 0);
+    ch.H = toFixed(h2);
+    ch.ALP = toFixed(alpha * 100);
   } else if (s2 === "lab") {
     const [l2, a2, b2] = c4.coords;
     ch.L = toFixed(l2);
     ch.A = toFixed(a2);
     ch.B = toFixed(b2);
-    ch.ALP = toFixed(c4.alpha * 100);
+    ch.ALP = toFixed(alpha * 100);
   } else if (s2 === "lch") {
     const [l2, cc, h2] = c4.coords;
     ch.L = toFixed(l2);
-    ch.C = toFixed(Math.min(100, cc / 1.5), 0);
+    ch.C = toFixed(Math.min(100, (cc != null ? cc : 0) / 1.5), 0);
     ch.H = toFixed(h2);
-    ch.ALP = toFixed(c4.alpha * 100);
+    ch.ALP = toFixed(alpha * 100);
   } else if (s2 === "hsl") {
-    const [h2, s22, l2] = c4.coords;
+    const h2 = c4.coords[0];
+    const s22 = (_b2 = c4.coords[1]) != null ? _b2 : 0;
+    const l2 = (_c2 = c4.coords[2]) != null ? _c2 : 0;
     ch.H = toFixed(h2);
     ch.S = toFixed(s22 > 1 ? s22 : s22 * 100);
     ch.L = toFixed(l2 > 1 ? l2 : l2 * 100);
-    ch.ALP = toFixed(c4.alpha * 100);
+    ch.ALP = toFixed(alpha * 100);
   } else if (s2 === "hwb") {
-    const [h2, w2, b2] = c4.coords;
+    const h2 = c4.coords[0];
+    const w2 = (_d = c4.coords[1]) != null ? _d : 0;
+    const b2 = (_e = c4.coords[2]) != null ? _e : 0;
     ch.H = toFixed(h2);
     ch.W = toFixed(w2 > 1 ? w2 : w2 * 100);
     ch.B = toFixed(b2 > 1 ? b2 : b2 * 100);
-    ch.ALP = toFixed(c4.alpha * 100);
+    ch.ALP = toFixed(alpha * 100);
   } else if (s2 === "srgb" || s2 === "hex") {
-    const [r, g2, b2] = c4.toGamut({ space: "srgb", method: "clip" }).coords;
-    ch.R = toFixed(r * 100);
-    ch.G = toFixed(g2 * 100);
-    ch.B = toFixed(b2 * 100);
-    ch.ALP = toFixed(c4.alpha * 100);
+    const [r, g2, b2] = toGamut(c4, { space: "srgb", method: "clip" }).coords;
+    ch.R = toFixed((r != null ? r : 0) * 100);
+    ch.G = toFixed((g2 != null ? g2 : 0) * 100);
+    ch.B = toFixed((b2 != null ? b2 : 0) * 100);
+    ch.ALP = toFixed(alpha * 100);
   } else if (isRGBLike(s2)) {
     const [r, g2, b2] = c4.coords;
-    ch.R = toFixed(Number(r) * 100);
-    ch.G = toFixed(Number(g2) * 100);
-    ch.B = toFixed(Number(b2) * 100);
-    ch.ALP = toFixed(c4.alpha * 100);
+    ch.R = toFixed((r != null ? r : 0) * 100);
+    ch.G = toFixed((g2 != null ? g2 : 0) * 100);
+    ch.B = toFixed((b2 != null ? b2 : 0) * 100);
+    ch.ALP = toFixed(alpha * 100);
   }
   return { space: s2, ch };
 }
@@ -4681,9 +3935,9 @@ function computeCandidates(anchor, size) {
 }
 function findFirstFitOrMaxArea(candidates, viewport, lastPlacement) {
   if (lastPlacement) {
-    const last2 = candidates.find((c4) => c4.placement === lastPlacement);
-    if (last2 && fitsInside(last2, viewport)) {
-      return last2;
+    const last = candidates.find((c4) => c4.placement === lastPlacement);
+    if (last && fitsInside(last, viewport)) {
+      return last;
     }
   }
   for (const c4 of candidates) {
@@ -4827,8 +4081,8 @@ class ColorInput extends HTMLElement {
   set value(v2) {
     if (typeof v2 !== "string" || !v2) return;
     try {
-      const parsed = new Color(v2);
-      const sid = reverseColorJSSpaceID(parsed.space.id);
+      const parsed = parse(v2);
+      const sid = reverseColorJSSpaceID(parsed.spaceId);
       const isHex = typeof v2 === "string" && v2.trim().startsWith("#");
       __privateGet(this, _space).value = isHex ? "hex" : sid === "rgb" ? "srgb" : sid;
       __privateGet(this, _value).value = v2;
@@ -4849,10 +4103,10 @@ class ColorInput extends HTMLElement {
     __privateSet(this, _programmaticUpdate, true);
     this.setAttribute("colorspace", next);
     try {
-      const current = new Color(__privateGet(this, _value).value);
+      const current = parse(__privateGet(this, _value).value);
       const targetSpace = next === "hex" ? "srgb" : next;
-      const converted = current.to(getColorJSSpaceID(targetSpace)).toGamut();
-      const tempStr = converted.toString({ precision: 12 });
+      const converted = toGamut(to(current, getColorJSSpaceID(targetSpace)));
+      const tempStr = serialize(converted, { precision: 12 });
       const parsed = parseIntoChannels(next, tempStr);
       const newValue = gencolor(next, parsed.ch);
       __privateGet(this, _value).value = newValue;
@@ -4990,14 +4244,13 @@ class ColorInput extends HTMLElement {
       }
     });
     (_a2 = __privateGet(this, _panel)) == null ? void 0 : _a2.addEventListener("toggle", () => {
-      var _a3, _b2;
+      var _a3;
       const el = __privateGet(this, _panel);
-      let isOpen = false;
+      let isOpen = !el.hasAttribute("hidden");
       try {
-        isOpen = (_b2 = (_a3 = el.matches) == null ? void 0 : _a3.call(el, ":popover-open")) != null ? _b2 : false;
+        isOpen = (_a3 = el.matches(":popover-open")) != null ? _a3 : false;
       } catch {
       }
-      isOpen = isOpen || !el.hasAttribute("hidden");
       __privateGet(this, _open).value = isOpen;
       if (isOpen) {
         __privateMethod(this, _ColorInput_instances, startReposition_fn).call(this);
@@ -5060,8 +4313,8 @@ class ColorInput extends HTMLElement {
     if (__privateGet(this, _programmaticUpdate)) return;
     if (name === "value" && typeof value === "string") {
       try {
-        const parsed = new Color(value);
-        const sid = reverseColorJSSpaceID(parsed.space.id);
+        const parsed = parse(value);
+        const sid = reverseColorJSSpaceID(parsed.spaceId);
         const isHex = typeof value === "string" && value.trim().startsWith("#");
         __privateGet(this, _value).value = value;
         __privateGet(this, _space).value = isHex ? "hex" : sid === "rgb" ? "srgb" : sid;
@@ -5117,8 +4370,8 @@ validateAndSetColor_fn = function(inputValue) {
     return;
   }
   try {
-    const parsed = new Color(inputValue);
-    const sid = reverseColorJSSpaceID(parsed.space.id);
+    const parsed = parse(inputValue);
+    const sid = reverseColorJSSpaceID(parsed.spaceId);
     const isHex = typeof inputValue === "string" && inputValue.trim().startsWith("#");
     __privateGet(this, _error).value = null;
     __privateGet(this, _space).value = isHex ? "hex" : sid === "rgb" ? "srgb" : sid;
@@ -5316,22 +4569,22 @@ renderControls_fn = function() {
     } else if (titleMap[key]) {
       lab2.title = titleMap[key];
     }
-    const range2 = document.createElement("input");
-    range2.type = "range";
-    range2.min = String(min);
-    range2.max = String(max2);
-    range2.step = String(step);
-    range2.classList.add(`ch-${key.toLowerCase()}`);
-    if (bg) range2.style.backgroundImage = bg;
-    if (bgColor) range2.style.backgroundColor = bgColor;
-    range2.value = String((_a3 = ch[key]) != null ? _a3 : 0);
+    const range = document.createElement("input");
+    range.type = "range";
+    range.min = String(min);
+    range.max = String(max2);
+    range.step = String(step);
+    range.classList.add(`ch-${key.toLowerCase()}`);
+    if (bg) range.style.backgroundImage = bg;
+    if (bgColor) range.style.backgroundColor = bgColor;
+    range.value = String((_a3 = ch[key]) != null ? _a3 : 0);
     if (key === "ALP") {
-      range2.classList.add("alpha");
+      range.classList.add("alpha");
       try {
         const c0 = gencolor(space, { ...ch, ALP: "0" });
         const c12 = gencolor(space, { ...ch, ALP: "100" });
         const interpSpace = space === "hsl" ? "hsl" : space === "lch" ? "lch" : space === "oklch" ? "oklch" : "oklab";
-        range2.style.background = `linear-gradient(to right in ${interpSpace}, ${c0}, ${c12}), var(--checker)`;
+        range.style.background = `linear-gradient(to right in ${interpSpace}, ${c0}, ${c12}), var(--checker)`;
       } catch {
       }
     }
@@ -5368,13 +4621,13 @@ renderControls_fn = function() {
       const formatted = formatChannel(space, key, val);
       ch[key] = formatted;
       channelSignals[key].value = formatted;
-      range2.value = String(ch[key]);
+      range.value = String(ch[key]);
       num.value = String(ch[key]);
       apply();
     };
-    range2.addEventListener("input", onInput);
+    range.addEventListener("input", onInput);
     num.addEventListener("input", onInput);
-    group.append(lab2, range2, numWrapper);
+    group.append(lab2, range, numWrapper);
     return group;
   };
   __privateGet(this, _controls).innerHTML = "";

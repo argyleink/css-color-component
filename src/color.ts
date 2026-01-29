@@ -1,9 +1,27 @@
-import Color from 'colorjs.io'
+import * as colorjs from "colorjs.io/fn";
+import { type ColorConstructor, parse, contrast, contrastLstar, to, inGamut } from 'colorjs.io/fn'
 
 export type Theme = 'auto' | 'light' | 'dark'
 export type StandardSpace = 'srgb' | 'hex' | 'hsl' | 'hwb' | 'lab' | 'lch' | 'oklab' | 'oklch'
 export type WideRGB = 'srgb-linear' | 'display-p3' | 'rec2020' | 'a98-rgb' | 'prophoto' | 'xyz' | 'xyz-d50' | 'xyz-d65'
 export type ColorSpace = StandardSpace | WideRGB
+
+
+colorjs.ColorSpace.register(colorjs.sRGB);
+colorjs.ColorSpace.register(colorjs.sRGB_Linear);
+colorjs.ColorSpace.register(colorjs.HSL);
+colorjs.ColorSpace.register(colorjs.HWB);
+colorjs.ColorSpace.register(colorjs.Lab);
+colorjs.ColorSpace.register(colorjs.LCH);
+colorjs.ColorSpace.register(colorjs.OKLab);
+colorjs.ColorSpace.register(colorjs.OKLCH);
+colorjs.ColorSpace.register(colorjs.P3);
+colorjs.ColorSpace.register(colorjs.A98RGB);
+colorjs.ColorSpace.register(colorjs.ProPhoto);
+colorjs.ColorSpace.register(colorjs.REC_2020);
+colorjs.ColorSpace.register(colorjs.XYZ_D65);
+colorjs.ColorSpace.register(colorjs.XYZ_D50);
+
 
 export function parseCoords(x: number, min = 0, max = 100) {
   return Math.max(min, Math.min(max, x))
@@ -11,17 +29,15 @@ export function parseCoords(x: number, min = 0, max = 100) {
 
 export function contrastColor(c: string): 'white' | 'black' {
   try {
-    const color = new Color(c)
+    const color = parse(c)
     let wh: number
     let bl: number
     try {
-      // @ts-ignore method overload
-      wh = color.contrast('white', 'WCAG21') ?? color.contrastLstar('white')
-      // @ts-ignore method overload
-      bl = color.contrast('black', 'WCAG21') ?? color.contrastLstar('black')
+      wh = contrast(color, 'white', 'WCAG21') ?? contrastLstar(color, 'white')
+      bl = contrast(color, 'black', 'WCAG21') ?? contrastLstar(color, 'black')
     } catch {
-      wh = color.contrastLstar('white')
-      bl = color.contrastLstar('black')
+      wh = contrastLstar(color, 'white')
+      bl = contrastLstar(color, 'black')
     }
     return wh > bl ? 'white' : 'black'
   } catch {
@@ -34,16 +50,16 @@ export function detectGamut(colorStr: string): Gamut {
   let gamut: Gamut = 'srgb'
   if (!colorStr || colorStr.startsWith('#')) return gamut
   try {
-    const c = new Color(colorStr)
-    const srgb = new Color('srgb', c.to('srgb').coords)
-    const p3 = new Color('p3', c.to('p3').coords)
-    const rec2020 = new Color('rec2020', c.to('rec2020').coords)
-    const xyz = new Color('xyz', c.to('xyz').coords)
-    if (xyz.inGamut()) gamut = 'xyz'
-    if (rec2020.inGamut()) gamut = 'rec2020'
-    if (p3.inGamut()) gamut = 'p3'
-    if (srgb.inGamut()) gamut = 'srgb'
-  } catch {}
+    const c = parse(colorStr)
+    const srgb: ColorConstructor = { spaceId: 'srgb', coords: to(c, 'srgb').coords, alpha: null }
+    const p3: ColorConstructor = { spaceId: 'p3', coords: to(c, 'p3').coords, alpha: null }
+    const rec2020: ColorConstructor = { spaceId: 'rec2020', coords: to(c, 'rec2020').coords, alpha: null }
+    const xyz: ColorConstructor = { spaceId: 'xyz', coords: to(c, 'xyz').coords, alpha: null }
+    if (inGamut(xyz)) gamut = 'xyz'
+    if (inGamut(rec2020)) gamut = 'rec2020'
+    if (inGamut(p3)) gamut = 'p3'
+    if (inGamut(srgb)) gamut = 'srgb'
+  } catch { }
   return gamut
 }
 

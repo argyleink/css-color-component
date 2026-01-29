@@ -1,4 +1,4 @@
-import Color from 'colorjs.io'
+import { getColor, parse, to, toGamut } from 'colorjs.io/fn'
 import type { ColorSpace } from '../color'
 import {
   alphaToString,
@@ -42,11 +42,11 @@ export function gencolor(space: ColorSpace, ch: ChannelRecord): string {
   switch (space) {
     case 'oklab': return `oklab(${L}% ${A} ${B}${alphaToString(ALP)})`
     case 'oklch': return `oklch(${L}% ${C}% ${H}${alphaToString(ALP)})` // Chroma as percentage
-    case 'lab':   return `lab(${L}% ${A} ${B}${alphaToString(ALP)})`
-    case 'lch':   return `lch(${L}% ${C}% ${H}${alphaToString(ALP)})` // Chroma as percentage
-    case 'hsl':   return `hsl(${H} ${S}% ${L}%${alphaToString(ALP)})`
-    case 'hwb':   return `hwb(${H} ${W}% ${B}%${alphaToString(ALP)})`
-    case 'srgb':  return `rgb(${R}% ${G}% ${B}%${alphaToString(ALP)})`
+    case 'lab': return `lab(${L}% ${A} ${B}${alphaToString(ALP)})`
+    case 'lch': return `lch(${L}% ${C}% ${H}${alphaToString(ALP)})` // Chroma as percentage
+    case 'hsl': return `hsl(${H} ${S}% ${L}%${alphaToString(ALP)})`
+    case 'hwb': return `hwb(${H} ${W}% ${B}%${alphaToString(ALP)})`
+    case 'srgb': return `rgb(${R}% ${G}% ${B}%${alphaToString(ALP)})`
     case 'hex': {
       // Convert percentage to 0-255 range
       const r = Math.round(Number(R) * 2.55)
@@ -101,69 +101,76 @@ export function gencolor(space: ColorSpace, ch: ChannelRecord): string {
  * // → { space: 'hsl', ch: { H: '0', S: '100', L: '50', ALP: '100' } }
  */
 export function parseIntoChannels(space: ColorSpace, colorStr: string): { space: ColorSpace; ch: ChannelRecord } {
-  let c = new Color(colorStr)
+  // getColor() converts input to compatible type with to() result
+  let c = getColor(parse(colorStr))
   // Hex is internally sRGB
   const actualSpace = space === 'hex' ? 'srgb' : space
   // Convert to target space if different
   const targetId = getColorJSSpaceID(actualSpace)
   if (c.space.id !== targetId) {
-    c = c.to(targetId)
+    c = to(c, targetId)
   }
-  const id = reverseColorJSSpaceID(c.space.id) as string
+  const id = reverseColorJSSpaceID(c.space.id)
   const s = (id === 'rgb' ? 'srgb' : id) as ColorSpace
 
   const ch: ChannelRecord = {}
 
+  // fallback to non-transparent
+  const alpha = c.alpha ?? 1
   if (s === 'oklab') {
     const [l, a, b] = c.coords
-    ch.L = toFixed(l * 100)
+    ch.L = toFixed((l ?? 0) * 100)
     ch.A = toFixed(a, 2)
     ch.B = toFixed(b, 2)
-    ch.ALP = toFixed(c.alpha * 100)
+    ch.ALP = toFixed(alpha * 100)
   } else if (s === 'oklch') {
     const [l, cc, h] = c.coords
-    ch.L = toFixed(l * 100)
-    ch.C = toFixed(Math.min(100, cc * 100), 0) // Convert to 0-100%, clamp at 100%
-    ch.H = isNaN(h) ? '0' : toFixed(h)
-    ch.ALP = toFixed(c.alpha * 100)
+    ch.L = toFixed((l ?? 0) * 100)
+    ch.C = toFixed(Math.min(100, (cc ?? 0) * 100), 0) // Convert to 0-100%, clamp at 100%
+    ch.H = toFixed(h)
+    ch.ALP = toFixed(alpha * 100)
   } else if (s === 'lab') {
     const [l, a, b] = c.coords
     ch.L = toFixed(l)
     ch.A = toFixed(a)
     ch.B = toFixed(b)
-    ch.ALP = toFixed(c.alpha * 100)
+    ch.ALP = toFixed(alpha * 100)
   } else if (s === 'lch') {
     const [l, cc, h] = c.coords
     ch.L = toFixed(l)
-    ch.C = toFixed(Math.min(100, cc / 1.5), 0) // Normalize 0-150 to 0-100%, clamp at 100%
+    ch.C = toFixed(Math.min(100, (cc ?? 0) / 1.5), 0) // Normalize 0-150 to 0-100%, clamp at 100%
     ch.H = toFixed(h)
-    ch.ALP = toFixed(c.alpha * 100)
+    ch.ALP = toFixed(alpha * 100)
   } else if (s === 'hsl') {
-    const [h, s2, l] = c.coords
+    const h = c.coords[0]
+    const s2 = c.coords[1] ?? 0
+    const l = c.coords[2] ?? 0
     ch.H = toFixed(h)
     // colorjs.io returns 0-1 when parsing HSL strings, but 0-100 when converting from other spaces
     ch.S = toFixed(s2 > 1 ? s2 : s2 * 100)
     ch.L = toFixed(l > 1 ? l : l * 100)
-    ch.ALP = toFixed(c.alpha * 100)
+    ch.ALP = toFixed(alpha * 100)
   } else if (s === 'hwb') {
-    const [h, w, b] = c.coords
+    const h = c.coords[0]
+    const w = c.coords[1] ?? 0
+    const b = c.coords[2] ?? 0
     ch.H = toFixed(h)
     // colorjs.io returns 0-1 when parsing HWB strings, but 0-100 when converting from other spaces
     ch.W = toFixed(w > 1 ? w : w * 100)
     ch.B = toFixed(b > 1 ? b : b * 100)
-    ch.ALP = toFixed(c.alpha * 100)
+    ch.ALP = toFixed(alpha * 100)
   } else if (s === 'srgb' || s === 'hex') {
-    const [r, g, b] = c.toGamut({ space: 'srgb', method: 'clip' }).coords
-    ch.R = toFixed(r * 100)
-    ch.G = toFixed(g * 100)
-    ch.B = toFixed(b * 100)
-    ch.ALP = toFixed(c.alpha * 100)
+    const [r, g, b] = toGamut(c, { space: 'srgb', method: 'clip' }).coords
+    ch.R = toFixed((r ?? 0) * 100)
+    ch.G = toFixed((g ?? 0) * 100)
+    ch.B = toFixed((b ?? 0) * 100)
+    ch.ALP = toFixed(alpha * 100)
   } else if (isRGBLike(s)) {
     const [r, g, b] = c.coords
-    ch.R = toFixed(Number(r) * 100)
-    ch.G = toFixed(Number(g) * 100)
-    ch.B = toFixed(Number(b) * 100)
-    ch.ALP = toFixed(c.alpha * 100)
+    ch.R = toFixed((r ?? 0) * 100)
+    ch.G = toFixed((g ?? 0) * 100)
+    ch.B = toFixed((b ?? 0) * 100)
+    ch.ALP = toFixed(alpha * 100)
   }
 
   return { space: s, ch }

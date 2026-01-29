@@ -61,7 +61,7 @@
   },
   "dependencies": {
     "@preact/signals-core": "^1.6.0",
-    "colorjs.io": "^0.5.2"
+    "colorjs.io": "^0.6.1"
   },
   "devDependencies": {
     "@astrojs/netlify": "^6.6.0",
