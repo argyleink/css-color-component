@@ -1,5 +1,5 @@
 import { signal, computed, effect, Signal } from '@preact/signals-core'
-import Color from 'colorjs.io'
+import { parse, serialize, to, toGamut } from 'colorjs.io/fn'
 import {
   contrastColor,
   detectGamut,
@@ -65,8 +65,8 @@ export class ColorInput extends HTMLElement {
   set value(v: string) {
     if (typeof v !== 'string' || !v) return
     try {
-      const parsed = new Color(v)
-      const sid = reverseColorJSSpaceID(parsed.space.id) as string
+      const parsed = parse(v)
+      const sid = reverseColorJSSpaceID(parsed.spaceId)
       const isHex = typeof v === 'string' && v.trim().startsWith('#')
       this.#space.value = isHex ? 'hex' : (sid === 'rgb' ? 'srgb' : (sid as ColorSpace))
       this.#value.value = v
@@ -75,7 +75,7 @@ export class ColorInput extends HTMLElement {
       this.setAttribute('colorspace', this.#space.value)
       this.#programmaticUpdate = false
       this.#emitChange()
-    } catch {}
+    } catch { }
   }
 
   get colorspace() { return this.#space.value }
@@ -85,16 +85,16 @@ export class ColorInput extends HTMLElement {
     this.#programmaticUpdate = true
     this.setAttribute('colorspace', next)
     try {
-      const current = new Color(this.#value.value)
+      const current = parse(this.#value.value)
       const targetSpace = next === 'hex' ? 'srgb' : next
-      const converted = current.to(getColorJSSpaceID(targetSpace)).toGamut()
-      const tempStr = converted.toString({ precision: 12 })
+      const converted = toGamut(to(current, getColorJSSpaceID(targetSpace)))
+      const tempStr = serialize(converted, { precision: 12 })
       const parsed = parseIntoChannels(next, tempStr)
       const newValue = gencolor(next, parsed.ch)
       this.#value.value = newValue
       this.setAttribute('value', newValue)
       this.#emitChange()
-    } catch {}
+    } catch { }
     this.#programmaticUpdate = false
     // Re-render controls for new colorspace
     if (this.#controls) this.#renderControls()
@@ -191,7 +191,7 @@ export class ColorInput extends HTMLElement {
             copyMessageLiveRegion.innerText = ""
             copyTimeout = null
           }, 3000)
-        } catch {}
+        } catch { }
       })
     }
 
@@ -255,7 +255,7 @@ export class ColorInput extends HTMLElement {
       let isOpen = !el.hasAttribute('hidden')
       try {
         isOpen = el.matches(':popover-open') ?? false
-      } catch {}
+      } catch { }
       this.#open.value = isOpen
       if (isOpen) {
         this.#startReposition()
@@ -332,13 +332,13 @@ export class ColorInput extends HTMLElement {
 
     if (name === 'value' && typeof value === 'string') {
       try {
-        const parsed = new Color(value)
-        const sid = reverseColorJSSpaceID(parsed.space.id) as string
+        const parsed = parse(value)
+        const sid = reverseColorJSSpaceID(parsed.spaceId)
         const isHex = typeof value === 'string' && value.trim().startsWith('#')
         this.#value.value = value
         this.#space.value = isHex ? 'hex' : (sid === 'rgb' ? 'srgb' : (sid as ColorSpace))
         if (this.#spaceSelect) this.#spaceSelect.value = this.#space.value
-      } catch {}
+      } catch { }
     }
     if (name === 'colorspace' && value) {
       this.#space.value = value as ColorSpace
@@ -365,8 +365,8 @@ export class ColorInput extends HTMLElement {
     }
 
     try {
-      const parsed = new Color(inputValue)
-      const sid = reverseColorJSSpaceID(parsed.space.id) as string
+      const parsed = parse(inputValue)
+      const sid = reverseColorJSSpaceID(parsed.spaceId)
       const isHex = typeof inputValue === 'string' && inputValue.trim().startsWith('#')
 
       // Clear error on success
@@ -607,7 +607,7 @@ export class ColorInput extends HTMLElement {
           const c1 = gencolor(space, { ...ch, ALP: '100' })
           const interpSpace = space === 'hsl' ? 'hsl' : (space === 'lch' ? 'lch' : (space === 'oklch' ? 'oklch' : 'oklab'))
           range.style.background = `linear-gradient(to right in ${interpSpace}, ${c0}, ${c1}), var(--checker)`
-        } catch {}
+        } catch { }
       }
       const num = document.createElement('input')
       num.type = 'number'
