@@ -34,6 +34,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
+    },
+    "./slim": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/slim.js"
     }
   },
   "main": "dist/index.js",
@@ -47,8 +51,7 @@
     "dev": "cd docs && npm run dev",
     "dev:component": "vite",
     "build": "npm run build:lib && npm run build:docs",
-    "build:lib": "vite build",
-    "build:prod": "vite build --mode production",
+    "build:lib": "vite build && BUNDLE=cdn vite build",
     "build:docs": "cd docs && npm run build",
     "preview": "cd docs && npm run preview",
     "test": "vitest run",
@@ -56,8 +59,8 @@
     "typecheck": "npm run typecheck:lib && npm run typecheck:docs",
     "typecheck:lib": "tsc -p tsconfig.json --noEmit",
     "typecheck:docs": "cd docs && npm run typecheck",
-    "prepublishOnly": "npm run build:prod",
-    "release": "npm run build:prod && npm publish"
+    "prepublishOnly": "npm run build:lib",
+    "release": "npm run build:lib && npm publish"
   },
   "dependencies": {
     "@preact/signals-core": "^1.6.0",

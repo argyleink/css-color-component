@@ -3,6 +3,7 @@ node_modules/
 
 # Build output
 /docs/dist/
+dist/slim*
 
 # Logs
 npm-debug.log*

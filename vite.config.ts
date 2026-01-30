@@ -5,15 +5,39 @@ import dts from 'vite-plugin-dts'
 export default defineConfig(({ command, mode }) => {
   const isServe = command === 'serve'
   const isTest = mode === 'test' || process.env.VITEST
-  const isProd = mode === 'production'
+
+  if (isTest) {
+    return {
+      test: {
+        environment: 'jsdom',
+        setupFiles: ['./tests/setup.ts'],
+        globals: true
+      }
+    }
+  }
+
+  if (isServe) {
+    return {
+      root: 'docs',
+      server: {
+        open: true,
+        fs: { allow: ['..'] }
+      },
+      css: { postcss: resolve(__dirname, 'postcss.config.cjs') },
+    }
+  }
+
+  let formats: ('es' | 'iife')[] = ['es']
+  let fileName = (_format: string) => 'slim.js'
+  let external: string[] | undefined = ['colorjs.io/fn', '@preact/signals-core']
+  if (process.env.BUNDLE === 'cdn') {
+    formats = ['iife', 'es']
+    fileName = (format) => format === 'iife' ? 'color-input.min.js' : 'index.js'
+    external = undefined
+  }
 
   return {
-    root: isServe && !isTest ? 'docs' : '.',
-    server: {
-      open: true,
-      fs: { allow: ['..'] }
-    },
-    plugins: isServe && !isTest ? [] : [
+    plugins: [
       dts({
         include: ['src/**/*'],
         outDir: 'dist',
@@ -21,19 +45,19 @@ export default defineConfig(({ command, mode }) => {
         rollupTypes: true
       })
     ],
-    build: isServe && !isTest ? undefined : {
+    build: {
       lib: {
         entry: resolve(__dirname, 'src/index.ts'),
-        formats: isProd ? ['es', 'iife'] : ['es'],
-        fileName: (format) => isProd && format === 'iife' ? 'color-input.min.js' : 'index.js',
+        formats,
+        fileName,
         name: 'ColorInput'
       },
       outDir: 'dist',
-      emptyOutDir: true,
+      emptyOutDir: false,
       target: 'es2019',
-      minify: isProd ? 'terser' : 'esbuild',
-      sourcemap: isProd ? true : false,
-      terserOptions: isProd ? {
+      minify: 'terser',
+      sourcemap: true,
+      terserOptions: {
         compress: {
           drop_console: false,
           drop_debugger: true,
@@ -47,8 +71,9 @@ export default defineConfig(({ command, mode }) => {
           comments: false,
           preamble: '/* color-input web component - https://github.com/pops/css-color-component */'
         }
-      } : undefined,
+      },
       rollupOptions: {
+        external,
         output: {
           inlineDynamicImports: true,
           manualChunks: undefined
@@ -56,10 +81,5 @@ export default defineConfig(({ command, mode }) => {
       }
     },
     css: { postcss: resolve(__dirname, 'postcss.config.cjs') },
-    test: {
-      environment: 'jsdom',
-      setupFiles: ['./tests/setup.ts'],
-      globals: true
-    }
   }
 })
