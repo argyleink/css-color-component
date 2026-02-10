@@ -18,6 +18,10 @@ export function createTemplate(): HTMLTemplateElement {
     <input type="text" class="text-input" part="input" aria-label="Color value" title="Color value" aria-invalid="false" spellcheck="false" />
   </div>
   <div class="panel" popover="auto" part="panel">
+    <div class="area-picker" role="slider" aria-label="Color area picker" tabindex="0">
+      <canvas class="area-canvas"></canvas>
+      <div class="area-thumb"></div>
+    </div>
     <div class="preview">
       <div class="copy-wrap">
         <button class="copy-btn">

@@ -114,10 +114,48 @@ button {
   overflow: hidden; /* prevent scrollbars when in constrained viewports */
 }
 
+.area-picker {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  touch-action: none;
+  box-shadow: var(--shadow-inner);
+}
+
+.area-picker:focus-visible {
+  outline-offset: 0px;
+}
+
+.area-canvas {
+  width: 100%;
+  height: 100%;
+}
+
+.area-thumb {
+  position: absolute;
+  box-sizing: border-box;
+  height: calc(1rem + 8px);
+  aspect-ratio: 1;
+  margin-left: calc(-0.5rem - 4px);
+  margin-top: calc(-0.5rem - 4px);
+  border-radius: var(--radius-round);
+  border: 4px solid white;
+  box-shadow: 0 0px 1px 1px rgba(0,0,0,.25), inset 0 1px 2px rgba(0,0,0,.15);
+  left: var(--thumb-x, 50%);
+  top: var(--thumb-y, 50%);
+  z-index: 1;
+  cursor: grab;
+}
+
+.area-picker.dragging .area-thumb {
+  cursor: grabbing;
+}
+
 /* Preview area: visual swatch + colorspace selector + current value output + gamut badge */
 .preview {
   position: relative;
-  aspect-ratio: 16 / 9;
+  aspect-ratio: 16 / 4;
   min-inline-size: 28ch;
   display: grid;
   align-content: end;

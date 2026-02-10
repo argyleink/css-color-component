@@ -1,4 +1,4 @@
-import { getColor, parse, to, toGamut } from 'colorjs.io/fn'
+import { getColor, OKLCH, parse, to, toGamut } from 'colorjs.io/fn'
 import type { ColorSpace } from '../color'
 import {
   alphaToString,
@@ -124,9 +124,11 @@ export function parseIntoChannels(space: ColorSpace, colorStr: string): { space:
     ch.B = toFixed(b, 2)
     ch.ALP = toFixed(alpha * 100)
   } else if (s === 'oklch') {
+    const [minChroma, maxChroma] = OKLCH.coords.c.refRange ?? [0, 1]
     const [l, cc, h] = c.coords
+    const chromaPercentage = ((cc ?? 0 - minChroma) / (maxChroma - minChroma)) * 100
     ch.L = toFixed((l ?? 0) * 100)
-    ch.C = toFixed(Math.min(100, (cc ?? 0) * 100), 0) // Convert to 0-100%, clamp at 100%
+    ch.C = toFixed(Math.min(100, chromaPercentage), 0) // Convert to 0-100%, clamp at 100%
     ch.H = toFixed(h)
     ch.ALP = toFixed(alpha * 100)
   } else if (s === 'lab') {

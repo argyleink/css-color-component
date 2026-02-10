@@ -9,6 +9,7 @@ import {
   type Theme,
   type ColorSpace
 } from './color'
+import { AreaPicker } from './area-picker'
 import { formatChannel } from './utils/channel-formatting'
 import { gencolor, parseIntoChannels } from './utils/color-conversion'
 import {
@@ -59,6 +60,8 @@ export class ColorInput extends HTMLElement {
   #colorSchemeEffectCleanup: ReturnType<typeof effect> | null = null
   #errorEffectCleanup: ReturnType<typeof effect> | null = null
   #controlsEffectCleanup: ReturnType<typeof effect> | null = null
+  #areaPickerEffectCleanup: ReturnType<typeof effect> | null = null
+  #areaPicker?: AreaPicker
   #programmaticUpdate = false
 
   get value() { return this.#value.value }
@@ -173,6 +176,24 @@ export class ColorInput extends HTMLElement {
     this.#chip = this.#root.querySelector('.chip') as HTMLElement
     this.#textInput = this.#root.querySelector('.text-input') as HTMLInputElement
     this.#errorMessage = this.#root.querySelector('.error-message') as HTMLElement
+
+    // Initialize AreaPicker
+    const areaPickerEl = this.#root.querySelector<HTMLElement>('.area-picker')
+    if (areaPickerEl) {
+      this.#areaPicker = new AreaPicker(areaPickerEl, (color) => {
+        this.#value.value = color
+        this.setAttribute('value', color)
+        this.#emitChange()
+        this.#renderControls()
+      })
+
+      // Sync area picker when color changes
+      this.#areaPickerEffectCleanup = effect(() => {
+        const v = this.#value.value
+        const space = this.#space.value
+        this.#areaPicker?.setValue(v, space)
+      })
+    }
 
     // Copy to clipboard
     const copyBtn = this.#root.querySelector<HTMLButtonElement>('button.copy-btn')
@@ -320,9 +341,11 @@ export class ColorInput extends HTMLElement {
   }
 
   disconnectedCallback() {
-    if (this.#colorSchemeEffectCleanup) this.#colorSchemeEffectCleanup()
-    if (this.#previewEffectCleanup) this.#previewEffectCleanup()
-    if (this.#errorEffectCleanup) this.#errorEffectCleanup()
+    this.#colorSchemeEffectCleanup?.()
+    this.#previewEffectCleanup?.()
+    this.#errorEffectCleanup?.()
+    this.#areaPickerEffectCleanup?.()
+    this.#areaPicker?.unmount()
   }
 
   attributeChangedCallback(name: string, _old: string | null, value: string | null) {
