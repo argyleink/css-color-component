@@ -1,6 +1,7 @@
 import { computed, effect, signal } from "@preact/signals-core";
 import { ColorConstructor, serialize, to } from "colorjs.io/fn";
 import { getColorJSSpaceID, type ColorSpace } from "./color";
+import { gencolor, parseIntoChannels } from "./utils/color-conversion";
 
 type AreaConfig = {
   fixedIndex: number;
@@ -115,10 +116,12 @@ export class AreaPicker {
         space === "hex" ? "srgb" : space
       );
       const targetColor = to(newColor, targetSpace, { inGamut: true });
+      const serialized = serialize(targetColor, {
+        format: space === "hex" ? "hex" : undefined,
+      })
       onChange(
-        serialize(targetColor, {
-          format: space === "hex" ? "hex" : undefined,
-        })
+        // reformat color
+        gencolor(space, parseIntoChannels(space, serialized).ch)
       );
     };
 

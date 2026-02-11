@@ -177,9 +177,9 @@ export class ColorInput extends HTMLElement {
     this.#textInput = this.#root.querySelector('.text-input') as HTMLInputElement
     this.#errorMessage = this.#root.querySelector('.error-message') as HTMLElement
 
-    // Initialize AreaPicker
+    // Initialize AreaPicker only when visible
     const areaPickerEl = this.#root.querySelector<HTMLElement>('.area-picker')
-    if (areaPickerEl) {
+    if (areaPickerEl && getComputedStyle(areaPickerEl).display !== 'none') {
       this.#areaPicker = new AreaPicker(areaPickerEl, (color) => {
         this.#value.value = color
         this.setAttribute('value', color)
