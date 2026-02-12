@@ -9,7 +9,7 @@ var __privateGet = (obj, member, getter) => (__accessCheck(obj, member, "read fr
 var __privateAdd = (obj, member, value) => member.has(obj) ? __typeError("Cannot add the same private member more than once") : member instanceof WeakSet ? member.add(obj) : member.set(obj, value);
 var __privateSet = (obj, member, value, setter) => (__accessCheck(obj, member, "write to private field"), setter ? setter.call(obj, value) : member.set(obj, value), value);
 var __privateMethod = (obj, member, method) => (__accessCheck(obj, member, "access private method"), method);
-var _a, _b, _c, _value, _space, _theme, _open, _anchor, _error, _noAlpha, _contrast, _gamut, _previewEffectCleanup, _colorSchemeEffectCleanup, _errorEffectCleanup, _controlsEffectCleanup, _programmaticUpdate, _root, _panel, _controls, _spaceSelect, _output, _chip, _internalTrigger, _textInput, _errorMessage, _lastInvoker, _ColorInput_instances, emitChange_fn, validateAndSetColor_fn, _lastPlacement, _lastPanelSize, _cleanup, _rafId, startReposition_fn, stopReposition_fn, scheduleReposition_fn, positionNow_fn, getAnchorRect_fn, measurePanel_fn, renderControls_fn;
+var _a, _b, _c, _area, _isDragging, _controller, _color, _space, _value, _space2, _theme, _open, _anchor, _error, _noAlpha, _contrast, _gamut, _previewEffectCleanup, _colorSchemeEffectCleanup, _errorEffectCleanup, _controlsEffectCleanup, _areaPickerEffectCleanup, _areaPicker, _programmaticUpdate, _root, _panel, _controls, _spaceSelect, _output, _chip, _internalTrigger, _textInput, _errorMessage, _lastInvoker, _ColorInput_instances, emitChange_fn, validateAndSetColor_fn, _lastPlacement, _lastPanelSize, _cleanup, _rafId, startReposition_fn, stopReposition_fn, scheduleReposition_fn, positionNow_fn, getAnchorRect_fn, measurePanel_fn, renderControls_fn;
 var i = Symbol.for("preact-signals");
 function t() {
   if (!(s > 1)) {
@@ -2079,7 +2079,7 @@ function deltaEOK2(color, sample) {
 const white$2 = WHITES.D65;
 const adaptedCoef = 0.42;
 const adaptedCoefInv = 1 / adaptedCoef;
-const tau = 2 * Math.PI;
+const tau$1 = 2 * Math.PI;
 const cat16 = [
   [0.401288, 0.650173, -0.051461],
   [-0.250268, 1.204414, 0.045854],
@@ -2274,7 +2274,7 @@ function toCam16(xyzd65, env) {
   );
   const a2 = rgbA[0] + (-12 * rgbA[1] + rgbA[2]) / 11;
   const b2 = (rgbA[0] + rgbA[1] - 2 * rgbA[2]) / 9;
-  const hRad = (Math.atan2(b2, a2) % tau + tau) % tau;
+  const hRad = (Math.atan2(b2, a2) % tau$1 + tau$1) % tau$1;
   const et = 0.25 * (Math.cos(hRad + 2) + 3.8);
   const t2 = 5e4 / 13 * env.nc * env.ncb * zdiv(et * Math.sqrt(a2 ** 2 + b2 ** 2), rgbA[0] + rgbA[1] + 1.05 * rgbA[2] + 0.305);
   const alpha = spow(t2, 0.9) * Math.pow(1.64 - Math.pow(0.29, env.n), 0.73);
@@ -2607,8 +2607,8 @@ function toGamutCSS(origin, { space } = {}) {
   if (inGamut(origin_OKLCH, space, { epsilon: 0 })) {
     return to(origin_OKLCH, space);
   }
-  function clip(_color) {
-    const destColor = to(_color, space);
+  function clip(_color2) {
+    const destColor = to(_color2, space);
     const spaceCoords = Object.values(
       /** @type {ColorSpace} */
       space.coords
@@ -3555,7 +3555,7 @@ const prophoto = new RGBColorSpace({
     });
   }
 });
-const oklch = new ColorSpace({
+const OKLCH = new ColorSpace({
   id: "oklch",
   name: "OkLCh",
   coords: {
@@ -3583,6 +3583,386 @@ const oklch = new ColorSpace({
     }
   }
 });
+const tau = 2 * Math.PI;
+const toSRGBLinear = [
+  [4.076741636075958, -3.307711539258063, 0.2309699031821043],
+  [-1.2684379732850315, 2.609757349287688, -0.341319376002657],
+  [-0.0041960761386756, -0.7034186179359362, 1.7076146940746117]
+];
+const RGBCoeff = [
+  // Red
+  [
+    // Limit
+    [-1.8817031, -0.80936501],
+    // `Kn` coefficients
+    [1.19086277, 1.76576728, 0.59662641, 0.75515197, 0.56771245]
+  ],
+  // Green
+  [
+    // Limit
+    [1.8144408, -1.19445267],
+    // `Kn` coefficients
+    [0.73956515, -0.45954404, 0.08285427, 0.12541073, -0.14503204]
+  ],
+  // Blue
+  [
+    // Limit
+    [0.13110758, 1.81333971],
+    // `Kn` coefficients
+    [1.35733652, -915799e-8, -1.1513021, -0.50559606, 692167e-8]
+  ]
+];
+const floatMax = Number.MAX_VALUE;
+const K1 = 0.206;
+const K2 = 0.03;
+const K3 = (1 + K1) / (1 + K2);
+function vdot(a2, b2) {
+  let l2 = a2.length;
+  if (l2 !== b2.length) {
+    throw new Error(`Vectors of size ${l2} and ${b2.length} are not aligned`);
+  }
+  let s2 = 0;
+  a2.forEach((c4, i2) => {
+    s2 += c4 * b2[i2];
+  });
+  return s2;
+}
+function toe(x) {
+  return 0.5 * (K3 * x - K1 + Math.sqrt((K3 * x - K1) * (K3 * x - K1) + 4 * K2 * K3 * x));
+}
+function toeInv(x) {
+  return (x ** 2 + K1 * x) / (K3 * (x + K2));
+}
+function toSt(cusp) {
+  let [l2, c4] = cusp;
+  return [c4 / l2, c4 / (1 - l2)];
+}
+function getStMid(a2, b2) {
+  let s2 = 0.11516993 + 1 / (7.4477897 + 4.1590124 * b2 + a2 * (-2.19557347 + 1.75198401 * b2 + a2 * (-2.13704948 - 10.02301043 * b2 + a2 * (-4.24894561 + 5.38770819 * b2 + 4.69891013 * a2))));
+  let t2 = 0.11239642 + 1 / (1.6132032 - 0.68124379 * b2 + a2 * (0.40370612 + 0.90148123 * b2 + a2 * (-0.27087943 + 0.6122399 * b2 + a2 * (299215e-8 - 0.45399568 * b2 - 0.14661872 * a2))));
+  return [s2, t2];
+}
+function oklabToLinearRGB(lab2, lmsToRgb) {
+  let lms = multiply_v3_m3x3(lab2, LabtoLMS_M);
+  lms[0] = lms[0] ** 3;
+  lms[1] = lms[1] ** 3;
+  lms[2] = lms[2] ** 3;
+  return multiply_v3_m3x3(lms, lmsToRgb, lms);
+}
+function findCusp(a2, b2, lmsToRgb, okCoeff) {
+  let sCusp = computeMaxSaturation(a2, b2, lmsToRgb, okCoeff);
+  let rgb = oklabToLinearRGB([1, sCusp * a2, sCusp * b2], lmsToRgb);
+  let lCusp = spow(1 / Math.max(...rgb), 1 / 3);
+  let cCusp = lCusp * sCusp;
+  return [lCusp, cCusp];
+}
+function findGamutIntersection(a2, b2, l1, c12, l0, lmsToRgb, okCoeff, cusp) {
+  let t2;
+  if (cusp === void 0) {
+    cusp = findCusp(a2, b2, lmsToRgb, okCoeff);
+  }
+  if ((l1 - l0) * cusp[1] - (cusp[0] - l0) * c12 <= 0) {
+    t2 = cusp[1] * l0 / (c12 * cusp[0] + cusp[1] * (l0 - l1));
+  } else {
+    t2 = cusp[1] * (l0 - 1) / (c12 * (cusp[0] - 1) + cusp[1] * (l0 - l1));
+    let dl = l1 - l0;
+    let dc = c12;
+    let kl = vdot(LabtoLMS_M[0].slice(1), [a2, b2]);
+    let km = vdot(LabtoLMS_M[1].slice(1), [a2, b2]);
+    let ks = vdot(LabtoLMS_M[2].slice(1), [a2, b2]);
+    let ldt_ = dl + dc * kl;
+    let mdt_ = dl + dc * km;
+    let sdt_ = dl + dc * ks;
+    let L = l0 * (1 - t2) + t2 * l1;
+    let C = t2 * c12;
+    let l_ = L + C * kl;
+    let m_ = L + C * km;
+    let s_ = L + C * ks;
+    let l2 = l_ ** 3;
+    let m = m_ ** 3;
+    let s2 = s_ ** 3;
+    let ldt = 3 * ldt_ * l_ ** 2;
+    let mdt = 3 * mdt_ * m_ ** 2;
+    let sdt = 3 * sdt_ * s_ ** 2;
+    let ldt2 = 6 * ldt_ ** 2 * l_;
+    let mdt2 = 6 * mdt_ ** 2 * m_;
+    let sdt2 = 6 * sdt_ ** 2 * s_;
+    let r_ = vdot(lmsToRgb[0], [l2, m, s2]) - 1;
+    let r1 = vdot(lmsToRgb[0], [ldt, mdt, sdt]);
+    let r2 = vdot(lmsToRgb[0], [ldt2, mdt2, sdt2]);
+    let ur = r1 / (r1 * r1 - 0.5 * r_ * r2);
+    let tr = -r_ * ur;
+    let g_ = vdot(lmsToRgb[1], [l2, m, s2]) - 1;
+    let g1 = vdot(lmsToRgb[1], [ldt, mdt, sdt]);
+    let g2 = vdot(lmsToRgb[1], [ldt2, mdt2, sdt2]);
+    let ug = g1 / (g1 * g1 - 0.5 * g_ * g2);
+    let tg = -g_ * ug;
+    let b_ = vdot(lmsToRgb[2], [l2, m, s2]) - 1;
+    let b1 = vdot(lmsToRgb[2], [ldt, mdt, sdt]);
+    let b22 = vdot(lmsToRgb[2], [ldt2, mdt2, sdt2]);
+    let ub = b1 / (b1 * b1 - 0.5 * b_ * b22);
+    let tb = -b_ * ub;
+    tr = ur >= 0 ? tr : floatMax;
+    tg = ug >= 0 ? tg : floatMax;
+    tb = ub >= 0 ? tb : floatMax;
+    t2 += Math.min(tr, Math.min(tg, tb));
+  }
+  return t2;
+}
+function getCs(lab2, lmsToRgb, okCoeff) {
+  let [l2, a2, b2] = lab2;
+  let cusp = findCusp(a2, b2, lmsToRgb, okCoeff);
+  let cMax = findGamutIntersection(a2, b2, l2, 1, l2, lmsToRgb, okCoeff, cusp);
+  let stMax = toSt(cusp);
+  let k = cMax / Math.min(l2 * stMax[0], (1 - l2) * stMax[1]);
+  let stMid = getStMid(a2, b2);
+  let ca = l2 * stMid[0];
+  let cb = (1 - l2) * stMid[1];
+  let cMid = 0.9 * k * Math.sqrt(Math.sqrt(1 / (1 / ca ** 4 + 1 / cb ** 4)));
+  ca = l2 * 0.4;
+  cb = (1 - l2) * 0.8;
+  let c0 = Math.sqrt(1 / (1 / ca ** 2 + 1 / cb ** 2));
+  return [c0, cMid, cMax];
+}
+function computeMaxSaturation(a2, b2, lmsToRgb, okCoeff) {
+  let k0, k1, k2, k3, k4, wl, wm, ws;
+  if (vdot(okCoeff[0][0], [a2, b2]) > 1) {
+    [k0, k1, k2, k3, k4] = okCoeff[0][1];
+    [wl, wm, ws] = lmsToRgb[0];
+  } else if (vdot(okCoeff[1][0], [a2, b2]) > 1) {
+    [k0, k1, k2, k3, k4] = okCoeff[1][1];
+    [wl, wm, ws] = lmsToRgb[1];
+  } else {
+    [k0, k1, k2, k3, k4] = okCoeff[2][1];
+    [wl, wm, ws] = lmsToRgb[2];
+  }
+  let sat = k0 + k1 * a2 + k2 * b2 + k3 * a2 ** 2 + k4 * a2 * b2;
+  let kl = vdot(LabtoLMS_M[0].slice(1), [a2, b2]);
+  let km = vdot(LabtoLMS_M[1].slice(1), [a2, b2]);
+  let ks = vdot(LabtoLMS_M[2].slice(1), [a2, b2]);
+  let l_ = 1 + sat * kl;
+  let m_ = 1 + sat * km;
+  let s_ = 1 + sat * ks;
+  let l2 = l_ ** 3;
+  let m = m_ ** 3;
+  let s2 = s_ ** 3;
+  let lds = 3 * kl * l_ ** 2;
+  let mds = 3 * km * m_ ** 2;
+  let sds = 3 * ks * s_ ** 2;
+  let lds2 = 6 * kl ** 2 * l_;
+  let mds2 = 6 * km ** 2 * m_;
+  let sds2 = 6 * ks ** 2 * s_;
+  let f2 = wl * l2 + wm * m + ws * s2;
+  let f1 = wl * lds + wm * mds + ws * sds;
+  let f22 = wl * lds2 + wm * mds2 + ws * sds2;
+  sat = sat - f2 * f1 / (f1 ** 2 - 0.5 * f2 * f22);
+  return sat;
+}
+function okhslToOklab(hsl2, lmsToRgb, okCoeff) {
+  let [h2, s2, l2] = hsl2;
+  let L = toeInv(l2);
+  let a2 = null;
+  let b2 = null;
+  h2 = constrain(h2) / 360;
+  if (L !== 0 && L !== 1 && s2 !== 0) {
+    let a_ = Math.cos(tau * h2);
+    let b_ = Math.sin(tau * h2);
+    let [c0, cMid, cMax] = getCs([L, a_, b_], lmsToRgb, okCoeff);
+    let mid = 0.8;
+    let midInv = 1.25;
+    let t2, k0, k1, k2;
+    if (s2 < mid) {
+      t2 = midInv * s2;
+      k0 = 0;
+      k1 = mid * c0;
+      k2 = 1 - k1 / cMid;
+    } else {
+      t2 = 5 * (s2 - 0.8);
+      k0 = cMid;
+      k1 = 0.2 * cMid ** 2 * 1.25 ** 2 / c0;
+      k2 = 1 - k1 / (cMax - cMid);
+    }
+    let c4 = k0 + t2 * k1 / (1 - k2 * t2);
+    a2 = c4 * a_;
+    b2 = c4 * b_;
+  }
+  return [L, a2, b2];
+}
+function oklabToOkhsl(lab2, lmsToRgb, okCoeff) {
+  let εL = 1e-7;
+  let εS = 1e-4;
+  let L = lab2[0];
+  let s2 = 0;
+  let l2 = toe(L);
+  let c4 = Math.sqrt(lab2[1] ** 2 + lab2[2] ** 2);
+  let h2 = 0.5 + Math.atan2(-lab2[2], -lab2[1]) / tau;
+  if (l2 !== 0 && l2 !== 1 && c4 !== 0) {
+    let a_ = lab2[1] / c4;
+    let b_ = lab2[2] / c4;
+    let [c0, cMid, cMax] = getCs([L, a_, b_], lmsToRgb, okCoeff);
+    let mid = 0.8;
+    let midInv = 1.25;
+    let k0, k1, k2, t2;
+    if (c4 < cMid) {
+      k1 = mid * c0;
+      k2 = 1 - k1 / cMid;
+      t2 = c4 / (k1 + k2 * c4);
+      s2 = t2 * mid;
+    } else {
+      k0 = cMid;
+      k1 = 0.2 * cMid ** 2 * midInv ** 2 / c0;
+      k2 = 1 - k1 / (cMax - cMid);
+      t2 = (c4 - k0) / (k1 + k2 * (c4 - k0));
+      s2 = mid + 0.2 * t2;
+    }
+  }
+  const achromatic = Math.abs(s2) < εS;
+  if (achromatic || l2 === 0 || Math.abs(1 - l2) < εL) {
+    h2 = null;
+    if (!achromatic) {
+      s2 = 0;
+    }
+  } else {
+    h2 = constrain(h2 * 360);
+  }
+  return [h2, s2, l2];
+}
+new ColorSpace({
+  id: "okhsl",
+  name: "Okhsl",
+  coords: {
+    h: {
+      refRange: [0, 360],
+      type: "angle",
+      name: "Hue"
+    },
+    s: {
+      range: [0, 1],
+      name: "Saturation"
+    },
+    l: {
+      range: [0, 1],
+      name: "Lightness"
+    }
+  },
+  base: Oklab,
+  gamutSpace: "self",
+  // Convert Oklab to Okhsl
+  fromBase(lab2) {
+    return oklabToOkhsl(lab2, toSRGBLinear, RGBCoeff);
+  },
+  // Convert Okhsl to Oklab
+  toBase(hsl2) {
+    return okhslToOklab(hsl2, toSRGBLinear, RGBCoeff);
+  },
+  formats: {
+    color: {
+      id: "--okhsl",
+      coords: ["<number> | <angle>", "<percentage> | <number>", "<percentage> | <number>"]
+    }
+  }
+});
+function okhsvToOklab(hsv, lmsToRgb, okCoeff) {
+  let [h2, s2, v2] = hsv;
+  h2 = constrain(h2) / 360;
+  let l2 = toeInv(v2);
+  let a2 = null;
+  let b2 = null;
+  if (l2 !== 0 && s2 !== 0) {
+    let a_ = Math.cos(tau * h2);
+    let b_ = Math.sin(tau * h2);
+    let cusp = findCusp(a_, b_, lmsToRgb, okCoeff);
+    let [sMax, tMax] = toSt(cusp);
+    let s0 = 0.5;
+    let k = 1 - s0 / sMax;
+    let lv = 1 - s2 * s0 / (s0 + tMax - tMax * k * s2);
+    let cv = s2 * tMax * s0 / (s0 + tMax - tMax * k * s2);
+    l2 = v2 * lv;
+    let c4 = v2 * cv;
+    let lvt = toeInv(lv);
+    let cvt = cv * lvt / lv;
+    let lNew = toeInv(l2);
+    c4 = c4 * lNew / l2;
+    l2 = lNew;
+    let [rs, gs, bs] = oklabToLinearRGB([lvt, a_ * cvt, b_ * cvt], lmsToRgb);
+    let scaleL = spow(1 / Math.max(Math.max(rs, gs), Math.max(bs, 0)), 1 / 3);
+    l2 = l2 * scaleL;
+    c4 = c4 * scaleL;
+    a2 = c4 * a_;
+    b2 = c4 * b_;
+  }
+  return [l2, a2, b2];
+}
+function oklabToOkhsv(lab2, lmsToRgb, okCoeff) {
+  let ε2 = 1e-4;
+  let l2 = lab2[0];
+  let s2 = 0;
+  let v2 = toe(l2);
+  let c4 = Math.sqrt(lab2[1] ** 2 + lab2[2] ** 2);
+  let h2 = 0.5 + Math.atan2(-lab2[2], -lab2[1]) / tau;
+  if (l2 !== 0 && l2 !== 1 && c4 !== 0) {
+    let a_ = lab2[1] / c4;
+    let b_ = lab2[2] / c4;
+    let cusp = findCusp(a_, b_, lmsToRgb, okCoeff);
+    let [sMax, tMax] = toSt(cusp);
+    let s0 = 0.5;
+    let k = 1 - s0 / sMax;
+    let t2 = tMax / (c4 + l2 * tMax);
+    let lv = t2 * l2;
+    let cv = t2 * c4;
+    let lvt = toeInv(lv);
+    let cvt = cv * lvt / lv;
+    let [rs, gs, bs] = oklabToLinearRGB([lvt, a_ * cvt, b_ * cvt], lmsToRgb);
+    let scaleL = spow(1 / Math.max(Math.max(rs, gs), Math.max(bs, 0)), 1 / 3);
+    l2 = l2 / scaleL;
+    c4 = c4 / scaleL;
+    c4 = c4 * toe(l2) / l2;
+    l2 = toe(l2);
+    v2 = l2 / lv;
+    s2 = (s0 + tMax) * cv / (tMax * s0 + tMax * k * cv);
+  }
+  if (Math.abs(s2) < ε2 || v2 === 0) {
+    h2 = null;
+  } else {
+    h2 = constrain(h2 * 360);
+  }
+  return [h2, s2, v2];
+}
+const okhsv = new ColorSpace({
+  id: "okhsv",
+  name: "Okhsv",
+  coords: {
+    h: {
+      refRange: [0, 360],
+      type: "angle",
+      name: "Hue"
+    },
+    s: {
+      range: [0, 1],
+      name: "Saturation"
+    },
+    v: {
+      range: [0, 1],
+      name: "Value"
+    }
+  },
+  base: Oklab,
+  gamutSpace: "self",
+  // Convert Oklab to Okhsl
+  fromBase(lab2) {
+    return oklabToOkhsv(lab2, toSRGBLinear, RGBCoeff);
+  },
+  // Convert Okhsl to Oklab
+  toBase(hsl2) {
+    return okhsvToOklab(hsl2, toSRGBLinear, RGBCoeff);
+  },
+  formats: {
+    color: {
+      id: "--okhsv",
+      coords: ["<number> | <angle>", "<percentage> | <number>", "<percentage> | <number>"]
+    }
+  }
+});
 ColorSpace.register(sRGB);
 ColorSpace.register(sRGBLinear);
 ColorSpace.register(hsl);
@@ -3590,13 +3970,14 @@ ColorSpace.register(hwb);
 ColorSpace.register(lab);
 ColorSpace.register(lch);
 ColorSpace.register(Oklab);
-ColorSpace.register(oklch);
+ColorSpace.register(OKLCH);
 ColorSpace.register(P3);
 ColorSpace.register(a98rgb);
 ColorSpace.register(prophoto);
 ColorSpace.register(REC2020);
 ColorSpace.register(xyz_d65);
 ColorSpace.register(XYZ_D50);
+ColorSpace.register(okhsv);
 function contrastColor(c4) {
   var _a2, _b2;
   try {
@@ -3759,7 +4140,7 @@ function gencolor(space, ch) {
   }
 }
 function parseIntoChannels(space, colorStr) {
-  var _a2, _b2, _c2, _d, _e;
+  var _a2, _b2, _c2, _d, _e, _f;
   let c4 = getColor(parse(colorStr));
   const actualSpace = space === "hex" ? "srgb" : space;
   const targetId = getColorJSSpaceID(actualSpace);
@@ -3777,9 +4158,11 @@ function parseIntoChannels(space, colorStr) {
     ch.B = toFixed(b2, 2);
     ch.ALP = toFixed(alpha * 100);
   } else if (s2 === "oklch") {
+    const [minChroma, maxChroma] = (_b2 = OKLCH.coords.c.refRange) != null ? _b2 : [0, 1];
     const [l2, cc, h2] = c4.coords;
+    const chromaPercentage = (cc != null ? cc : 0 - minChroma) / (maxChroma - minChroma) * 100;
     ch.L = toFixed((l2 != null ? l2 : 0) * 100);
-    ch.C = toFixed(Math.min(100, (cc != null ? cc : 0) * 100), 0);
+    ch.C = toFixed(Math.min(100, chromaPercentage), 0);
     ch.H = toFixed(h2);
     ch.ALP = toFixed(alpha * 100);
   } else if (s2 === "lab") {
@@ -3796,16 +4179,16 @@ function parseIntoChannels(space, colorStr) {
     ch.ALP = toFixed(alpha * 100);
   } else if (s2 === "hsl") {
     const h2 = c4.coords[0];
-    const s22 = (_b2 = c4.coords[1]) != null ? _b2 : 0;
-    const l2 = (_c2 = c4.coords[2]) != null ? _c2 : 0;
+    const s22 = (_c2 = c4.coords[1]) != null ? _c2 : 0;
+    const l2 = (_d = c4.coords[2]) != null ? _d : 0;
     ch.H = toFixed(h2);
     ch.S = toFixed(s22 > 1 ? s22 : s22 * 100);
     ch.L = toFixed(l2 > 1 ? l2 : l2 * 100);
     ch.ALP = toFixed(alpha * 100);
   } else if (s2 === "hwb") {
     const h2 = c4.coords[0];
-    const w2 = (_d = c4.coords[1]) != null ? _d : 0;
-    const b2 = (_e = c4.coords[2]) != null ? _e : 0;
+    const w2 = (_e = c4.coords[1]) != null ? _e : 0;
+    const b2 = (_f = c4.coords[2]) != null ? _f : 0;
     ch.H = toFixed(h2);
     ch.W = toFixed(w2 > 1 ? w2 : w2 * 100);
     ch.B = toFixed(b2 > 1 ? b2 : b2 * 100);
@@ -3825,6 +4208,276 @@ function parseIntoChannels(space, colorStr) {
   }
   return { space: s2, ch };
 }
+const AREA_CONFIGS = {
+  okhsv: {
+    fixedIndex: 0,
+    xIndex: 1,
+    xMax: 1,
+    xStep: 1 / 100,
+    yIndex: 2,
+    yMax: 1,
+    yStep: 1 / 100
+  },
+  oklch: {
+    fixedIndex: 2,
+    xIndex: 1,
+    // 0.4 is approximately supported gamut by displays
+    xMax: 0.4,
+    xStep: 0.4 / 100,
+    yIndex: 0,
+    yMax: 1,
+    yStep: 1 / 100
+  },
+  hsl: {
+    fixedIndex: 0,
+    xIndex: 1,
+    xMax: 100,
+    xStep: 1,
+    yIndex: 2,
+    yMax: 100,
+    yStep: 1
+  }
+};
+const getAreaConfig = (color) => {
+  if (color) {
+    return AREA_CONFIGS[color.spaceId];
+  }
+};
+function renderAreaGradient(canvas, getColor2) {
+  const W = 320 / 2;
+  const H = 200 / 2;
+  canvas.width = W;
+  canvas.height = H;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) {
+    return;
+  }
+  const img = ctx.createImageData(W, H);
+  const d2 = img.data;
+  for (let y2 = 0; y2 < H; y2++) {
+    const Y = 1 - y2 / (H - 1);
+    for (let x = 0; x < W; x++) {
+      const X = x / (W - 1);
+      const [r, g2, b2] = to(getColor2(X, Y), "srgb").coords;
+      const i2 = (y2 * W + x) * 4;
+      d2[i2] = Math.round((r != null ? r : 0) * 255);
+      d2[i2 + 1] = Math.round((g2 != null ? g2 : 0) * 255);
+      d2[i2 + 2] = Math.round((b2 != null ? b2 : 0) * 255);
+      d2[i2 + 3] = 255;
+    }
+  }
+  ctx.putImageData(img, 0, 0);
+}
+class AreaPicker {
+  constructor(element, onChange) {
+    __privateAdd(this, _area);
+    __privateAdd(this, _isDragging, d$1(false));
+    __privateAdd(this, _controller, new AbortController());
+    __privateAdd(this, _color, d$1(null));
+    __privateAdd(this, _space, d$1(null));
+    __privateSet(this, _area, element);
+    const canvas = element == null ? void 0 : element.querySelector(".area-canvas");
+    if (!element || !canvas) {
+      return;
+    }
+    const hue = w(() => {
+      var _a2;
+      const color = __privateGet(this, _color).value;
+      const config = getAreaConfig(color);
+      if (!config) {
+        return 0;
+      }
+      return (_a2 = color == null ? void 0 : color.coords[config.fixedIndex]) != null ? _a2 : 0;
+    });
+    const draggingHue = d$1(null);
+    const handleChange = (newColor) => {
+      if (!__privateGet(this, _space).value) {
+        return;
+      }
+      const space = __privateGet(this, _space).value;
+      const targetSpace = getColorJSSpaceID(
+        space === "hex" ? "srgb" : space
+      );
+      const targetColor = to(newColor, targetSpace, { inGamut: true });
+      const serialized = serialize(targetColor, {
+        format: space === "hex" ? "hex" : void 0
+      });
+      onChange(
+        // reformat color
+        gencolor(space, parseIntoChannels(space, serialized).ch)
+      );
+    };
+    const handleMove = (event) => {
+      const color = __privateGet(this, _color).value;
+      const config = getAreaConfig(color);
+      if (!color || !config) {
+        return;
+      }
+      const rect = element.getBoundingClientRect();
+      const x = Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width));
+      const y2 = Math.max(0, Math.min(1, 1 - (event.clientY - rect.top) / rect.height));
+      const newCoords = structuredClone(color.coords);
+      newCoords[config.xIndex] = x * config.xMax;
+      newCoords[config.yIndex] = y2 * config.yMax;
+      handleChange({ ...color, coords: newCoords });
+    };
+    element.addEventListener(
+      "pointerdown",
+      (event) => {
+        __privateGet(this, _isDragging).value = true;
+        element.setPointerCapture(event.pointerId);
+        handleMove(event);
+        draggingHue.value = hue.value;
+      },
+      { signal: __privateGet(this, _controller).signal }
+    );
+    element.addEventListener(
+      "pointermove",
+      (event) => {
+        if (__privateGet(this, _isDragging).value) {
+          event.preventDefault();
+          handleMove(event);
+        }
+      },
+      { signal: __privateGet(this, _controller).signal }
+    );
+    element.addEventListener(
+      "pointerup",
+      (event) => {
+        __privateGet(this, _isDragging).value = false;
+        element.releasePointerCapture(event.pointerId);
+        draggingHue.value = null;
+      },
+      { signal: __privateGet(this, _controller).signal }
+    );
+    element.addEventListener(
+      "pointercancel",
+      () => {
+        __privateGet(this, _isDragging).value = false;
+        draggingHue.value = null;
+      },
+      { signal: __privateGet(this, _controller).signal }
+    );
+    element.addEventListener(
+      "keydown",
+      (event) => {
+        var _a2, _b2;
+        const color = __privateGet(this, _color).value;
+        const config = getAreaConfig(color);
+        if (!color || !config) {
+          return;
+        }
+        let xDelta = 0;
+        let yDelta = 0;
+        switch (event.key) {
+          case "ArrowRight":
+            xDelta = 1;
+            break;
+          case "ArrowLeft":
+            xDelta = -1;
+            break;
+          case "ArrowUp":
+            yDelta = 1;
+            break;
+          case "ArrowDown":
+            yDelta = -1;
+            break;
+          default:
+            return;
+        }
+        event.preventDefault();
+        const prevX = (_a2 = color.coords[config.xIndex]) != null ? _a2 : 0;
+        const prevY = (_b2 = color.coords[config.yIndex]) != null ? _b2 : 0;
+        const newX = Math.max(0, Math.min(config.xMax, prevX + xDelta * config.xStep));
+        const newY = Math.max(0, Math.min(config.yMax, prevY + yDelta * config.yStep));
+        const newCoords = structuredClone(color.coords);
+        newCoords[config.xIndex] = newX;
+        newCoords[config.yIndex] = newY;
+        handleChange({ ...color, coords: newCoords });
+      },
+      { signal: __privateGet(this, _controller).signal }
+    );
+    const cleanupDragging = E(() => {
+      element.classList.toggle("dragging", __privateGet(this, _isDragging).value);
+      document.body.inert = __privateGet(this, _isDragging).value;
+    });
+    const cleanupColor = E(() => {
+      var _a2, _b2, _c2, _d;
+      const color = __privateGet(this, _color).value;
+      const config = getAreaConfig(color);
+      if (!color || !config) {
+        return;
+      }
+      const x = ((_a2 = color.coords[config.xIndex]) != null ? _a2 : 0) / config.xMax * 100;
+      const y2 = ((_b2 = color.coords[config.yIndex]) != null ? _b2 : 0) / config.yMax * 100;
+      (_c2 = __privateGet(this, _area)) == null ? void 0 : _c2.style.setProperty("--thumb-x", `${x}%`);
+      (_d = __privateGet(this, _area)) == null ? void 0 : _d.style.setProperty("--thumb-y", `${100 - y2}%`);
+    });
+    let animationId = null;
+    let pendingHue = null;
+    const cleanupHue = E(() => {
+      var _a2;
+      pendingHue = (_a2 = draggingHue.value) != null ? _a2 : hue.value;
+      if (animationId === null) {
+        animationId = requestAnimationFrame(() => {
+          if (canvas && pendingHue !== null && __privateGet(this, _space).value) {
+            const color = __privateGet(this, _color).value;
+            const config = getAreaConfig(color);
+            if (!color || !config) {
+              return;
+            }
+            renderAreaGradient(canvas, (x, y2) => {
+              const coords = [0, 0, 0];
+              coords[config.fixedIndex] = pendingHue != null ? pendingHue : 0;
+              coords[config.xIndex] = x * config.xMax;
+              coords[config.yIndex] = y2 * config.yMax;
+              return { spaceId: color.spaceId, coords, alpha: null };
+            });
+          }
+          animationId = null;
+          pendingHue = null;
+        });
+      }
+    });
+    __privateGet(this, _controller).signal.addEventListener("abort", () => {
+      cleanupDragging();
+      cleanupColor();
+      cleanupHue();
+      if (animationId) {
+        cancelAnimationFrame(animationId);
+        animationId = null;
+      }
+    });
+  }
+  setValue(color, space) {
+    __privateGet(this, _space).value = space;
+    try {
+      let colorObject;
+      if (space === "oklch" || space === "lch") {
+        colorObject = to(color, "oklch");
+      } else if (space === "hsl") {
+        colorObject = to(color, "hsl");
+      } else {
+        colorObject = to(color, "okhsv");
+      }
+      __privateGet(this, _color).value = {
+        spaceId: colorObject.space.id,
+        coords: colorObject.coords,
+        alpha: colorObject.alpha
+      };
+    } catch {
+      __privateGet(this, _color).value = null;
+    }
+  }
+  unmount() {
+    __privateGet(this, _controller).abort();
+  }
+}
+_area = new WeakMap();
+_isDragging = new WeakMap();
+_controller = new WeakMap();
+_color = new WeakMap();
+_space = new WeakMap();
 const VIEWPORT_MARGIN = 8;
 const GUTTER = 8;
 let cachedInsets = null;
@@ -3995,6 +4648,11 @@ function createTemplate() {
     <input type="text" class="text-input" part="input" aria-label="Color value" title="Color value" aria-invalid="false" spellcheck="false" />
   </div>
   <div class="panel" popover="auto" part="panel">
+    <div class="area-picker" part="area" role="slider" aria-label="Color area picker" tabindex="0">
+      <canvas class="area-canvas"></canvas>
+      <div class="area-thumb"></div>
+    </div>
+    <div class="controls" part="controls"></div>
     <div class="preview">
       <div class="copy-wrap">
         <button class="copy-btn">
@@ -4008,12 +4666,11 @@ function createTemplate() {
       <output class="info" part="output"></output>
       <span class="gamut" title="Color's gamut" part="gamut"></span>
     </div>
-    <div class="controls" part="controls"></div>
   </div>
   `;
   return template;
 }
-const styles = ':root{--radius-round: 1e5px;--radius-2: 5px;--radius-3: 1rem}:host{--canvas: Canvas;--canvas-text: CanvasText;--radius-2: .5rem;--radius-3: .75rem;--radius-round: 1e4px;--shadow-elev: #0305081f 0px -1px 2px 0px, #03050821 0px 2px 1px -2px, #03050821 0px 5px 5px -2px, #03050824 0px 10px 10px -2px, #03050826 0px 20px 20px -2px, #0305082b 0px 40px 40px -2px;--shadow-inner: inset 0 0 0 1px color-mix(in oklab, var(--canvas-text), transparent 94%);--checker: repeating-conic-gradient(color-mix(in oklab, var(--canvas-text), transparent 90%) 0% 25%, transparent 0% 50%) 50%/1rem 1rem;color-scheme:light dark;display:flex;align-items:center;gap:10px;position:relative;@media (width < 350px){overflow:hidden}}:host([hidden]){display:none}button{border:1px solid color-mix(in oklab,var(--canvas-text),var(--canvas) 80%);outline-offset:2px;&.trigger{flex-shrink:0;background:none;padding:0;border:none;display:inline-flex;place-content:center;border-radius:var(--radius-round);.chip{display:inline-block;inline-size:1.25rem;block-size:1.25rem;border-radius:var(--radius-round);box-shadow:inset 0 0 0 1px color-mix(in oklab,var(--canvas-text),transparent 92%);background:linear-gradient(var(--value) 0 0),var(--checker);forced-color-adjust:none}}}.input-wrapper{position:relative;display:flex;flex-direction:column;flex:1;min-width:0}.text-input{field-sizing:content;font-family:inherit;padding:1ch 1.5ch;border:1px solid color-mix(in oklab,var(--canvas-text),var(--canvas) 80%);border-radius:var(--radius-2);background:color-mix(in oklab,var(--canvas-text),var(--canvas) 92%);color:var(--canvas-text);box-shadow:var(--shadow-inner);outline-offset:2px;&[aria-invalid=true]{outline-color:red}}.error-message{position:absolute;bottom:-1.5rem;left:0;font-size:12px;color:#ef4444;font-weight:500;white-space:nowrap;pointer-events:none;opacity:0;transition:opacity .2s ease}.error-message:not(:empty){opacity:1}.panel{margin:0;max-inline-size:min(92vw,560px);background:var(--canvas);color:var(--canvas-text);box-shadow:var(--shadow-elev);border-radius:var(--radius-3);padding:0;border:1px solid #0000;overflow:hidden}.preview{position:relative;aspect-ratio:16 / 9;min-inline-size:28ch;display:grid;align-content:end;justify-items:start;padding:.75rem;gap:10px;box-shadow:var(--shadow-inner);background:linear-gradient(var(--value) 0 0),var(--checker);forced-color-adjust:none;&:hover .copy-btn,&:focus-within .copy-btn{opacity:1}>*:not(:hover){opacity:.9}.copy-wrap{position:absolute;top:.5rem;right:.5rem;display:flex;flex-direction:column;align-items:flex-end;gap:.25rem}.copy-btn{color:var(--contrast);background:none;border:1px solid #0000;border-radius:0;padding:0;cursor:pointer;opacity:0;transition:opacity .2s ease;display:inline-flex;align-items:center}.copy-btn svg{display:block}.copy-message{color:var(--contrast);font-size:.8rem;font-weight:500;opacity:0;pointer-events:none;transition:opacity .2s ease;white-space:nowrap}.copy-message.show{opacity:1}.visually-hidden:not(:focus):not(:active){clip-path:inset(50%);height:1px;overflow:hidden;position:absolute;white-space:nowrap;width:1px}}.space{-webkit-appearance:base-select;-moz-appearance:base-select;appearance:base-select;min-block-size:1lh;line-height:1.1;font-weight:700;margin:0;padding:0;color:var(--contrast);background:transparent;border-radius:0;border:none;&::picker-icon{content:"›";-webkit-appearance:none;transform:rotate(90deg) scale(1.5)}}@supports not selector(::picker-icon){.space{background-image:url(https://api.iconify.design/basil:caret-down-solid.svg);background-size:1rem;background-position:right .5rem center;background-repeat:no-repeat}}.gamut,.info{line-height:1.1;text-box:cap alphabetic;display:block;color:var(--contrast);background:transparent}.gamut{font-size:1rem;text-box:ex alphabetic}.info{font-size:1.25rem}.controls{display:grid;gap:.5rem;padding:.75rem;border-radius:0 0 var(--radius-3) var(--radius-3);.control{display:grid;grid-template-columns:min-content 1fr 4ch;align-items:center;gap:.5rem}.control .num-wrapper{position:relative;display:flex;align-items:center}.control .num-wrapper sup{opacity:.5;font-size:.5em;place-self:start}.control label{font:500 12px/1.2 ui-monospace,SFMono-Regular,Menlo,Consolas,Liberation Mono,monospace}.control input[type=number]{text-align:end;font-size:12px;padding:0;background:none;border:1px solid var(--canvas);border-radius:.25rem;-moz-appearance:textfield;font-variant:tabular-nums;font-family:monospace;&::-webkit-outer-spin-button,&::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}}.control input[type=range]{width:100%;height:1rem;border-radius:999px;border:1px solid var(--canvas);background:var(--canvas);box-shadow:var(--shadow-inner);-webkit-appearance:none;-moz-appearance:none;appearance:none;forced-color-adjust:none}.control input[type=range].alpha{background:linear-gradient(to right,#0000,#000),var(--checker)}.control input[type=range]::-webkit-slider-thumb{cursor:grab;-webkit-appearance:none;appearance:none;border:4px solid white;height:calc(1rem + 8px);aspect-ratio:1;border-radius:var(--radius-round);box-shadow:0 0 1px 1px #00000040,inset 0 1px 2px #00000026}.control input[type=range]:active::-webkit-slider-thumb{cursor:grabbing}.control input[type=range]::-moz-range-thumb{cursor:grab;-moz-appearance:none;appearance:none;border:4px solid white;height:calc(1rem + 8px);aspect-ratio:1;border-radius:var(--radius-round);box-shadow:0 0 1px 1px #00000040,inset 0 1px 2px #00000026;width:calc(8px + 1rem);background:none;box-sizing:border-box}.control input[type=range]:active::-moz-range-thumb{cursor:grabbing}}';
+const styles = ':root{--radius-round: 1e5px;--radius-2: 5px;--radius-3: 1rem}:host{--canvas: Canvas;--canvas-text: CanvasText;--radius-2: .5rem;--radius-3: .75rem;--radius-round: 1e4px;--shadow-elev: #0305081f 0px -1px 2px 0px, #03050821 0px 2px 1px -2px, #03050821 0px 5px 5px -2px, #03050824 0px 10px 10px -2px, #03050826 0px 20px 20px -2px, #0305082b 0px 40px 40px -2px;--shadow-inner: inset 0 0 0 1px color-mix(in oklab, var(--canvas-text), transparent 94%);--checker: repeating-conic-gradient(color-mix(in oklab, var(--canvas-text), transparent 90%) 0% 25%, transparent 0% 50%) 50%/1rem 1rem;color-scheme:light dark;display:flex;align-items:center;gap:10px;position:relative;@media (width < 350px){overflow:hidden}}:host([hidden]){display:none}button{border:1px solid color-mix(in oklab,var(--canvas-text),var(--canvas) 80%);outline-offset:2px;&.trigger{flex-shrink:0;background:none;padding:0;border:none;display:inline-flex;place-content:center;border-radius:var(--radius-round);.chip{display:inline-block;inline-size:1.25rem;block-size:1.25rem;border-radius:var(--radius-round);box-shadow:inset 0 0 0 1px color-mix(in oklab,var(--canvas-text),transparent 92%);background:linear-gradient(var(--value) 0 0),var(--checker);forced-color-adjust:none}}}.input-wrapper{position:relative;display:flex;flex-direction:column;flex:1;min-width:0}.text-input{field-sizing:content;font-family:inherit;padding:1ch 1.5ch;border:1px solid color-mix(in oklab,var(--canvas-text),var(--canvas) 80%);border-radius:var(--radius-2);background:color-mix(in oklab,var(--canvas-text),var(--canvas) 92%);color:var(--canvas-text);box-shadow:var(--shadow-inner);outline-offset:2px;&[aria-invalid=true]{outline-color:red}}.error-message{position:absolute;bottom:-1.5rem;left:0;font-size:12px;color:#ef4444;font-weight:500;white-space:nowrap;pointer-events:none;opacity:0;transition:opacity .2s ease}.error-message:not(:empty){opacity:1}.panel{margin:0;max-inline-size:min(92vw,560px);background:var(--canvas);color:var(--canvas-text);box-shadow:var(--shadow-elev);border-radius:var(--radius-3);padding:0;border:1px solid #0000;overflow:hidden}.area-picker{position:relative;width:100%;aspect-ratio:16 / 9;overflow:hidden;touch-action:none;box-shadow:var(--shadow-inner)}.area-picker:focus-visible{outline-offset:0px}.area-canvas{width:100%;height:100%}.area-thumb{position:absolute;box-sizing:border-box;height:calc(1rem + 8px);aspect-ratio:1;margin-left:calc(-.5rem - 4px);margin-top:calc(-.5rem - 4px);border-radius:var(--radius-round);border:4px solid white;box-shadow:0 0 1px 1px #00000040,inset 0 1px 2px #00000026;left:var(--thumb-x, 50%);top:var(--thumb-y, 50%);z-index:1;cursor:grab}.area-picker.dragging .area-thumb{cursor:grabbing}.preview{position:relative;min-inline-size:35ch;display:grid;align-content:end;justify-items:start;padding:.75rem;gap:6px;box-shadow:var(--shadow-inner);background:linear-gradient(var(--value) 0 0),var(--checker);forced-color-adjust:none;&:hover .copy-btn,&:focus-within .copy-btn{opacity:1}>*:not(:hover){opacity:.9}.copy-wrap{position:absolute;top:.5rem;right:.5rem;display:flex;flex-direction:column;align-items:flex-end;gap:.25rem}.copy-btn{color:var(--contrast);background:none;border:1px solid #0000;border-radius:0;padding:0;cursor:pointer;opacity:0;transition:opacity .2s ease;display:inline-flex;align-items:center}.copy-btn svg{display:block}.copy-message{color:var(--contrast);font-size:.8rem;font-weight:500;opacity:0;pointer-events:none;transition:opacity .2s ease;white-space:nowrap}.copy-message.show{opacity:1}.visually-hidden:not(:focus):not(:active){clip-path:inset(50%);height:1px;overflow:hidden;position:absolute;white-space:nowrap;width:1px}}.space{-webkit-appearance:base-select;-moz-appearance:base-select;appearance:base-select;min-block-size:1lh;line-height:1.1;font-weight:700;margin:0;padding:0;color:var(--contrast);background:transparent;border-radius:0;border:none;&::picker-icon{content:"›";-webkit-appearance:none;transform:rotate(90deg) scale(1.5)}}@supports not selector(::picker-icon){.space{background-image:url(https://api.iconify.design/basil:caret-down-solid.svg);background-size:1rem;background-position:right .5rem center;background-repeat:no-repeat}}.gamut,.info{line-height:1.1;text-box:cap alphabetic;display:block;color:var(--contrast);background:transparent}.gamut{font-size:1rem}.info{font-size:1.25rem}.controls{display:grid;gap:.5rem;padding:.75rem;border-radius:0 0 var(--radius-3) var(--radius-3);.control{display:grid;grid-template-columns:min-content 1fr 4ch;align-items:center;gap:.5rem}.control .num-wrapper{position:relative;display:flex;align-items:center}.control .num-wrapper sup{opacity:.5;font-size:.5em;place-self:start}.control label{font:500 12px/1.2 ui-monospace,SFMono-Regular,Menlo,Consolas,Liberation Mono,monospace}.control input[type=number]{text-align:end;font-size:12px;padding:0;background:none;border:1px solid var(--canvas);border-radius:.25rem;-moz-appearance:textfield;font-variant:tabular-nums;font-family:monospace;&::-webkit-outer-spin-button,&::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}}.control input[type=range]{width:100%;height:1rem;border-radius:999px;border:1px solid var(--canvas);background:var(--canvas);box-shadow:var(--shadow-inner);-webkit-appearance:none;-moz-appearance:none;appearance:none;forced-color-adjust:none}.control input[type=range].alpha{background:linear-gradient(to right,#0000,#000),var(--checker)}.control input[type=range]::-webkit-slider-thumb{cursor:grab;-webkit-appearance:none;appearance:none;border:4px solid white;height:calc(1rem + 8px);aspect-ratio:1;border-radius:var(--radius-round);box-shadow:0 0 1px 1px #00000040,inset 0 1px 2px #00000026}.control input[type=range]:active::-webkit-slider-thumb{cursor:grabbing}.control input[type=range]::-moz-range-thumb{cursor:grab;-moz-appearance:none;appearance:none;border:4px solid white;height:calc(1rem + 8px);aspect-ratio:1;border-radius:var(--radius-round);box-shadow:0 0 1px 1px #00000040,inset 0 1px 2px #00000026;width:calc(8px + 1rem);background:none;box-sizing:border-box}.control input[type=range]:active::-moz-range-thumb{cursor:grabbing}}';
 const DEFAULT_VALUE = "oklch(75% 75% 180)";
 const DEFAULT_SPACE = "oklch";
 const sheet = new CSSStyleSheet();
@@ -4028,7 +4685,7 @@ class ColorInput extends HTMLElement {
     // State: Reactive signals (Preact Signals Core)
     // ──────────────────────────────────────────────────────────────────────────────
     __privateAdd(this, _value, d$1(DEFAULT_VALUE));
-    __privateAdd(this, _space, d$1(DEFAULT_SPACE));
+    __privateAdd(this, _space2, d$1(DEFAULT_SPACE));
     __privateAdd(this, _theme, d$1("auto"));
     __privateAdd(this, _open, d$1(false));
     __privateAdd(this, _anchor, d$1(null));
@@ -4040,6 +4697,8 @@ class ColorInput extends HTMLElement {
     __privateAdd(this, _colorSchemeEffectCleanup, null);
     __privateAdd(this, _errorEffectCleanup, null);
     __privateAdd(this, _controlsEffectCleanup, null);
+    __privateAdd(this, _areaPickerEffectCleanup, null);
+    __privateAdd(this, _areaPicker);
     __privateAdd(this, _programmaticUpdate, false);
     // ──────────────────────────────────────────────────────────────────────────────
     // DOM references
@@ -4084,22 +4743,22 @@ class ColorInput extends HTMLElement {
       const parsed = parse(v2);
       const sid = reverseColorJSSpaceID(parsed.spaceId);
       const isHex = typeof v2 === "string" && v2.trim().startsWith("#");
-      __privateGet(this, _space).value = isHex ? "hex" : sid === "rgb" ? "srgb" : sid;
+      __privateGet(this, _space2).value = isHex ? "hex" : sid === "rgb" ? "srgb" : sid;
       __privateGet(this, _value).value = v2;
       __privateSet(this, _programmaticUpdate, true);
       this.setAttribute("value", v2);
-      this.setAttribute("colorspace", __privateGet(this, _space).value);
+      this.setAttribute("colorspace", __privateGet(this, _space2).value);
       __privateSet(this, _programmaticUpdate, false);
       __privateMethod(this, _ColorInput_instances, emitChange_fn).call(this);
     } catch {
     }
   }
   get colorspace() {
-    return __privateGet(this, _space).value;
+    return __privateGet(this, _space2).value;
   }
   set colorspace(s2) {
     const next = s2 || DEFAULT_SPACE;
-    __privateGet(this, _space).value = next;
+    __privateGet(this, _space2).value = next;
     __privateSet(this, _programmaticUpdate, true);
     this.setAttribute("colorspace", next);
     try {
@@ -4174,6 +4833,21 @@ class ColorInput extends HTMLElement {
     __privateSet(this, _chip, __privateGet(this, _root).querySelector(".chip"));
     __privateSet(this, _textInput, __privateGet(this, _root).querySelector(".text-input"));
     __privateSet(this, _errorMessage, __privateGet(this, _root).querySelector(".error-message"));
+    const areaPickerEl = __privateGet(this, _root).querySelector(".area-picker");
+    if (areaPickerEl && getComputedStyle(areaPickerEl).display !== "none") {
+      __privateSet(this, _areaPicker, new AreaPicker(areaPickerEl, (color) => {
+        __privateGet(this, _value).value = color;
+        this.setAttribute("value", color);
+        __privateMethod(this, _ColorInput_instances, emitChange_fn).call(this);
+        __privateMethod(this, _ColorInput_instances, renderControls_fn).call(this);
+      }));
+      __privateSet(this, _areaPickerEffectCleanup, E(() => {
+        var _a3;
+        const v2 = __privateGet(this, _value).value;
+        const space = __privateGet(this, _space2).value;
+        (_a3 = __privateGet(this, _areaPicker)) == null ? void 0 : _a3.setValue(v2, space);
+      }));
+    }
     const copyBtn = __privateGet(this, _root).querySelector("button.copy-btn");
     const copyMessage = __privateGet(this, _root).querySelector(".copy-message");
     const copyMessageLiveRegion = __privateGet(this, _root).querySelector(".copy-message-live-region");
@@ -4298,15 +4972,18 @@ class ColorInput extends HTMLElement {
     }));
     if (!this.hasAttribute("value")) this.setAttribute("value", DEFAULT_VALUE);
     if (!this.hasAttribute("colorspace")) {
-      this.setAttribute("colorspace", __privateGet(this, _space).value);
+      this.setAttribute("colorspace", __privateGet(this, _space2).value);
     }
-    __privateGet(this, _spaceSelect).value = __privateGet(this, _space).value;
+    __privateGet(this, _spaceSelect).value = __privateGet(this, _space2).value;
     __privateMethod(this, _ColorInput_instances, renderControls_fn).call(this);
   }
   disconnectedCallback() {
-    if (__privateGet(this, _colorSchemeEffectCleanup)) __privateGet(this, _colorSchemeEffectCleanup).call(this);
-    if (__privateGet(this, _previewEffectCleanup)) __privateGet(this, _previewEffectCleanup).call(this);
-    if (__privateGet(this, _errorEffectCleanup)) __privateGet(this, _errorEffectCleanup).call(this);
+    var _a2, _b2, _c2, _d, _e;
+    (_a2 = __privateGet(this, _colorSchemeEffectCleanup)) == null ? void 0 : _a2.call(this);
+    (_b2 = __privateGet(this, _previewEffectCleanup)) == null ? void 0 : _b2.call(this);
+    (_c2 = __privateGet(this, _errorEffectCleanup)) == null ? void 0 : _c2.call(this);
+    (_d = __privateGet(this, _areaPickerEffectCleanup)) == null ? void 0 : _d.call(this);
+    (_e = __privateGet(this, _areaPicker)) == null ? void 0 : _e.unmount();
   }
   attributeChangedCallback(name, _old, value) {
     if (value === _old) return;
@@ -4317,13 +4994,13 @@ class ColorInput extends HTMLElement {
         const sid = reverseColorJSSpaceID(parsed.spaceId);
         const isHex = typeof value === "string" && value.trim().startsWith("#");
         __privateGet(this, _value).value = value;
-        __privateGet(this, _space).value = isHex ? "hex" : sid === "rgb" ? "srgb" : sid;
-        if (__privateGet(this, _spaceSelect)) __privateGet(this, _spaceSelect).value = __privateGet(this, _space).value;
+        __privateGet(this, _space2).value = isHex ? "hex" : sid === "rgb" ? "srgb" : sid;
+        if (__privateGet(this, _spaceSelect)) __privateGet(this, _spaceSelect).value = __privateGet(this, _space2).value;
       } catch {
       }
     }
     if (name === "colorspace" && value) {
-      __privateGet(this, _space).value = value;
+      __privateGet(this, _space2).value = value;
       if (__privateGet(this, _spaceSelect)) __privateGet(this, _spaceSelect).value = value;
     }
     if (name === "theme") {
@@ -4336,7 +5013,7 @@ class ColorInput extends HTMLElement {
   }
 }
 _value = new WeakMap();
-_space = new WeakMap();
+_space2 = new WeakMap();
 _theme = new WeakMap();
 _open = new WeakMap();
 _anchor = new WeakMap();
@@ -4348,6 +5025,8 @@ _previewEffectCleanup = new WeakMap();
 _colorSchemeEffectCleanup = new WeakMap();
 _errorEffectCleanup = new WeakMap();
 _controlsEffectCleanup = new WeakMap();
+_areaPickerEffectCleanup = new WeakMap();
+_areaPicker = new WeakMap();
 _programmaticUpdate = new WeakMap();
 _root = new WeakMap();
 _panel = new WeakMap();
@@ -4361,7 +5040,7 @@ _errorMessage = new WeakMap();
 _lastInvoker = new WeakMap();
 _ColorInput_instances = new WeakSet();
 emitChange_fn = function() {
-  const detail = { value: __privateGet(this, _value).value, colorspace: __privateGet(this, _space).value, gamut: __privateGet(this, _gamut).value };
+  const detail = { value: __privateGet(this, _value).value, colorspace: __privateGet(this, _space2).value, gamut: __privateGet(this, _gamut).value };
   this.dispatchEvent(new CustomEvent("change", { detail, bubbles: true }));
 };
 validateAndSetColor_fn = function(inputValue) {
@@ -4374,11 +5053,11 @@ validateAndSetColor_fn = function(inputValue) {
     const sid = reverseColorJSSpaceID(parsed.spaceId);
     const isHex = typeof inputValue === "string" && inputValue.trim().startsWith("#");
     __privateGet(this, _error).value = null;
-    __privateGet(this, _space).value = isHex ? "hex" : sid === "rgb" ? "srgb" : sid;
+    __privateGet(this, _space2).value = isHex ? "hex" : sid === "rgb" ? "srgb" : sid;
     __privateGet(this, _value).value = inputValue;
     this.setAttribute("value", inputValue);
-    this.setAttribute("colorspace", __privateGet(this, _space).value);
-    if (__privateGet(this, _spaceSelect)) __privateGet(this, _spaceSelect).value = __privateGet(this, _space).value;
+    this.setAttribute("colorspace", __privateGet(this, _space2).value);
+    if (__privateGet(this, _spaceSelect)) __privateGet(this, _spaceSelect).value = __privateGet(this, _space2).value;
     __privateMethod(this, _ColorInput_instances, emitChange_fn).call(this);
   } catch (error) {
     __privateGet(this, _error).value = "Invalid color format";
@@ -4530,7 +5209,7 @@ measurePanel_fn = function(panel) {
 renderControls_fn = function() {
   var _a2, _b2, _c2, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p;
   if (__privateGet(this, _controlsEffectCleanup)) __privateGet(this, _controlsEffectCleanup).call(this);
-  const space = __privateGet(this, _space).value;
+  const space = __privateGet(this, _space2).value;
   if (!__privateGet(this, _controls)) return;
   const current = parseIntoChannels(space, __privateGet(this, _value).value);
   const ch = current.ch;

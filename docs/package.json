@@ -17,7 +17,7 @@
     "@astrojs/starlight": "^0.36.1",
     "@preact/signals-core": "^1.6.0",
     "astro": "^5.6.1",
-    "colorjs.io": "^0.5.2",
+    "colorjs.io": "^0.6.1",
     "sharp": "^0.34.2"
   }
 }
