@@ -273,6 +273,42 @@ picker.addEventListener("close", () => {
 All events bubble and can be captured at parent elements.
 :::
 
+## Area Picker
+
+The popover panel includes a two-dimensional color area that lets users pick a color visually. The area automatically adapts its axes to the active color space:
+
+| Active color space | Internal model | X axis | Y axis | Fixed channel |
+| --- | --- | --- | --- | --- |
+| sRGB, hex, HWB, Lab, OKLab | OkHSV | Saturation | Value | Hue |
+| OKLCH, LCH | OKLCH | Chroma | Lightness | Hue |
+| HSL | HSL | Saturation | Lightness | Hue |
+
+### Pointer interaction
+
+Click or drag anywhere inside the area to select a color. The thumb tracks your pointer position and the component value updates in real time.
+
+### Keyboard navigation
+
+Focus the area (it has `role="slider"` and is focusable) and use the arrow keys:
+
+- **←/→** — adjust the X-axis channel in fine steps
+- **↑/↓** — adjust the Y-axis channel in fine steps
+
+### Styling the area
+
+Target the area container with `::part(area)`:
+
+```css
+color-input::part(area) {
+  border-radius: 12px;
+  aspect-ratio: 16 / 9;
+}
+```
+
+:::tip
+The area gradient is rendered onto a `<canvas>` at half resolution for performance and scaled up with CSS.
+:::
+
 ## CSS Parts
 
 The `<color-input>` element exposes several CSS parts for styling with the `::part()` selector:
