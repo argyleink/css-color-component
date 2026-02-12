@@ -22,6 +22,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    outputs:
+      new_version: ${{ steps.version.outputs.new_version }}
 
     steps:
       - name: Checkout repository
@@ -116,4 +118,23 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Version:** ${{ steps.version.outputs.new_version }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "The NPM publish workflow will automatically trigger now." >> $GITHUB_STEP_SUMMARY
+          echo "The NPM and CDN publish workflows will run next." >> $GITHUB_STEP_SUMMARY
+
+  publish-npm:
+    needs: release
+    permissions:
+      contents: read
+      id-token: write
+    uses: ./.github/workflows/publish-npm.yml
+    with:
+      tag: ${{ needs.release.outputs.new_version }}
+    secrets: inherit
+
+  publish-cdn:
+    needs: release
+    permissions:
+      contents: write
+    uses: ./.github/workflows/publish-cdn.yml
+    with:
+      tag: ${{ needs.release.outputs.new_version }}
+    secrets: inherit
