@@ -156,7 +156,6 @@ button {
 /* Preview area: visual swatch + colorspace selector + current value output + gamut badge */
 .preview {
   position: relative;
-  min-inline-size: 35ch;
   display: grid;
   align-content: end;
   justify-items: start;
