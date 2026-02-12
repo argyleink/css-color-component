@@ -3,6 +3,12 @@ name: Publish to CDN
 on:
   release:
     types: [published]
+  workflow_call:
+    inputs:
+      tag:
+        description: 'Tag to publish (e.g., v1.0.0)'
+        required: true
+        type: string
   push:
     tags:
       - 'v*'
@@ -20,6 +26,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
+          ref: ${{ inputs.tag || github.ref }}
           fetch-depth: 0
 
       - name: Setup Node.js
@@ -41,6 +48,17 @@ jobs:
         id: package-version
         run: echo "version=$(node -p "require('./package.json').version")" >> $GITHUB_OUTPUT
 
+      - name: Determine tag name
+        id: tag-info
+        run: |
+          TAG_NAME=""
+          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            TAG_NAME=${GITHUB_REF#refs/tags/}
+          elif [[ -n "${{ inputs.tag || '' }}" ]]; then
+            TAG_NAME="${{ inputs.tag }}"
+          fi
+          echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
+
       - name: Commit built files
         run: |
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
@@ -54,8 +72,8 @@ jobs:
           git push origin cdn-latest -f
 
           # Also create version-specific tag if this is a release
-          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
-            TAG_NAME=${GITHUB_REF#refs/tags/}
+          TAG_NAME="${{ steps.tag-info.outputs.tag_name }}"
+          if [[ -n "$TAG_NAME" ]]; then
             git tag -f "cdn-$TAG_NAME"
             git push origin "cdn-$TAG_NAME" -f
           fi
@@ -88,8 +106,8 @@ jobs:
           echo "https://cdn.jsdelivr.net/gh/${{ github.repository }}@cdn-latest/dist/color-input.min.js" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
-            TAG_NAME=${GITHUB_REF#refs/tags/}
+          TAG_NAME="${{ steps.tag-info.outputs.tag_name }}"
+          if [[ -n "$TAG_NAME" ]]; then
             echo "**Version-specific:**" >> $GITHUB_STEP_SUMMARY
             echo '```' >> $GITHUB_STEP_SUMMARY
             echo "https://cdn.jsdelivr.net/gh/${{ github.repository }}@cdn-$TAG_NAME/dist/color-input.min.js" >> $GITHUB_STEP_SUMMARY
