@@ -6,7 +6,6 @@ export type StandardSpace = 'srgb' | 'hex' | 'hsl' | 'hwb' | 'lab' | 'lch' | 'ok
 export type WideRGB = 'srgb-linear' | 'display-p3' | 'rec2020' | 'a98-rgb' | 'prophoto' | 'xyz' | 'xyz-d50' | 'xyz-d65'
 export type ColorSpace = StandardSpace | WideRGB
 
-
 colorjs.ColorSpace.register(colorjs.sRGB);
 colorjs.ColorSpace.register(colorjs.sRGB_Linear);
 colorjs.ColorSpace.register(colorjs.HSL);
@@ -21,7 +20,7 @@ colorjs.ColorSpace.register(colorjs.ProPhoto);
 colorjs.ColorSpace.register(colorjs.REC_2020);
 colorjs.ColorSpace.register(colorjs.XYZ_D65);
 colorjs.ColorSpace.register(colorjs.XYZ_D50);
-
+colorjs.ColorSpace.register(colorjs.Okhsv);
 
 export function parseCoords(x: number, min = 0, max = 100) {
   return Math.max(min, Math.min(max, x))

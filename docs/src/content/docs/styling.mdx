@@ -72,6 +72,7 @@ The `<color-input>` element exposes several CSS parts for styling with the `::pa
 - `output` - CSS color string display
 - `gamut` - Gamut badge (srgb/p3/rec2020/xyz)
 - `controls` - Container for channel sliders and inputs
+- `area` - Container for area picker
 
 ## Styling Examples
 
@@ -215,6 +216,11 @@ Customize parts based on the current theme:
 .circle-swatch::part(input) {
   display: none;
 }
+
+/* Hide the area picker for more compact look */
+.circle-swatch::part(area) {
+  display: none;
+}
 ```
 
 ## Parts Reference
@@ -228,3 +234,4 @@ Customize parts based on the current theme:
 | `output`   | Current color value display    |
 | `gamut`    | Gamut badge                    |
 | `controls` | Sliders and inputs container   |
+| `area`     | Area picker container          |
