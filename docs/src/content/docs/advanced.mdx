@@ -23,6 +23,15 @@ The component uses Shadow DOM for style isolation:
 - **CSS Parts API**: Customize via `::part()` selectors
 - **Composability**: Use multiple instances without conflicts
 
+### Area Picker
+
+The 2D color area is driven by its own `AreaPicker` class:
+
+- **Space-Aware Axes**: Automatically selects OkHSV, OKLCH, or HSL axes depending on the active color space
+- **Canvas Rendering**: Gradients are rendered at half resolution via an off-screen `<canvas>` for performance, then scaled up with CSS
+- **Frame-Throttled Updates**: Hue changes are batched with `requestAnimationFrame` to avoid redundant paints
+- **Keyboard Accessible**: Arrow keys adjust the X/Y channels in fine steps while the area is focused
+
 ### Color Math
 
 Color calculations are powered by [colorjs.io](https://colorjs.io):
