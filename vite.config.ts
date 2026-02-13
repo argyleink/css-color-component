@@ -5,39 +5,15 @@ import dts from 'vite-plugin-dts'
 export default defineConfig(({ command, mode }) => {
   const isServe = command === 'serve'
   const isTest = mode === 'test' || process.env.VITEST
-
-  if (isTest) {
-    return {
-      test: {
-        environment: 'jsdom',
-        setupFiles: ['./tests/setup.ts'],
-        globals: true
-      }
-    }
-  }
-
-  if (isServe) {
-    return {
-      root: 'docs',
-      server: {
-        open: true,
-        fs: { allow: ['..'] }
-      },
-      css: { postcss: resolve(__dirname, 'postcss.config.cjs') },
-    }
-  }
-
-  let formats: ('es' | 'iife')[] = ['es']
-  let fileName = (_format: string) => 'slim.js'
-  let external: string[] | undefined = ['colorjs.io/fn', '@preact/signals-core']
-  if (process.env.BUNDLE === 'cdn') {
-    formats = ['iife', 'es']
-    fileName = (format) => format === 'iife' ? 'color-input.min.js' : 'index.js'
-    external = undefined
-  }
+  const isCdn = process.env.BUNDLE === 'cdn'
 
   return {
-    plugins: [
+    root: isServe && !isTest ? 'docs' : '.',
+    server: {
+      open: true,
+      fs: { allow: ['..'] }
+    },
+    plugins: isServe && !isTest ? [] : [
       dts({
         include: ['src/**/*'],
         outDir: 'dist',
@@ -45,11 +21,16 @@ export default defineConfig(({ command, mode }) => {
         rollupTypes: true
       })
     ],
-    build: {
+    build: isServe && !isTest ? undefined : {
       lib: {
         entry: resolve(__dirname, 'src/index.ts'),
-        formats,
-        fileName,
+        formats: isCdn ? ['iife', 'es'] : ['es'],
+        fileName: format => {
+          if (isCdn) {
+            return format === 'iife' ? 'color-input.min.js' : 'index.js'
+          }
+          return 'slim.js'
+        },
         name: 'ColorInput'
       },
       outDir: 'dist',
@@ -73,7 +54,7 @@ export default defineConfig(({ command, mode }) => {
         }
       },
       rollupOptions: {
-        external,
+        external: isCdn ? undefined : ['colorjs.io/fn', '@preact/signals-core'],
         output: {
           inlineDynamicImports: true,
           manualChunks: undefined
@@ -81,5 +62,10 @@ export default defineConfig(({ command, mode }) => {
       }
     },
     css: { postcss: resolve(__dirname, 'postcss.config.cjs') },
+    test: {
+      environment: 'jsdom',
+      setupFiles: ['./tests/setup.ts'],
+      globals: true
+    }
   }
 })
