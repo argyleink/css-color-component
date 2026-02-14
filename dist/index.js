@@ -9,7 +9,7 @@ var __privateGet = (obj, member, getter) => (__accessCheck(obj, member, "read fr
 var __privateAdd = (obj, member, value) => member.has(obj) ? __typeError("Cannot add the same private member more than once") : member instanceof WeakSet ? member.add(obj) : member.set(obj, value);
 var __privateSet = (obj, member, value, setter) => (__accessCheck(obj, member, "write to private field"), setter ? setter.call(obj, value) : member.set(obj, value), value);
 var __privateMethod = (obj, member, method) => (__accessCheck(obj, member, "access private method"), method);
-var _a, _b, _c, _area, _isDragging, _controller, _color, _space, _value, _space2, _theme, _open, _anchor, _error, _noAlpha, _contrast, _gamut, _previewEffectCleanup, _colorSchemeEffectCleanup, _errorEffectCleanup, _controlsEffectCleanup, _areaPickerEffectCleanup, _areaPicker, _programmaticUpdate, _root, _panel, _controls, _spaceSelect, _output, _chip, _internalTrigger, _textInput, _errorMessage, _lastInvoker, _ColorInput_instances, emitChange_fn, validateAndSetColor_fn, _lastPlacement, _lastPanelSize, _cleanup, _rafId, startReposition_fn, stopReposition_fn, scheduleReposition_fn, positionNow_fn, getAnchorRect_fn, measurePanel_fn, renderControls_fn;
+var _a, _b, _c, _area, _controller, _color, _space, _draggingColor, _value, _space2, _theme, _open, _anchor, _error, _noAlpha, _contrast, _gamut, _previewEffectCleanup, _colorSchemeEffectCleanup, _errorEffectCleanup, _controlsEffectCleanup, _areaPickerEffectCleanup, _areaPicker, _programmaticUpdate, _root, _panel, _controls, _spaceSelect, _output, _chip, _internalTrigger, _textInput, _errorMessage, _lastInvoker, _ColorInput_instances, emitChange_fn, validateAndSetColor_fn, _lastPlacement, _lastPanelSize, _cleanup, _rafId, startReposition_fn, stopReposition_fn, scheduleReposition_fn, positionNow_fn, getAnchorRect_fn, measurePanel_fn, renderControls_fn;
 var i = Symbol.for("preact-signals");
 function t() {
   if (!(s > 1)) {
@@ -4271,25 +4271,16 @@ function renderAreaGradient(canvas, getColor2) {
 class AreaPicker {
   constructor(element, onChange) {
     __privateAdd(this, _area);
-    __privateAdd(this, _isDragging, d$1(false));
     __privateAdd(this, _controller, new AbortController());
     __privateAdd(this, _color, d$1(null));
     __privateAdd(this, _space, d$1(null));
+    // store color during drag to prevent jitter from conversions
+    __privateAdd(this, _draggingColor, d$1(null));
     __privateSet(this, _area, element);
     const canvas = element == null ? void 0 : element.querySelector(".area-canvas");
     if (!element || !canvas) {
       return;
     }
-    const hue = w(() => {
-      var _a2;
-      const color = __privateGet(this, _color).value;
-      const config = getAreaConfig(color);
-      if (!config) {
-        return 0;
-      }
-      return (_a2 = color == null ? void 0 : color.coords[config.fixedIndex]) != null ? _a2 : 0;
-    });
-    const draggingHue = d$1(null);
     const handleChange = (newColor) => {
       if (!__privateGet(this, _space).value) {
         return;
@@ -4308,7 +4299,8 @@ class AreaPicker {
       );
     };
     const handleMove = (event) => {
-      const color = __privateGet(this, _color).value;
+      var _a2;
+      const color = (_a2 = __privateGet(this, _draggingColor).value) != null ? _a2 : __privateGet(this, _color).value;
       const config = getAreaConfig(color);
       if (!color || !config) {
         return;
@@ -4319,22 +4311,21 @@ class AreaPicker {
       const newCoords = structuredClone(color.coords);
       newCoords[config.xIndex] = x * config.xMax;
       newCoords[config.yIndex] = y2 * config.yMax;
-      handleChange({ ...color, coords: newCoords });
+      __privateGet(this, _draggingColor).value = { ...color, coords: newCoords };
+      handleChange(__privateGet(this, _draggingColor).value);
     };
     element.addEventListener(
       "pointerdown",
       (event) => {
-        __privateGet(this, _isDragging).value = true;
         element.setPointerCapture(event.pointerId);
         handleMove(event);
-        draggingHue.value = hue.value;
       },
       { signal: __privateGet(this, _controller).signal }
     );
     element.addEventListener(
       "pointermove",
       (event) => {
-        if (__privateGet(this, _isDragging).value) {
+        if (__privateGet(this, _draggingColor).value) {
           event.preventDefault();
           handleMove(event);
         }
@@ -4344,17 +4335,15 @@ class AreaPicker {
     element.addEventListener(
       "pointerup",
       (event) => {
-        __privateGet(this, _isDragging).value = false;
         element.releasePointerCapture(event.pointerId);
-        draggingHue.value = null;
+        __privateGet(this, _draggingColor).value = null;
       },
       { signal: __privateGet(this, _controller).signal }
     );
     element.addEventListener(
       "pointercancel",
       () => {
-        __privateGet(this, _isDragging).value = false;
-        draggingHue.value = null;
+        __privateGet(this, _draggingColor).value = null;
       },
       { signal: __privateGet(this, _controller).signal }
     );
@@ -4398,26 +4387,35 @@ class AreaPicker {
       { signal: __privateGet(this, _controller).signal }
     );
     const cleanupDragging = E(() => {
-      element.classList.toggle("dragging", __privateGet(this, _isDragging).value);
-      document.body.inert = __privateGet(this, _isDragging).value;
+      const isDragging = __privateGet(this, _draggingColor).value != null;
+      element.classList.toggle("dragging", isDragging);
+      document.body.inert = isDragging;
     });
     const cleanupColor = E(() => {
-      var _a2, _b2, _c2, _d;
-      const color = __privateGet(this, _color).value;
+      var _a2, _b2, _c2, _d, _e;
+      const color = (_a2 = __privateGet(this, _draggingColor).value) != null ? _a2 : __privateGet(this, _color).value;
       const config = getAreaConfig(color);
       if (!color || !config) {
         return;
       }
-      const x = ((_a2 = color.coords[config.xIndex]) != null ? _a2 : 0) / config.xMax * 100;
-      const y2 = ((_b2 = color.coords[config.yIndex]) != null ? _b2 : 0) / config.yMax * 100;
-      (_c2 = __privateGet(this, _area)) == null ? void 0 : _c2.style.setProperty("--thumb-x", `${x}%`);
-      (_d = __privateGet(this, _area)) == null ? void 0 : _d.style.setProperty("--thumb-y", `${100 - y2}%`);
+      const x = ((_b2 = color.coords[config.xIndex]) != null ? _b2 : 0) / config.xMax * 100;
+      const y2 = ((_c2 = color.coords[config.yIndex]) != null ? _c2 : 0) / config.yMax * 100;
+      (_d = __privateGet(this, _area)) == null ? void 0 : _d.style.setProperty("--thumb-x", `${x}%`);
+      (_e = __privateGet(this, _area)) == null ? void 0 : _e.style.setProperty("--thumb-y", `${100 - y2}%`);
     });
     let animationId = null;
     let pendingHue = null;
+    const hue = w(() => {
+      var _a2, _b2;
+      const color = (_a2 = __privateGet(this, _draggingColor).value) != null ? _a2 : __privateGet(this, _color).value;
+      const config = getAreaConfig(color);
+      if (!config) {
+        return 0;
+      }
+      return (_b2 = color == null ? void 0 : color.coords[config.fixedIndex]) != null ? _b2 : 0;
+    });
     const cleanupHue = E(() => {
-      var _a2;
-      pendingHue = (_a2 = draggingHue.value) != null ? _a2 : hue.value;
+      pendingHue = hue.value;
       if (animationId === null) {
         animationId = requestAnimationFrame(() => {
           if (canvas && pendingHue !== null && __privateGet(this, _space).value) {
@@ -4474,10 +4472,10 @@ class AreaPicker {
   }
 }
 _area = new WeakMap();
-_isDragging = new WeakMap();
 _controller = new WeakMap();
 _color = new WeakMap();
 _space = new WeakMap();
+_draggingColor = new WeakMap();
 const VIEWPORT_MARGIN = 8;
 const GUTTER = 8;
 let cachedInsets = null;
