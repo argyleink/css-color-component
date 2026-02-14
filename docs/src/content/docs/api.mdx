@@ -99,6 +99,14 @@ Hover or focus the preview area to reveal a copy button. Activating it copies th
 The Clipboard API requires a secure context (https or localhost) and a user interaction. Browsers that block it simply prevent the confirmation message from showing.
 ::::
 
+## Eye Dropper
+
+Hover or focus the preview area to reveal an eye dropper button to the left of the copy button. Activating it opens the native browser eye dropper, allowing you to pick colors from anywhere on your screen.
+
+::::note
+The Eye Dropper uses the native [EyeDropper API](https://developer.mozilla.org/en-US/docs/Web/API/EyeDropper_API) and is supported in Chrome and Edge 95+. The button automatically hides itself in browsers that don't support the API (Firefox, Safari).
+::::
+
 ## Properties
 
 The `<color-input>` element exposes six properties:
