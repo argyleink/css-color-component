@@ -81,10 +81,11 @@ function renderAreaGradient(
 
 export class AreaPicker {
   #area: HTMLElement | null;
-  #isDragging = signal(false);
   #controller = new AbortController();
   #color = signal<null | ColorConstructor>(null);
   #space = signal<null | ColorSpace>(null);
+  // store color during drag to prevent jitter from conversions
+  #draggingColor = signal<null | ColorConstructor>(null);
 
   constructor(
     element: null | HTMLElement,
@@ -95,16 +96,6 @@ export class AreaPicker {
     if (!element || !canvas) {
       return;
     }
-
-    const hue = computed(() => {
-      const color = this.#color.value;
-      const config = getAreaConfig(color);
-      if (!config) {
-        return 0;
-      }
-      return color?.coords[config.fixedIndex] ?? 0;
-    });
-    const draggingHue = signal<null | number>(null);
 
     const handleChange = (newColor: ColorConstructor) => {
       if (!this.#space.value) {
@@ -126,7 +117,7 @@ export class AreaPicker {
     };
 
     const handleMove = (event: PointerEvent) => {
-      const color = this.#color.value;
+      const color = this.#draggingColor.value ?? this.#color.value;
       const config = getAreaConfig(color);
       if (!color || !config) {
         return;
@@ -137,20 +128,19 @@ export class AreaPicker {
       const x = Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width));
       const y = Math.max(0, Math.min(1, 1 - (event.clientY - rect.top) / rect.height));
 
-      // Build new coords array, preserving the fixed coordinate (hue)
+      // Modify coords directly on the dragging color
       const newCoords = structuredClone(color.coords);
       newCoords[config.xIndex] = x * config.xMax;
       newCoords[config.yIndex] = y * config.yMax;
-      handleChange({ ...color, coords: newCoords });
+      this.#draggingColor.value = { ...color, coords: newCoords };
+      handleChange(this.#draggingColor.value);
     };
 
     element.addEventListener(
       "pointerdown",
       (event) => {
-        this.#isDragging.value = true;
         element.setPointerCapture(event.pointerId);
         handleMove(event);
-        draggingHue.value = hue.value;
       },
       { signal: this.#controller.signal }
     );
@@ -158,7 +148,7 @@ export class AreaPicker {
     element.addEventListener(
       "pointermove",
       (event) => {
-        if (this.#isDragging.value) {
+        if (this.#draggingColor.value) {
           event.preventDefault();
           handleMove(event);
         }
@@ -169,9 +159,8 @@ export class AreaPicker {
     element.addEventListener(
       "pointerup",
       (event) => {
-        this.#isDragging.value = false;
         element.releasePointerCapture(event.pointerId);
-        draggingHue.value = null;
+        this.#draggingColor.value = null;
       },
       { signal: this.#controller.signal }
     );
@@ -179,8 +168,7 @@ export class AreaPicker {
     element.addEventListener(
       "pointercancel",
       () => {
-        this.#isDragging.value = false;
-        draggingHue.value = null;
+        this.#draggingColor.value = null;
       },
       { signal: this.#controller.signal }
     );
@@ -231,20 +219,24 @@ export class AreaPicker {
 
     // update dragging state
     const cleanupDragging = effect(() => {
-      element.classList.toggle("dragging", this.#isDragging.value);
-      document.body.inert = this.#isDragging.value;
+      const isDragging = this.#draggingColor.value != null
+      element.classList.toggle("dragging", isDragging);
+      document.body.inert = isDragging;
     });
 
-    // update thumb position whenever color changes
+    // update thumb position whenever color changes or during drag
     const cleanupColor = effect(() => {
-      const color = this.#color.value;
+      const color = this.#draggingColor.value ?? this.#color.value;
       const config = getAreaConfig(color);
+
       if (!color || !config) {
         return;
       }
-      // Calculate percentage positions from current coords
+
+      // Calculate percentage positions from coords
       const x = ((color.coords[config.xIndex] ?? 0) / config.xMax) * 100;
       const y = ((color.coords[config.yIndex] ?? 0) / config.yMax) * 100;
+
       this.#area?.style.setProperty("--thumb-x", `${x}%`);
       this.#area?.style.setProperty("--thumb-y", `${100 - y}%`);
     });
@@ -252,11 +244,20 @@ export class AreaPicker {
     let animationId: null | number = null;
     let pendingHue: null | number = null;
 
+    const hue = computed(() => {
+      const color = this.#draggingColor.value ?? this.#color.value;
+      const config = getAreaConfig(color);
+      if (!config) {
+        return 0;
+      }
+      return color?.coords[config.fixedIndex] ?? 0;
+    });
+
     // allow only one render per animation frame
     const cleanupHue = effect(() => {
       // avoid frequent updates when hue is slightly changing due to conversion errors
       // solve this by relying on hue when dragging is started
-      pendingHue = draggingHue.value ?? hue.value;
+      pendingHue = hue.value;
 
       if (animationId === null) {
         animationId = requestAnimationFrame(() => {
