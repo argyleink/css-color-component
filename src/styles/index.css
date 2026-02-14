@@ -165,21 +165,30 @@ button {
   background: linear-gradient(var(--value) 0 0), var(--checker);
   forced-color-adjust: none;
 
+  &:hover .eyedropper-btn, &:focus-within .eyedropper-btn,
   &:hover .copy-btn, &:focus-within .copy-btn { 
     opacity: 1; 
   }
+  .eyedropper-btn[hidden] {
+    display: none;
+  }
 
   & > *:not(:hover) {opacity:.9}
-  .copy-wrap {
+  .tools {
     position: absolute;
     top: .5rem;
     right: .5rem;
+    display: flex;
+    align-items: flex-start;
+    gap: .25rem;
+  }
+  .copy-wrap {
     display: flex;
     flex-direction: column;
     align-items: flex-end;
     gap: .25rem;
   }
-  .copy-btn {
+  .eyedropper-btn, .copy-btn {
     color: var(--contrast);
     background: none;
     border: 1px solid #0000;
