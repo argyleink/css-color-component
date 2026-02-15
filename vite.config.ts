@@ -5,7 +5,7 @@ import dts from 'vite-plugin-dts'
 export default defineConfig(({ command, mode }) => {
   const isServe = command === 'serve'
   const isTest = mode === 'test' || process.env.VITEST
-  const isProd = mode === 'production'
+  const isCdn = process.env.BUNDLE === 'cdn'
 
   return {
     root: isServe && !isTest ? 'docs' : '.',
@@ -24,16 +24,21 @@ export default defineConfig(({ command, mode }) => {
     build: isServe && !isTest ? undefined : {
       lib: {
         entry: resolve(__dirname, 'src/index.ts'),
-        formats: isProd ? ['es', 'iife'] : ['es'],
-        fileName: (format) => isProd && format === 'iife' ? 'color-input.min.js' : 'index.js',
+        formats: isCdn ? ['iife', 'es'] : ['es'],
+        fileName: format => {
+          if (isCdn) {
+            return format === 'iife' ? 'color-input.min.js' : 'index.js'
+          }
+          return 'slim.js'
+        },
         name: 'ColorInput'
       },
       outDir: 'dist',
-      emptyOutDir: true,
+      emptyOutDir: false,
       target: 'es2019',
-      minify: isProd ? 'terser' : 'esbuild',
-      sourcemap: isProd ? true : false,
-      terserOptions: isProd ? {
+      minify: 'terser',
+      sourcemap: true,
+      terserOptions: {
         compress: {
           drop_console: false,
           drop_debugger: true,
@@ -47,8 +52,9 @@ export default defineConfig(({ command, mode }) => {
           comments: false,
           preamble: '/* color-input web component - https://github.com/pops/css-color-component */'
         }
-      } : undefined,
+      },
       rollupOptions: {
+        external: isCdn ? undefined : ['colorjs.io/fn', '@preact/signals-core'],
         output: {
           inlineDynamicImports: true,
           manualChunks: undefined
