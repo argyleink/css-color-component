@@ -195,6 +195,36 @@ export class ColorInput extends HTMLElement {
       })
     }
 
+    // Eye dropper (pick color from screen)
+    const eyedropperBtn = this.#root.querySelector<HTMLButtonElement>('button.eyedropper-btn')
+    if (eyedropperBtn) {
+      if ('EyeDropper' in window) {
+        eyedropperBtn.addEventListener('click', async () => {
+          try {
+            const eyeDropper = new (window as any).EyeDropper()
+            const result = await eyeDropper.open()
+            if (result && result.sRGBHex) {
+              const space = this.#space.value
+              // convert to current space and format color
+              const converted = to(result.sRGBHex, space === 'hex' ? 'srgb' : space)
+              const serialized = serialize(converted, {
+                format: space === "hex" ? "hex" : undefined,
+              })
+              const color = gencolor(space, parseIntoChannels(space, serialized).ch)
+              this.#value.value = color
+              this.setAttribute('value', color)
+              this.#emitChange()
+              this.#renderControls()
+            }
+          } catch {
+            // User cancelled or error occurred
+          }
+        })
+      } else {
+        eyedropperBtn.hidden = true
+      }
+    }
+
     // Copy to clipboard
     const copyBtn = this.#root.querySelector<HTMLButtonElement>('button.copy-btn')
     const copyMessage = this.#root.querySelector<HTMLElement>('.copy-message')
