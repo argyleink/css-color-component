@@ -242,15 +242,6 @@ button {
   }
 }
 
-@supports not selector(::picker-icon) {
-  .space {
-    background-image: url("https://api.iconify.design/basil:caret-down-solid.svg");
-    background-size: 1rem;
-    background-position: right 0.5rem center;
-    background-repeat: no-repeat;
-  }
-}
-
 /* Gamut badge: displays detected color gamut (srgb/p3/rec2020/xyz) */
 /* Info output: shows the current CSS color string */
 .gamut, .info {
