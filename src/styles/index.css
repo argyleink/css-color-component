@@ -104,7 +104,8 @@ button {
 /* Panel: popover container for preview + controls; positioned via Popover API */
 .panel {
   margin: 0;
-  max-inline-size: min(92vw, 560px);
+  width: 320px;
+  max-inline-size: 92vw;
   background: var(--canvas);
   color: var(--canvas-text);
   box-shadow: var(--shadow-elev);
@@ -155,7 +156,6 @@ button {
 /* Preview area: visual swatch + colorspace selector + current value output + gamut badge */
 .preview {
   position: relative;
-  min-inline-size: 35ch;
   display: grid;
   align-content: end;
   justify-items: start;
@@ -263,7 +263,13 @@ button {
 }
 .gamut { font-size: 1rem; }
 
-.info { font-size: 1.25rem }
+.info {
+  font-size: 1.25rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow: hidden;
+  max-width: 100%;
+}
 
 /* Controls: dynamically generated sliders + numeric inputs for each channel in the selected color space */
 .controls {
