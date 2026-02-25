@@ -367,6 +367,14 @@ export class ColorInput extends HTMLElement {
     }
 
     this.#spaceSelect.value = this.#space.value
+
+    // Normalize value on load so chroma (and other channels) are in consistent form
+    // (e.g. percentage notation), matching what gencolor produces after any change
+    try {
+      const { ch } = parseIntoChannels(this.#space.value, this.#value.value)
+      this.#value.value = gencolor(this.#space.value, ch)
+    } catch {}
+
     this.#renderControls()
   }
 
