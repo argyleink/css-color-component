@@ -50,6 +50,18 @@ The component is designed for minimal bundle impact:
 - **No Framework Dependencies**: Only Preact Signals and colorjs.io
 - **Modern Output**: Targets ES2020+ for smaller bundles
 
+### Slim Bundle
+
+If your project already depends on `colorjs.io` or `@preact/signals-core`, use the `/slim` entry point to avoid duplicate bundled dependencies:
+
+```js
+import 'hdr-color-input/slim'
+```
+
+:::tip
+Use the slim bundle when you want to share a single instance of colorjs.io across your application and the color picker.
+:::
+
 ### Runtime Performance
 
 **Efficient Updates:**

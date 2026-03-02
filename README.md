@@ -20,6 +20,14 @@ Try on [CodePen](https://codepen.io/argyleink/pen/dPGBYZg) or get it on [NPM](ht
 <color-input value="oklch(75% 75% 180)"></color-input>
 ```
 
+### With NPM / Bundlers
+
+If you're using a bundler and already have `colorjs.io` or `@preact/signals-core` as dependencies in your project, use the `/slim` entry point to avoid duplicating bundled dependencies:
+
+```js
+import 'hdr-color-input/slim'
+```
+
 ## API
 - Attributes: `value`, `theme` (auto|light|dark), `no-alpha` (boolean)
 - Properties: `value`, `colorspace`, `theme`, `noAlpha`, readonly: `gamut`, `contrastColor`
