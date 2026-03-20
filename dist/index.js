@@ -4298,6 +4298,8 @@ class AreaPicker {
         gencolor(space, parseIntoChannels(space, serialized).ch)
       );
     };
+    const thumb = element.querySelector(".area-thumb");
+    let pointerOffset = { x: 0, y: 0 };
     const handleMove = (event) => {
       var _a2;
       const color = (_a2 = __privateGet(this, _draggingColor).value) != null ? _a2 : __privateGet(this, _color).value;
@@ -4306,8 +4308,8 @@ class AreaPicker {
         return;
       }
       const rect = element.getBoundingClientRect();
-      const x = Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width));
-      const y2 = Math.max(0, Math.min(1, 1 - (event.clientY - rect.top) / rect.height));
+      const x = Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width - pointerOffset.x));
+      const y2 = Math.max(0, Math.min(1, 1 - (event.clientY - rect.top) / rect.height - pointerOffset.y));
       const newCoords = structuredClone(color.coords);
       newCoords[config.xIndex] = x * config.xMax;
       newCoords[config.yIndex] = y2 * config.yMax;
@@ -4317,8 +4319,24 @@ class AreaPicker {
     element.addEventListener(
       "pointerdown",
       (event) => {
+        var _a2;
         element.setPointerCapture(event.pointerId);
-        handleMove(event);
+        if (thumb && (event.target === thumb || thumb.contains(event.target))) {
+          const rect = element.getBoundingClientRect();
+          const thumbRect = thumb.getBoundingClientRect();
+          const thumbCenterX = (thumbRect.left + thumbRect.width / 2 - rect.left) / rect.width;
+          const thumbCenterY = 1 - (thumbRect.top + thumbRect.height / 2 - rect.top) / rect.height;
+          const pointerX = (event.clientX - rect.left) / rect.width;
+          const pointerY = 1 - (event.clientY - rect.top) / rect.height;
+          pointerOffset = { x: pointerX - thumbCenterX, y: pointerY - thumbCenterY };
+          const color = (_a2 = __privateGet(this, _draggingColor).value) != null ? _a2 : __privateGet(this, _color).value;
+          if (color) {
+            __privateGet(this, _draggingColor).value = { ...color, coords: structuredClone(color.coords) };
+          }
+        } else {
+          pointerOffset = { x: 0, y: 0 };
+          handleMove(event);
+        }
       },
       { signal: __privateGet(this, _controller).signal }
     );
@@ -4337,6 +4355,7 @@ class AreaPicker {
       (event) => {
         element.releasePointerCapture(event.pointerId);
         __privateGet(this, _draggingColor).value = null;
+        pointerOffset = { x: 0, y: 0 };
       },
       { signal: __privateGet(this, _controller).signal }
     );
@@ -4344,6 +4363,7 @@ class AreaPicker {
       "pointercancel",
       () => {
         __privateGet(this, _draggingColor).value = null;
+        pointerOffset = { x: 0, y: 0 };
       },
       { signal: __privateGet(this, _controller).signal }
     );
@@ -4652,23 +4672,29 @@ function createTemplate() {
     </div>
     <div class="controls" part="controls"></div>
     <div class="preview">
-      <div class="copy-wrap">
-        <button class="copy-btn">
-          <span class="visually-hidden">Copy color</span>
-          <svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true"><title>Copy color</title><path fill="currentColor" d="M5 22q-.825 0-1.413-.588T3 20V6h2v14h11v2H5Zm4-4q-.825 0-1.413-.588T7 16V4q0-.825.588-1.413T9 2h9q.825 0 1.413.588T20 4v12q0 .825-.588 1.413T18 18H9Z"/></svg>
+      <div class="tools">
+        <div class="copy-wrap">
+          <button class="copy-btn">
+            <span class="visually-hidden">Copy color</span>
+            <svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true"><title>Copy color</title><path fill="currentColor" d="M5 22q-.825 0-1.413-.588T3 20V6h2v14h11v2H5Zm4-4q-.825 0-1.413-.588T7 16V4q0-.825.588-1.413T9 2h9q.825 0 1.413.588T20 4v12q0 .825-.588 1.413T18 18H9Z"/></svg>
+          </button>
+          <span class="copy-message" aria-hidden="true">Copied!</span>
+          <span class="copy-message-live-region visually-hidden" role="status"></span>
+        </div>
+        <button class="eyedropper-btn" title="Pick color from screen">
+          <span class="visually-hidden">Pick color from screen</span>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-pipette-icon lucide-pipette"><path d="m12 9-8.414 8.414A2 2 0 0 0 3 18.828v1.344a2 2 0 0 1-.586 1.414A2 2 0 0 1 3.828 21h1.344a2 2 0 0 0 1.414-.586L15 12"/><path d="m18 9 .4.4a1 1 0 1 1-3 3l-3.8-3.8a1 1 0 1 1 3-3l.4.4 3.4-3.4a1 1 0 1 1 3 3z"/><path d="m2 22 .414-.414"/></svg>
         </button>
-        <span class="copy-message" aria-hidden="true">Copied!</span>
-        <span class="copy-message-live-region visually-hidden" role="status"></span>
       </div>
       <select class="space" title="Colorspace"></select>
       <output class="info" part="output"></output>
-      <span class="gamut" title="Color's gamut" part="gamut"></span>
+      <span class="gamut" title="Color's gamut" part="gamut"><span class="gamut-track"><span>srgb</span><span>p3</span><span>rec2020</span><span>xyz</span></span></span>
     </div>
   </div>
   `;
   return template;
 }
-const styles = ':root{--radius-round: 1e5px;--radius-2: 5px;--radius-3: 1rem}:host{--canvas: Canvas;--canvas-text: CanvasText;--radius-2: .5rem;--radius-3: .75rem;--radius-round: 1e4px;--shadow-elev: #0305081f 0px -1px 2px 0px, #03050821 0px 2px 1px -2px, #03050821 0px 5px 5px -2px, #03050824 0px 10px 10px -2px, #03050826 0px 20px 20px -2px, #0305082b 0px 40px 40px -2px;--shadow-inner: inset 0 0 0 1px color-mix(in oklab, var(--canvas-text), transparent 94%);--checker: repeating-conic-gradient(color-mix(in oklab, var(--canvas-text), transparent 90%) 0% 25%, transparent 0% 50%) 50%/1rem 1rem;color-scheme:light dark;display:flex;align-items:center;gap:10px;position:relative;@media (width < 350px){overflow:hidden}}:host([hidden]){display:none}button{border:1px solid color-mix(in oklab,var(--canvas-text),var(--canvas) 80%);outline-offset:2px;&.trigger{flex-shrink:0;background:none;padding:0;border:none;display:inline-flex;place-content:center;border-radius:var(--radius-round);.chip{display:inline-block;inline-size:1.25rem;block-size:1.25rem;border-radius:var(--radius-round);box-shadow:inset 0 0 0 1px color-mix(in oklab,var(--canvas-text),transparent 92%);background:linear-gradient(var(--value) 0 0),var(--checker);forced-color-adjust:none}}}.input-wrapper{position:relative;display:flex;flex-direction:column;flex:1;min-width:0}.text-input{field-sizing:content;font-family:inherit;padding:1ch 1.5ch;border:1px solid color-mix(in oklab,var(--canvas-text),var(--canvas) 80%);border-radius:var(--radius-2);background:color-mix(in oklab,var(--canvas-text),var(--canvas) 92%);color:var(--canvas-text);box-shadow:var(--shadow-inner);outline-offset:2px;&[aria-invalid=true]{outline-color:red}}.error-message{position:absolute;bottom:-1.5rem;left:0;font-size:12px;color:#ef4444;font-weight:500;white-space:nowrap;pointer-events:none;opacity:0;transition:opacity .2s ease}.error-message:not(:empty){opacity:1}.panel{margin:0;max-inline-size:min(92vw,560px);background:var(--canvas);color:var(--canvas-text);box-shadow:var(--shadow-elev);border-radius:var(--radius-3);padding:0;border:1px solid #0000;overflow:hidden}.area-picker{position:relative;width:100%;aspect-ratio:16 / 9;overflow:hidden;touch-action:none;box-shadow:var(--shadow-inner)}.area-picker:focus-visible{outline-offset:0px}.area-canvas{width:100%;height:100%}.area-thumb{position:absolute;box-sizing:border-box;height:calc(1rem + 8px);aspect-ratio:1;margin-left:calc(-.5rem - 4px);margin-top:calc(-.5rem - 4px);border-radius:var(--radius-round);border:4px solid white;box-shadow:0 0 1px 1px #00000040,inset 0 1px 2px #00000026;left:var(--thumb-x, 50%);top:var(--thumb-y, 50%);z-index:1;cursor:grab}.area-picker.dragging .area-thumb{cursor:grabbing}.preview{position:relative;min-inline-size:35ch;display:grid;align-content:end;justify-items:start;padding:.75rem;gap:6px;box-shadow:var(--shadow-inner);background:linear-gradient(var(--value) 0 0),var(--checker);forced-color-adjust:none;&:hover .copy-btn,&:focus-within .copy-btn{opacity:1}>*:not(:hover){opacity:.9}.copy-wrap{position:absolute;top:.5rem;right:.5rem;display:flex;flex-direction:column;align-items:flex-end;gap:.25rem}.copy-btn{color:var(--contrast);background:none;border:1px solid #0000;border-radius:0;padding:0;cursor:pointer;opacity:0;transition:opacity .2s ease;display:inline-flex;align-items:center}.copy-btn svg{display:block}.copy-message{color:var(--contrast);font-size:.8rem;font-weight:500;opacity:0;pointer-events:none;transition:opacity .2s ease;white-space:nowrap}.copy-message.show{opacity:1}.visually-hidden:not(:focus):not(:active){clip-path:inset(50%);height:1px;overflow:hidden;position:absolute;white-space:nowrap;width:1px}}.space{-webkit-appearance:base-select;-moz-appearance:base-select;appearance:base-select;min-block-size:1lh;line-height:1.1;font-weight:700;margin:0;padding:0;color:var(--contrast);background:transparent;border-radius:0;border:none;&::picker-icon{content:"›";-webkit-appearance:none;transform:rotate(90deg) scale(1.5)}}@supports not selector(::picker-icon){.space{background-image:url(https://api.iconify.design/basil:caret-down-solid.svg);background-size:1rem;background-position:right .5rem center;background-repeat:no-repeat}}.gamut,.info{line-height:1.1;text-box:cap alphabetic;display:block;color:var(--contrast);background:transparent}.gamut{font-size:1rem}.info{font-size:1.25rem}.controls{display:grid;gap:.5rem;padding:.75rem;border-radius:0 0 var(--radius-3) var(--radius-3);.control{display:grid;grid-template-columns:min-content 1fr 4ch;align-items:center;gap:.5rem}.control .num-wrapper{position:relative;display:flex;align-items:center}.control .num-wrapper sup{opacity:.5;font-size:.5em;place-self:start}.control label{font:500 12px/1.2 ui-monospace,SFMono-Regular,Menlo,Consolas,Liberation Mono,monospace}.control input[type=number]{text-align:end;font-size:12px;padding:0;background:none;border:1px solid var(--canvas);border-radius:.25rem;-moz-appearance:textfield;font-variant:tabular-nums;font-family:monospace;&::-webkit-outer-spin-button,&::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}}.control input[type=range]{width:100%;height:1rem;border-radius:999px;border:1px solid var(--canvas);background:var(--canvas);box-shadow:var(--shadow-inner);-webkit-appearance:none;-moz-appearance:none;appearance:none;forced-color-adjust:none}.control input[type=range].alpha{background:linear-gradient(to right,#0000,#000),var(--checker)}.control input[type=range]::-webkit-slider-thumb{cursor:grab;-webkit-appearance:none;appearance:none;border:4px solid white;height:calc(1rem + 8px);aspect-ratio:1;border-radius:var(--radius-round);box-shadow:0 0 1px 1px #00000040,inset 0 1px 2px #00000026}.control input[type=range]:active::-webkit-slider-thumb{cursor:grabbing}.control input[type=range]::-moz-range-thumb{cursor:grab;-moz-appearance:none;appearance:none;border:4px solid white;height:calc(1rem + 8px);aspect-ratio:1;border-radius:var(--radius-round);box-shadow:0 0 1px 1px #00000040,inset 0 1px 2px #00000026;width:calc(8px + 1rem);background:none;box-sizing:border-box}.control input[type=range]:active::-moz-range-thumb{cursor:grabbing}}';
+const styles = ':root{--radius-round: 1e5px;--radius-2: 5px;--radius-3: 1rem}:host{--canvas: Canvas;--canvas-text: CanvasText;--radius-2: .5rem;--radius-3: .75rem;--radius-round: 1e4px;--shadow-elev: #0305081f 0px -1px 2px 0px, #03050821 0px 2px 1px -2px, #03050821 0px 5px 5px -2px, #03050824 0px 10px 10px -2px, #03050826 0px 20px 20px -2px, #0305082b 0px 40px 40px -2px;--shadow-inner: inset 0 0 0 1px color-mix(in oklab, var(--canvas-text), transparent 94%);--checker: repeating-conic-gradient(color-mix(in oklab, var(--canvas-text), transparent 90%) 0% 25%, transparent 0% 50%) 50%/1rem 1rem;--ease: cubic-bezier(.25, 1, .5, 1);--duration-fast: .15s;--duration-normal: .2s;color-scheme:light dark;display:flex;align-items:center;gap:.625rem;position:relative;@media (width < 350px){overflow:hidden}}:host([hidden]){display:none}button{border:1px solid color-mix(in oklab,var(--canvas-text),var(--canvas) 80%);outline-offset:2px;&.trigger{flex-shrink:0;background:none;padding:0;border:none;display:inline-flex;place-content:center;border-radius:var(--radius-round);cursor:pointer;.chip{display:inline-block;inline-size:1.25rem;block-size:1.25rem;border-radius:var(--radius-round);box-shadow:inset 0 0 0 1px color-mix(in oklab,var(--canvas-text),transparent 92%);background:linear-gradient(var(--value) 0 0),var(--checker);forced-color-adjust:none;transition:scale var(--duration-fast) var(--ease)}&:hover .chip{scale:1.1}&:active .chip{scale:.95}}}.input-wrapper{position:relative;display:flex;flex-direction:column;flex:1;min-width:0}.text-input{field-sizing:content;font-family:inherit;padding:1ch 1.5ch;border:1px solid color-mix(in oklab,var(--canvas-text),var(--canvas) 80%);border-radius:var(--radius-2);background:color-mix(in oklab,var(--canvas-text),var(--canvas) 92%);color:var(--canvas-text);box-shadow:var(--shadow-inner);outline-offset:2px;transition:border-color var(--duration-fast) var(--ease),box-shadow var(--duration-fast) var(--ease);&:focus{border-color:color-mix(in oklab,var(--canvas-text),var(--canvas) 50%)}&[aria-invalid=true]{outline-color:red}}.error-message{position:absolute;bottom:-1.5rem;left:0;font-size:.75rem;color:#ef4444;font-weight:500;white-space:nowrap;pointer-events:none;opacity:0;transition:opacity var(--duration-normal) var(--ease)}.error-message:not(:empty){opacity:1}.panel{margin:0;max-inline-size:min(92vw,560px);background:var(--canvas);color:var(--canvas-text);box-shadow:var(--shadow-elev);border-radius:var(--radius-3);padding:0;border:none;overflow:hidden;@media (forced-colors: active){border:1px solid transparent}opacity:1;scale:1;transition:opacity var(--duration-normal) var(--ease),scale var(--duration-normal) var(--ease),display var(--duration-normal) allow-discrete,overlay var(--duration-normal) allow-discrete}.panel:not(:popover-open){opacity:0;scale:.97}@starting-style{.panel:popover-open{opacity:0;scale:.97}}.area-picker{position:relative;width:100%;aspect-ratio:16 / 9;overflow:hidden;touch-action:none;box-shadow:var(--shadow-inner)}.area-picker:focus-visible{outline-offset:0px}.area-canvas{width:100%;height:100%}.area-thumb{position:absolute;box-sizing:border-box;height:calc(1rem + 8px);aspect-ratio:1;margin-left:calc(-.5rem - 4px);margin-top:calc(-.5rem - 4px);border-radius:var(--radius-round);border:4px solid white;box-shadow:0 0 1px 1px #00000040,inset 0 1px 2px #00000026;left:var(--thumb-x, 50%);top:var(--thumb-y, 50%);z-index:1;cursor:grab}.area-picker.dragging .area-thumb{cursor:grabbing}.preview{position:relative;min-inline-size:35ch;container-type:inline-size;display:grid;align-content:end;justify-items:start;padding:.75rem;gap:.375rem;box-shadow:var(--shadow-inner);background:linear-gradient(var(--value) 0 0),var(--checker);forced-color-adjust:none;&:hover .eyedropper-btn,&:focus-within .eyedropper-btn,&:hover .copy-btn,&:focus-within .copy-btn{opacity:1}.eyedropper-btn[hidden]{display:none}>*:not(:hover){opacity:.9}.tools{position:absolute;top:.5rem;right:.5rem;display:flex;align-items:flex-start;gap:.25rem}.copy-wrap{display:flex;flex-direction:column;align-items:flex-end;gap:.25rem}.eyedropper-btn,.copy-btn{color:var(--contrast);background:none;border:1px solid transparent;border-radius:0;padding:0;cursor:pointer;opacity:0;transition:opacity var(--duration-normal) var(--ease),scale var(--duration-fast) var(--ease);display:inline-flex;align-items:center}.eyedropper-btn:hover,.copy-btn:hover{scale:1.1}.eyedropper-btn:active,.copy-btn:active{scale:.9}.copy-btn svg{display:block}.copy-message{color:var(--contrast);font-size:.8rem;font-weight:500;opacity:0;pointer-events:none;transition:opacity var(--duration-normal) var(--ease),translate var(--duration-normal) var(--ease);white-space:nowrap;translate:0 -4px}.copy-message.show{opacity:1;translate:0 0}.visually-hidden:not(:focus):not(:active){clip-path:inset(50%);height:1px;overflow:hidden;position:absolute;white-space:nowrap;width:1px}}.space{-webkit-appearance:base-select;-moz-appearance:base-select;appearance:base-select;min-block-size:1lh;line-height:1.1;font-weight:700;margin:0;padding:0;color:var(--contrast);background:transparent;border-radius:0;border:none;&::picker-icon{content:"›";-webkit-appearance:none;transform:rotate(90deg) scale(1.5)}}.space{font-size:.8125rem;letter-spacing:.01em}.info{font-size:1.25rem;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,Liberation Mono,monospace;font-variant:tabular-nums;letter-spacing:-.01em;line-height:1.1;text-box:cap alphabetic;display:block;color:var(--contrast);background:transparent}:host([colorspace="srgb-linear"]) .info,:host([colorspace="display-p3"]) .info,:host([colorspace="a98-rgb"]) .info,:host([colorspace="rec2020"]) .info,:host([colorspace="prophoto"]) .info,:host([colorspace="xyz"]) .info,:host([colorspace="xyz-d50"]) .info,:host([colorspace="xyz-d65"]) .info{font-size:clamp(.875rem,4.4cqi,1.25rem)}.gamut{font-size:.6875rem;font-weight:450;letter-spacing:.03em;opacity:.7;line-height:1.1;display:block;color:var(--contrast);background:transparent;overflow:hidden;height:1lh}.gamut-track{display:flex;flex-direction:column;translate:0 calc(var(--gamut-index, 0) * -1lh);transition:translate var(--duration-normal) var(--ease)}.controls{display:grid;gap:.5rem;padding:.75rem;border-radius:0 0 var(--radius-3) var(--radius-3);.control{display:grid;grid-template-columns:min-content 1fr 4ch;align-items:center;gap:.5rem}.control .num-wrapper{position:relative;display:flex;align-items:center}.control .num-wrapper sup{opacity:.5;font-size:.5em;place-self:start}.control label{font:500 .75rem/1.2 ui-monospace,SFMono-Regular,Menlo,Consolas,Liberation Mono,monospace}.control input[type=number]{text-align:end;font-size:.75rem;padding:.125rem .25rem;background:transparent;border:1px solid transparent;border-radius:.25rem;outline:none;-moz-appearance:textfield;font-variant:tabular-nums;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,Liberation Mono,monospace;transition:border-color var(--duration-fast) var(--ease),background var(--duration-fast) var(--ease),box-shadow var(--duration-fast) var(--ease);&:hover{background:color-mix(in oklab,var(--canvas-text),var(--canvas) 94%)}&:focus-visible{border-color:color-mix(in oklab,var(--canvas-text),var(--canvas) 60%);background:color-mix(in oklab,var(--canvas-text),var(--canvas) 96%);box-shadow:0 0 0 2px color-mix(in oklab,var(--canvas-text),transparent 92%)}&::-webkit-outer-spin-button,&::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}}.control input[type=range]{width:100%;height:1rem;border-radius:999px;border:1px solid var(--canvas);background:var(--canvas);box-shadow:var(--shadow-inner);-webkit-appearance:none;-moz-appearance:none;appearance:none;forced-color-adjust:none}.control input[type=range].alpha{background:linear-gradient(to right,#0000,#000),var(--checker)}.control input[type=range]::-webkit-slider-thumb{cursor:grab;-webkit-appearance:none;appearance:none;border:4px solid white;height:calc(1rem + 8px);aspect-ratio:1;border-radius:var(--radius-round);box-shadow:0 0 1px 1px #00000040,inset 0 1px 2px #00000026}.control input[type=range]:active::-webkit-slider-thumb{cursor:grabbing}.control input[type=range]::-moz-range-thumb{cursor:grab;-moz-appearance:none;appearance:none;border:4px solid white;height:calc(1rem + 8px);aspect-ratio:1;border-radius:var(--radius-round);box-shadow:0 0 1px 1px #00000040,inset 0 1px 2px #00000026;width:calc(8px + 1rem);background:none;box-sizing:border-box}.control input[type=range]:active::-moz-range-thumb{cursor:grabbing}}@media (prefers-reduced-motion: reduce){:host{--duration-fast: 0ms;--duration-normal: 0ms}.panel{transition:none}}';
 const DEFAULT_VALUE = "oklch(75% 75% 180)";
 const DEFAULT_SPACE = "oklch";
 const sheet = new CSSStyleSheet();
@@ -4846,6 +4872,32 @@ class ColorInput extends HTMLElement {
         (_a3 = __privateGet(this, _areaPicker)) == null ? void 0 : _a3.setValue(v2, space);
       }));
     }
+    const eyedropperBtn = __privateGet(this, _root).querySelector("button.eyedropper-btn");
+    if (eyedropperBtn) {
+      if ("EyeDropper" in window) {
+        eyedropperBtn.addEventListener("click", async () => {
+          try {
+            const eyeDropper = new window.EyeDropper();
+            const result = await eyeDropper.open();
+            if (result && result.sRGBHex) {
+              const space = __privateGet(this, _space2).value;
+              const converted = to(result.sRGBHex, space === "hex" ? "srgb" : space);
+              const serialized = serialize(converted, {
+                format: space === "hex" ? "hex" : void 0
+              });
+              const color = gencolor(space, parseIntoChannels(space, serialized).ch);
+              __privateGet(this, _value).value = color;
+              this.setAttribute("value", color);
+              __privateMethod(this, _ColorInput_instances, emitChange_fn).call(this);
+              __privateMethod(this, _ColorInput_instances, renderControls_fn).call(this);
+            }
+          } catch {
+          }
+        });
+      } else {
+        eyedropperBtn.hidden = true;
+      }
+    }
     const copyBtn = __privateGet(this, _root).querySelector("button.copy-btn");
     const copyMessage = __privateGet(this, _root).querySelector(".copy-message");
     const copyMessageLiveRegion = __privateGet(this, _root).querySelector(".copy-message-live-region");
@@ -4947,7 +4999,11 @@ class ColorInput extends HTMLElement {
       this.style.setProperty("--contrast", contrast2);
       this.style.setProperty("--counter", contrast2 === "white" ? "black" : "white");
       const gamutEl = __privateGet(this, _root).querySelector(".gamut");
-      if (gamutEl) gamutEl.textContent = gamut;
+      if (gamutEl) {
+        const gamutOrder = ["srgb", "p3", "rec2020", "xyz"];
+        const idx = gamutOrder.indexOf(gamut);
+        gamutEl.style.setProperty("--gamut-index", String(idx >= 0 ? idx : 0));
+      }
       const preview = __privateGet(this, _root).querySelector(".preview");
       if (preview) preview.style.setProperty("--value", v2);
     }));
@@ -4973,6 +5029,11 @@ class ColorInput extends HTMLElement {
       this.setAttribute("colorspace", __privateGet(this, _space2).value);
     }
     __privateGet(this, _spaceSelect).value = __privateGet(this, _space2).value;
+    try {
+      const { ch } = parseIntoChannels(__privateGet(this, _space2).value, __privateGet(this, _value).value);
+      __privateGet(this, _value).value = gencolor(__privateGet(this, _space2).value, ch);
+    } catch {
+    }
     __privateMethod(this, _ColorInput_instances, renderControls_fn).call(this);
   }
   disconnectedCallback() {
