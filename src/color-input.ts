@@ -334,7 +334,11 @@ export class ColorInput extends HTMLElement {
       this.style.setProperty('--contrast', contrast)
       this.style.setProperty('--counter', contrast === 'white' ? 'black' : 'white')
       const gamutEl = this.#root.querySelector('.gamut') as HTMLElement
-      if (gamutEl) gamutEl.textContent = gamut
+      if (gamutEl) {
+        const gamutOrder = ['srgb', 'p3', 'rec2020', 'xyz']
+        const idx = gamutOrder.indexOf(gamut)
+        gamutEl.style.setProperty('--gamut-index', String(idx >= 0 ? idx : 0))
+      }
       const preview = this.#root.querySelector('.preview') as HTMLElement
       if (preview) preview.style.setProperty('--value', v)
     })
