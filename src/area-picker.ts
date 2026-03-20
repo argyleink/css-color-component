@@ -116,6 +116,9 @@ export class AreaPicker {
       );
     };
 
+    const thumb = element.querySelector<HTMLElement>(".area-thumb");
+    let pointerOffset = { x: 0, y: 0 };
+
     const handleMove = (event: PointerEvent) => {
       const color = this.#draggingColor.value ?? this.#color.value;
       const config = getAreaConfig(color);
@@ -123,10 +126,10 @@ export class AreaPicker {
         return;
       }
 
-      // extract 0..1 coords
+      // extract 0..1 coords, applying offset from thumb grab point
       const rect = element.getBoundingClientRect();
-      const x = Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width));
-      const y = Math.max(0, Math.min(1, 1 - (event.clientY - rect.top) / rect.height));
+      const x = Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width - pointerOffset.x));
+      const y = Math.max(0, Math.min(1, 1 - (event.clientY - rect.top) / rect.height - pointerOffset.y));
 
       // Modify coords directly on the dragging color
       const newCoords = structuredClone(color.coords);
@@ -140,7 +143,27 @@ export class AreaPicker {
       "pointerdown",
       (event) => {
         element.setPointerCapture(event.pointerId);
-        handleMove(event);
+
+        if (thumb && (event.target === thumb || thumb.contains(event.target as Node))) {
+          // Clicked on thumb — store offset from thumb center to prevent jump
+          const rect = element.getBoundingClientRect();
+          const thumbRect = thumb.getBoundingClientRect();
+          const thumbCenterX = (thumbRect.left + thumbRect.width / 2 - rect.left) / rect.width;
+          const thumbCenterY = 1 - (thumbRect.top + thumbRect.height / 2 - rect.top) / rect.height;
+          const pointerX = (event.clientX - rect.left) / rect.width;
+          const pointerY = 1 - (event.clientY - rect.top) / rect.height;
+          pointerOffset = { x: pointerX - thumbCenterX, y: pointerY - thumbCenterY };
+
+          // Start drag with current position (no movement)
+          const color = this.#draggingColor.value ?? this.#color.value;
+          if (color) {
+            this.#draggingColor.value = { ...color, coords: structuredClone(color.coords) };
+          }
+        } else {
+          // Clicked on canvas — jump thumb to click position
+          pointerOffset = { x: 0, y: 0 };
+          handleMove(event);
+        }
       },
       { signal: this.#controller.signal }
     );
@@ -161,6 +184,7 @@ export class AreaPicker {
       (event) => {
         element.releasePointerCapture(event.pointerId);
         this.#draggingColor.value = null;
+        pointerOffset = { x: 0, y: 0 };
       },
       { signal: this.#controller.signal }
     );
@@ -169,6 +193,7 @@ export class AreaPicker {
       "pointercancel",
       () => {
         this.#draggingColor.value = null;
+        pointerOffset = { x: 0, y: 0 };
       },
       { signal: this.#controller.signal }
     );
