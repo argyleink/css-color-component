@@ -9,180 +9,83 @@ import ColorInputDemo from "../../components/ColorInputDemo.astro";
 
 ### Signals-Based Reactivity
 
-The component uses Preact Signals for efficient, fine-grained reactivity:
+The component uses [Preact Signals](https://preactjs.com/guide/v10/signals/) for fine-grained reactivity. Only affected DOM nodes re-render when state changes — no virtual DOM diffing, no framework overhead.
 
-- **Minimal Re-renders**: Only affected parts of the UI update
-- **Automatic Dependency Tracking**: Signals track dependencies automatically
-- **Lightweight**: Small runtime overhead
+### Shadow DOM
 
-### Shadow DOM Encapsulation
-
-The component uses Shadow DOM for style isolation:
-
-- **No Style Conflicts**: Component styles don't leak to the page
-- **CSS Parts API**: Customize via `::part()` selectors
-- **Composability**: Use multiple instances without conflicts
+All styles are encapsulated in Shadow DOM. Component styles never leak to the page, and page styles never break the picker. External customization is available through the `::part()` API.
 
 ### Area Picker
 
-The 2D color area is driven by its own `AreaPicker` class:
+The 2D color area adapts its axes based on the active color space:
 
-- **Space-Aware Axes**: Automatically selects OkHSV, OKLCH, or HSL axes depending on the active color space
-- **Canvas Rendering**: Gradients are rendered at half resolution via an off-screen `<canvas>` for performance, then scaled up with CSS
-- **Frame-Throttled Updates**: Hue changes are batched with `requestAnimationFrame` to avoid redundant paints
-- **Keyboard Accessible**: Arrow keys adjust the X/Y channels in fine steps while the area is focused
+| Active color space | Internal model | X axis | Y axis |
+| --- | --- | --- | --- |
+| sRGB, Hex, HWB, Lab, OKLab | OkHSV | Saturation | Value |
+| OKLCH, LCH | OKLCH | Chroma | Lightness |
+| HSL | HSL | Saturation | Lightness |
+
+Gradients are rendered at half resolution via an off-screen `<canvas>` and scaled up with CSS. Hue changes are batched with `requestAnimationFrame` to avoid redundant paints.
 
 ### Color Math
 
-Color calculations are powered by [colorjs.io](https://colorjs.io):
-
-- **Accurate Conversions**: Between all supported color spaces
-- **Gamut Mapping**: Automatic handling of out-of-gamut colors
-- **Standards Compliant**: Follows CSS Color Module Level 4
+Color calculations are powered by [colorjs.io](https://colorjs.io) — accurate conversions between all supported spaces, automatic gamut mapping, and full compliance with CSS Color Module Level 4.
 
 ## Performance
 
-### Bundle Size
+The component targets minimal bundle impact: tree-shakeable ES modules, no framework dependencies beyond Preact Signals and colorjs.io, and ES2020+ output for smaller bundles.
 
-The component is designed for minimal bundle impact:
-
-- **Tree-Shakeable**: ES modules allow unused code elimination
-- **No Framework Dependencies**: Only Preact Signals and colorjs.io
-- **Modern Output**: Targets ES2020+ for smaller bundles
-
-### Runtime Performance
-
-**Efficient Updates:**
-
-- Signals prevent unnecessary re-renders
-- Color conversions are cached
-- Popover uses native Popover API (hardware accelerated)
-
-**Lazy Loading:**
-
-- Component registers on import
-- Popover content rendered on-demand
+At runtime, Signals prevent unnecessary re-renders, color conversions are cached, and the popover uses the native Popover API for hardware-accelerated positioning. Content is rendered on-demand when the popover opens.
 
 ## Popover Positioning
 
-The component uses the native Popover API with intelligent positioning:
+The popover automatically positions relative to the trigger button, respecting viewport boundaries and safe areas. It flips when near edges — no manual positioning required.
 
-### Automatic Placement
-
-The popover automatically positions relative to the trigger button:
-
-- Respects viewport boundaries
-- Handles safe areas (notches, system UI)
-- Flips when near edges
-- No manual positioning required
-
-### Custom Anchoring
-
-Use `setAnchor()` to position relative to a different element:
+For custom placement, use `setAnchor()` to position relative to a different element:
 
 ```js
 const picker = document.querySelector("color-input");
-const customAnchor = document.querySelector("#my-anchor");
-
-picker.setAnchor(customAnchor);
+picker.setAnchor(document.querySelector("#my-anchor"));
 picker.show();
 ```
-
-### Browser Support
-
-The Popover API is required:
-
-- **Chrome**: 114+
-- **Safari**: 17+
-- **Firefox**: 125+
 
 ## Gamut Detection
 
-The component automatically detects which color gamut contains the current color:
+The read-only `gamut` property returns the smallest gamut that contains the current color:
 
-### Gamut Property
+| Gamut | Meaning |
+| --- | --- |
+| `srgb` | Works on all displays |
+| `p3` | Requires Display P3 or better |
+| `rec2020` | Requires ultra-wide gamut |
+| `xyz` | Beyond Rec2020 |
 
-The read-only `gamut` property returns the smallest gamut:
-
-```js
-console.log(picker.gamut); // "srgb" | "p3" | "rec2020" | "xyz"
-```
-
-### Visual Badge
-
-A gamut badge appears in the picker UI showing the current gamut. This helps you understand:
-
-- **srgb**: Works on all displays
-- **p3**: Requires Display P3 or better
-- **rec2020**: Requires ultra-wide gamut
-- **xyz**: Beyond Rec2020
-
-### Gamut in Events
-
-The `change` event includes gamut information:
-
-```js
-picker.addEventListener("change", (e) => {
-  console.log(e.detail.gamut); // "srgb" | "p3" | "rec2020" | "xyz"
-});
-```
+A visual badge appears in the picker UI, and the `change` event includes `e.detail.gamut` for programmatic use.
 
 ## Form Integration
 
-While the component doesn't inherit from `HTMLInputElement`, you can integrate it with forms:
-
-### Hidden Input Pattern
+The component doesn't extend `HTMLInputElement`, but integrates easily with a hidden input:
 
 ```html
-<form id="settings-form">
-  <label for="theme-color">Theme Color</label>
-  <color-input id="theme-color" value="oklch(70% 20% 240)"></color-input>
-  <input type="hidden" name="theme_color" id="theme-color-input" />
+<form>
+  <color-input id="picker" value="oklch(70% 20% 240)"></color-input>
+  <input type="hidden" name="color" id="color-input" />
 </form>
 
 <script>
-  const picker = document.querySelector("#theme-color");
-  const hiddenInput = document.querySelector("#theme-color-input");
+  const picker = document.querySelector("#picker");
+  const hidden = document.querySelector("#color-input");
 
+  hidden.value = picker.value;
   picker.addEventListener("change", (e) => {
-    hiddenInput.value = e.detail.value;
+    hidden.value = e.detail.value;
   });
-
-  // Set initial value
-  hiddenInput.value = picker.value;
 </script>
-```
-
-### Programmatic Control
-
-Use properties and methods to control the picker:
-
-```js
-const picker = document.querySelector("color-input");
-
-// Read state
-console.log(picker.value);
-console.log(picker.colorspace);
-console.log(picker.gamut);
-console.log(picker.contrastColor);
-
-// Update state
-picker.value = "oklch(80% 15% 180)";
-picker.theme = "dark";
-
-// Control popover
-picker.show();
-picker.close();
 ```
 
 ## Resources
 
-### Specifications
-
 - [CSS Color Module Level 4](https://www.w3.org/TR/css-color-4/)
 - [Popover API](https://developer.mozilla.org/en-US/docs/Web/API/Popover_API)
-
-### Tools
-
-- [colorjs.io](https://colorjs.io) - Color science library
+- [colorjs.io](https://colorjs.io)
 - [OKLCH Color Picker](https://oklch.com)

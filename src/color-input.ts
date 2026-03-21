@@ -1,5 +1,5 @@
 import { signal, computed, effect, Signal } from '@preact/signals-core'
-import { parse, serialize, to, toGamut } from 'colorjs.io/fn'
+import { parse, serialize, to, toGamut, contrast as contrastFn } from 'colorjs.io/fn'
 import {
   contrastColor,
   detectGamut,
@@ -341,6 +341,19 @@ export class ColorInput extends HTMLElement {
       }
       const preview = this.#root.querySelector('.preview') as HTMLElement
       if (preview) preview.style.setProperty('--value', v)
+
+      // Update WCAG contrast scores
+      const crW = this.#root.querySelector('.cr-w') as HTMLElement
+      const crB = this.#root.querySelector('.cr-b') as HTMLElement
+      if (crW && crB) {
+        try {
+          const parsed = parse(v)
+          const cw = contrastFn(parsed, 'white', 'WCAG21')
+          const cb = contrastFn(parsed, 'black', 'WCAG21')
+          crW.textContent = `${(cw as number).toFixed(1)}:1`
+          crB.textContent = `${(cb as number).toFixed(1)}:1`
+        } catch { }
+      }
     })
 
     this.#errorEffectCleanup = effect(() => {

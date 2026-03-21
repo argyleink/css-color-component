@@ -34,17 +34,9 @@ The `value` attribute sets the color using standard CSS color syntax.
   </TabItem>
 </Tabs>
 
-```html
-<color-input value="hsl(200 90% 50%)"></color-input>
-```
-
 :::tip
-If `value` is omitted, it defaults to `oklch(75% 75% 180)` (vibrant cyan).
+If `value` is omitted, it defaults to `oklch(75% 75% 180)`. The component automatically converts between color spaces.
 :::
-
-::::note
-The component automatically converts between color spaces.
-::::
 
 ### theme
 
@@ -95,17 +87,17 @@ Every `<color-input>` now includes an inline text field for editing the current 
 
 Hover or focus the preview area to reveal a copy button. Activating it copies the current color string with `navigator.clipboard.writeText()` and shows a "Copied!" status message inside the panel. No configuration is required—the control works for every supported color space, including `hex`.
 
-::::note
-The Clipboard API requires a secure context (https or localhost) and a user interaction. Browsers that block it simply prevent the confirmation message from showing.
-::::
+:::note
+The Clipboard API requires a secure context (https or localhost) and a user interaction.
+:::
 
 ## Eye Dropper
 
 Hover or focus the preview area to reveal an eye dropper button to the left of the copy button. Activating it opens the native browser eye dropper, allowing you to pick colors from anywhere on your screen.
 
-::::note
-The Eye Dropper uses the native [EyeDropper API](https://developer.mozilla.org/en-US/docs/Web/API/EyeDropper_API) and is supported in Chrome and Edge 95+. The button automatically hides itself in browsers that don't support the API (Firefox, Safari).
-::::
+:::note
+Uses the native [EyeDropper API](https://developer.mozilla.org/en-US/docs/Web/API/EyeDropper_API) (Chrome/Edge 95+). The button auto-hides in unsupported browsers.
+:::
 
 ## Properties
 
@@ -121,9 +113,9 @@ console.log(picker.value); // "oklch(70% 20% 240)"
 picker.value = "oklch(80% 15% 180)";
 ```
 
-::::note
-For backward compatibility you can also assign through the legacy setter: `picker.setColor = 'oklch(80% 15% 180)'`.
-::::
+:::note
+The legacy setter `picker.setColor = '...'` is also supported.
+:::
 
 **colorspace** - Current color space
 
@@ -203,9 +195,9 @@ picker.setAnchor(customAnchor);
 
 By default, the popover positions relative to the trigger button.
 
-::::note
-The compatibility setter `picker.setAnchorElement = customAnchor` mirrors `setAnchor()` for drop-in upgrades.
-::::
+:::note
+The legacy setter `picker.setAnchorElement = customAnchor` is also supported.
+:::
 
 ## Command API Integration
 

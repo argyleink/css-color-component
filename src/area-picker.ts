@@ -1,17 +1,25 @@
 import { computed, effect, signal } from "@preact/signals-core";
-import { ColorConstructor, serialize, to } from "colorjs.io/fn";
+import { ColorConstructor, inGamut, serialize, to } from "colorjs.io/fn";
 import { getColorJSSpaceID, type ColorSpace } from "./color";
 import { gencolor, parseIntoChannels } from "./utils/color-conversion";
 
 type AreaConfig = {
   fixedIndex: number;
   xIndex: number;
+  xMin?: number;
   xMax: number;
   xStep: number;
   yIndex: number;
+  yMin?: number;
   yMax: number;
   yStep: number;
+  gamutBoundary?: 'row-scan' | 'polar-scan' | 'diagonal';
 };
+
+const cfgXMin = (c: AreaConfig) => c.xMin ?? 0;
+const cfgYMin = (c: AreaConfig) => c.yMin ?? 0;
+const cfgXRange = (c: AreaConfig) => c.xMax - cfgXMin(c);
+const cfgYRange = (c: AreaConfig) => c.yMax - cfgYMin(c);
 
 const AREA_CONFIGS: Record<string, undefined | AreaConfig> = {
   okhsv: {
@@ -32,6 +40,7 @@ const AREA_CONFIGS: Record<string, undefined | AreaConfig> = {
     yIndex: 0,
     yMax: 1,
     yStep: 1 / 100,
+    gamutBoundary: 'row-scan',
   },
   hsl: {
     fixedIndex: 0,
@@ -41,6 +50,40 @@ const AREA_CONFIGS: Record<string, undefined | AreaConfig> = {
     yIndex: 2,
     yMax: 100,
     yStep: 1,
+  },
+  oklab: {
+    fixedIndex: 0,
+    xIndex: 1,
+    xMin: -0.4,
+    xMax: 0.4,
+    xStep: 0.8 / 100,
+    yIndex: 2,
+    yMin: -0.4,
+    yMax: 0.4,
+    yStep: 0.8 / 100,
+    gamutBoundary: 'polar-scan',
+  },
+  lab: {
+    fixedIndex: 0,
+    xIndex: 1,
+    xMin: -125,
+    xMax: 125,
+    xStep: 250 / 100,
+    yIndex: 2,
+    yMin: -125,
+    yMax: 125,
+    yStep: 250 / 100,
+    gamutBoundary: 'polar-scan',
+  },
+  hwb: {
+    fixedIndex: 0,
+    xIndex: 1,
+    xMax: 100,
+    xStep: 1,
+    yIndex: 2,
+    yMax: 100,
+    yStep: 1,
+    gamutBoundary: 'diagonal',
   },
 };
 
@@ -52,22 +95,31 @@ const getAreaConfig = (color: null | ColorConstructor) => {
 
 function renderAreaGradient(
   canvas: HTMLCanvasElement,
-  getColor: (x: number, y: number) => ColorConstructor
-) {
-  const W = 320 / 2; // render at half res for performance
-  const H = 200 / 2;
-  canvas.width = W;
-  canvas.height = H;
-  const ctx = canvas.getContext("2d");
-  if (!ctx) {
+  getColor: (x: number, y: number) => ColorConstructor,
+  dpr: number
+): CanvasRenderingContext2D | undefined {
+  // Read actual display size from CSS layout
+  const cssW = canvas.clientWidth || 320;
+  const cssH = canvas.clientHeight || 200;
+  const backingW = Math.round(cssW * dpr);
+  const backingH = Math.round(cssH * dpr);
+
+  // Render gradient at half backing resolution for performance
+  const W = Math.round(backingW / 2);
+  const H = Math.round(backingH / 2);
+  const offscreen = document.createElement("canvas");
+  offscreen.width = W;
+  offscreen.height = H;
+  const offCtx = offscreen.getContext("2d");
+  if (!offCtx) {
     return;
   }
-  const img = ctx.createImageData(W, H);
+  const img = offCtx.createImageData(W, H);
   const d = img.data;
   for (let y = 0; y < H; y++) {
     const Y = 1 - y / (H - 1);
     for (let x = 0; x < W; x++) {
-      const X = (x / (W - 1));
+      const X = x / (W - 1);
       const [r, g, b] = to(getColor(X, Y), "srgb").coords;
       const i = (y * W + x) * 4;
       d[i] = Math.round((r ?? 0) * 255);
@@ -76,7 +128,150 @@ function renderAreaGradient(
       d[i + 3] = 255;
     }
   }
-  ctx.putImageData(img, 0, 0);
+  offCtx.putImageData(img, 0, 0);
+  // Set canvas backing store to full DPR resolution
+  canvas.width = backingW;
+  canvas.height = backingH;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) {
+    return;
+  }
+  ctx.imageSmoothingEnabled = true;
+  ctx.drawImage(offscreen, 0, 0, backingW, backingH);
+  return ctx;
+}
+
+function isInGamut(spaceId: string, coords: [number, number, number], gamutSpace: string): boolean {
+  const converted = to({ spaceId, coords, alpha: 1 }, gamutSpace);
+  return inGamut({ spaceId: gamutSpace, coords: converted.coords, alpha: null });
+}
+
+function drawBoundaryLine(
+  ctx: CanvasRenderingContext2D,
+  points: { x: number; y: number }[],
+  closed: boolean,
+  color: string,
+  lineWidth: number,
+  dash: number[]
+) {
+  if (points.length < 2) return;
+  ctx.save();
+  ctx.strokeStyle = color;
+  ctx.lineWidth = lineWidth;
+  ctx.lineJoin = 'round';
+  ctx.lineCap = 'round';
+  ctx.setLineDash(dash);
+  ctx.beginPath();
+  ctx.moveTo(points[0]!.x, points[0]!.y);
+  for (let i = 1; i < points.length; i++) {
+    ctx.lineTo(points[i]!.x, points[i]!.y);
+  }
+  if (closed) ctx.closePath();
+  ctx.stroke();
+  ctx.restore();
+}
+
+function renderGamutBoundaries(
+  ctx: CanvasRenderingContext2D,
+  config: AreaConfig,
+  spaceId: string,
+  fixedValue: number,
+  dpr: number
+) {
+  const W = ctx.canvas.width;
+  const H = ctx.canvas.height;
+
+  if (config.gamutBoundary === 'diagonal') {
+    const points = [
+      { x: W, y: H }, // W=100, B=0 (bottom-right)
+      { x: 0, y: 0 }, // W=0, B=100 (top-left)
+    ];
+    drawBoundaryLine(ctx, points, false, 'rgba(255,255,255,0.6)', 1 * dpr, [4 * dpr, 3 * dpr]);
+    return;
+  }
+
+  const gamuts: { space: string; color: string; lineWidth: number; dash: number[] }[] = [
+    { space: 'p3', color: 'rgba(255,255,255,0.55)', lineWidth: 1.25 * dpr, dash: [6 * dpr, 4 * dpr] },
+    { space: 'srgb', color: 'rgba(255,255,255,0.7)', lineWidth: 1.5 * dpr, dash: [] },
+  ];
+
+  if (config.gamutBoundary === 'row-scan') {
+    // OKLCH: x=chroma, y=lightness. For each row (lightness), binary search max chroma.
+    const ROWS = 100;
+    for (const gamut of gamuts) {
+      const points: { x: number; y: number }[] = [];
+      for (let row = 0; row <= ROWS; row++) {
+        const yNorm = row / ROWS; // 0..1 normalized lightness
+        const yVal = cfgYMin(config) + yNorm * cfgYRange(config);
+        // Binary search for max x (chroma) in gamut
+        let lo = 0;
+        let hi = 1;
+        // Check if anything is in gamut at this row
+        const coords: [number, number, number] = [0, 0, 0];
+        coords[config.fixedIndex] = fixedValue;
+        coords[config.yIndex] = yVal;
+        coords[config.xIndex] = cfgXMin(config);
+        if (!isInGamut(spaceId, coords, gamut.space)) continue;
+
+        for (let i = 0; i < 10; i++) {
+          const mid = (lo + hi) / 2;
+          const xVal = cfgXMin(config) + mid * cfgXRange(config);
+          const c: [number, number, number] = [0, 0, 0];
+          c[config.fixedIndex] = fixedValue;
+          c[config.xIndex] = xVal;
+          c[config.yIndex] = yVal;
+          if (isInGamut(spaceId, c, gamut.space)) {
+            lo = mid;
+          } else {
+            hi = mid;
+          }
+        }
+        const xCanvas = lo * W;
+        const yCanvas = (1 - yNorm) * H;
+        points.push({ x: xCanvas, y: yCanvas });
+      }
+      drawBoundaryLine(ctx, points, false, gamut.color, gamut.lineWidth, gamut.dash);
+    }
+  } else if (config.gamutBoundary === 'polar-scan') {
+    // OKLab/Lab: x=a, y=b. From center (0,0), sweep angles, binary search max radius.
+    const ANGLES = 180;
+    for (const gamut of gamuts) {
+      const points: { x: number; y: number }[] = [];
+      for (let i = 0; i <= ANGLES; i++) {
+        const angle = (i / ANGLES) * Math.PI * 2;
+        const dx = Math.cos(angle);
+        const dy = Math.sin(angle);
+        // Binary search for max radius
+        let lo = 0;
+        let hi = 1;
+        for (let j = 0; j < 10; j++) {
+          const mid = (lo + hi) / 2;
+          // mid is 0..1 normalized radius, scale to actual range
+          const xVal = mid * dx * cfgXRange(config) / 2; // half range = max from center
+          const yVal = mid * dy * cfgYRange(config) / 2;
+          const coords: [number, number, number] = [0, 0, 0];
+          coords[config.fixedIndex] = fixedValue;
+          coords[config.xIndex] = xVal;
+          coords[config.yIndex] = yVal;
+          if (isInGamut(spaceId, coords, gamut.space)) {
+            lo = mid;
+          } else {
+            hi = mid;
+          }
+        }
+        // Convert found boundary point to canvas coords
+        const xVal = lo * dx * cfgXRange(config) / 2;
+        const yVal = lo * dy * cfgYRange(config) / 2;
+        // Normalize to 0..1
+        const xNorm = (xVal - cfgXMin(config)) / cfgXRange(config);
+        const yNorm = (yVal - cfgYMin(config)) / cfgYRange(config);
+        const xCanvas = xNorm * W;
+        const yCanvas = (1 - yNorm) * H;
+        points.push({ x: xCanvas, y: yCanvas });
+      }
+      drawBoundaryLine(ctx, points, true, gamut.color, gamut.lineWidth, gamut.dash);
+    }
+  }
 }
 
 export class AreaPicker {
@@ -133,8 +328,8 @@ export class AreaPicker {
 
       // Modify coords directly on the dragging color
       const newCoords = structuredClone(color.coords);
-      newCoords[config.xIndex] = x * config.xMax;
-      newCoords[config.yIndex] = y * config.yMax;
+      newCoords[config.xIndex] = cfgXMin(config) + x * cfgXRange(config);
+      newCoords[config.yIndex] = cfgYMin(config) + y * cfgYRange(config);
       this.#draggingColor.value = { ...color, coords: newCoords };
       handleChange(this.#draggingColor.value);
     };
@@ -230,8 +425,8 @@ export class AreaPicker {
         // Calculate new values with clamping
         const prevX = color.coords[config.xIndex] ?? 0;
         const prevY = color.coords[config.yIndex] ?? 0;
-        const newX = Math.max(0, Math.min(config.xMax, prevX + xDelta * config.xStep));
-        const newY = Math.max(0, Math.min(config.yMax, prevY + yDelta * config.yStep));
+        const newX = Math.max(cfgXMin(config), Math.min(config.xMax, prevX + xDelta * config.xStep));
+        const newY = Math.max(cfgYMin(config), Math.min(config.yMax, prevY + yDelta * config.yStep));
 
         // Build new coords array
         const newCoords = structuredClone(color.coords);
@@ -259,8 +454,8 @@ export class AreaPicker {
       }
 
       // Calculate percentage positions from coords
-      const x = ((color.coords[config.xIndex] ?? 0) / config.xMax) * 100;
-      const y = ((color.coords[config.yIndex] ?? 0) / config.yMax) * 100;
+      const x = (((color.coords[config.xIndex] ?? 0) - cfgXMin(config)) / cfgXRange(config)) * 100;
+      const y = (((color.coords[config.yIndex] ?? 0) - cfgYMin(config)) / cfgYRange(config)) * 100;
 
       this.#area?.style.setProperty("--thumb-x", `${x}%`);
       this.#area?.style.setProperty("--thumb-y", `${100 - y}%`);
@@ -292,16 +487,20 @@ export class AreaPicker {
             if (!color || !config) {
               return;
             }
-            renderAreaGradient(canvas, (x, y) => {
+            const dpr = window.devicePixelRatio || 1;
+            const ctx = renderAreaGradient(canvas, (x, y) => {
               // Build coords array with fixedIndex getting pendingHue
               const coords: [number, number, number] = [0, 0, 0];
               coords[config.fixedIndex] = pendingHue ?? 0;
               // x and y are 0-1 from the canvas loop
               // Scale them according to config max values
-              coords[config.xIndex] = x * config.xMax;
-              coords[config.yIndex] = y * config.yMax;
+              coords[config.xIndex] = cfgXMin(config) + x * cfgXRange(config);
+              coords[config.yIndex] = cfgYMin(config) + y * cfgYRange(config);
               return { spaceId: color.spaceId, coords, alpha: null };
-            });
+            }, dpr);
+            if (ctx && config.gamutBoundary) {
+              renderGamutBoundaries(ctx, config, color.spaceId, pendingHue ?? 0, dpr);
+            }
           }
           animationId = null;
           pendingHue = null;
@@ -325,13 +524,17 @@ export class AreaPicker {
     try {
       let colorObject
       if (space === 'oklch' || space === 'lch') {
-        // For OKLCH/LCH spaces, convert to OKLCH
         colorObject = to(color, "oklch");
       } else if (space === 'hsl') {
-        // For HSL space, convert to HSL
         colorObject = to(color, "hsl");
+      } else if (space === 'oklab') {
+        colorObject = to(color, "oklab");
+      } else if (space === 'lab') {
+        colorObject = to(color, "lab");
+      } else if (space === 'hwb') {
+        colorObject = to(color, "hwb");
       } else {
-        // For srgb/hex/hwb/lab/oklab, convert to OKHSV
+        // For srgb/hex, convert to OKHSV
         colorObject = to(color, "okhsv");
       }
       this.#color.value = {
