@@ -14,6 +14,8 @@ type AreaConfig = {
   yMax: number;
   yStep: number;
   gamutBoundary?: 'row-scan' | 'polar-scan' | 'diagonal';
+  xInvert?: boolean;
+  yInvert?: boolean;
 };
 
 const cfgXMin = (c: AreaConfig) => c.xMin ?? 0;
@@ -84,6 +86,8 @@ const AREA_CONFIGS: Record<string, undefined | AreaConfig> = {
     yMax: 100,
     yStep: 1,
     gamutBoundary: 'diagonal',
+    xInvert: true,
+    yInvert: true,
   },
 };
 
@@ -284,7 +288,7 @@ export class AreaPicker {
 
   constructor(
     element: null | HTMLElement,
-    onChange: (color: string) => void
+    onChange: (color: string, isDragging: boolean) => void
   ) {
     this.#area = element;
     const canvas = element?.querySelector<HTMLCanvasElement>(".area-canvas");
@@ -292,7 +296,7 @@ export class AreaPicker {
       return;
     }
 
-    const handleChange = (newColor: ColorConstructor) => {
+    const handleChange = (newColor: ColorConstructor, isDragging = false) => {
       if (!this.#space.value) {
         return;
       }
@@ -307,12 +311,14 @@ export class AreaPicker {
       })
       onChange(
         // reformat color
-        gencolor(space, parseIntoChannels(space, serialized).ch)
+        gencolor(space, parseIntoChannels(space, serialized).ch),
+        isDragging
       );
     };
 
     const thumb = element.querySelector<HTMLElement>(".area-thumb");
     let pointerOffset = { x: 0, y: 0 };
+    let cachedRect: DOMRect | null = null;
 
     const handleMove = (event: PointerEvent) => {
       const color = this.#draggingColor.value ?? this.#color.value;
@@ -322,22 +328,25 @@ export class AreaPicker {
       }
 
       // extract 0..1 coords, applying offset from thumb grab point
-      const rect = element.getBoundingClientRect();
+      const rect = cachedRect ?? element.getBoundingClientRect();
       const x = Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width - pointerOffset.x));
       const y = Math.max(0, Math.min(1, 1 - (event.clientY - rect.top) / rect.height - pointerOffset.y));
 
       // Modify coords directly on the dragging color
-      const newCoords = structuredClone(color.coords);
-      newCoords[config.xIndex] = cfgXMin(config) + x * cfgXRange(config);
-      newCoords[config.yIndex] = cfgYMin(config) + y * cfgYRange(config);
+      const newCoords: [number, number, number] = [color.coords[0], color.coords[1], color.coords[2]];
+      const xN = config.xInvert ? 1 - x : x;
+      const yN = config.yInvert ? 1 - y : y;
+      newCoords[config.xIndex] = cfgXMin(config) + xN * cfgXRange(config);
+      newCoords[config.yIndex] = cfgYMin(config) + yN * cfgYRange(config);
       this.#draggingColor.value = { ...color, coords: newCoords };
-      handleChange(this.#draggingColor.value);
+      handleChange(this.#draggingColor.value, true);
     };
 
     element.addEventListener(
       "pointerdown",
       (event) => {
         element.setPointerCapture(event.pointerId);
+        cachedRect = element.getBoundingClientRect();
 
         if (thumb && (event.target === thumb || thumb.contains(event.target as Node))) {
           // Clicked on thumb — store offset from thumb center to prevent jump
@@ -380,6 +389,7 @@ export class AreaPicker {
         element.releasePointerCapture(event.pointerId);
         this.#draggingColor.value = null;
         pointerOffset = { x: 0, y: 0 };
+        cachedRect = null;
       },
       { signal: this.#controller.signal }
     );
@@ -389,6 +399,7 @@ export class AreaPicker {
       () => {
         this.#draggingColor.value = null;
         pointerOffset = { x: 0, y: 0 };
+        cachedRect = null;
       },
       { signal: this.#controller.signal }
     );
@@ -425,11 +436,13 @@ export class AreaPicker {
         // Calculate new values with clamping
         const prevX = color.coords[config.xIndex] ?? 0;
         const prevY = color.coords[config.yIndex] ?? 0;
-        const newX = Math.max(cfgXMin(config), Math.min(config.xMax, prevX + xDelta * config.xStep));
-        const newY = Math.max(cfgYMin(config), Math.min(config.yMax, prevY + yDelta * config.yStep));
+        const effXDelta = config.xInvert ? -xDelta : xDelta;
+        const effYDelta = config.yInvert ? -yDelta : yDelta;
+        const newX = Math.max(cfgXMin(config), Math.min(config.xMax, prevX + effXDelta * config.xStep));
+        const newY = Math.max(cfgYMin(config), Math.min(config.yMax, prevY + effYDelta * config.yStep));
 
         // Build new coords array
-        const newCoords = structuredClone(color.coords);
+        const newCoords: [number, number, number] = [color.coords[0], color.coords[1], color.coords[2]];
         newCoords[config.xIndex] = newX;
         newCoords[config.yIndex] = newY;
         handleChange({ ...color, coords: newCoords });
@@ -457,8 +470,8 @@ export class AreaPicker {
       const x = (((color.coords[config.xIndex] ?? 0) - cfgXMin(config)) / cfgXRange(config)) * 100;
       const y = (((color.coords[config.yIndex] ?? 0) - cfgYMin(config)) / cfgYRange(config)) * 100;
 
-      this.#area?.style.setProperty("--thumb-x", `${x}%`);
-      this.#area?.style.setProperty("--thumb-y", `${100 - y}%`);
+      this.#area?.style.setProperty("--thumb-x", `${config.xInvert ? 100 - x : x}%`);
+      this.#area?.style.setProperty("--thumb-y", `${config.yInvert ? y : 100 - y}%`);
     });
 
     let animationId: null | number = null;
@@ -478,6 +491,7 @@ export class AreaPicker {
       // avoid frequent updates when hue is slightly changing due to conversion errors
       // solve this by relying on hue when dragging is started
       pendingHue = hue.value;
+      const _space = this.#space.value; // track color space changes, not the full color
 
       if (animationId === null) {
         animationId = requestAnimationFrame(() => {
@@ -493,9 +507,11 @@ export class AreaPicker {
               const coords: [number, number, number] = [0, 0, 0];
               coords[config.fixedIndex] = pendingHue ?? 0;
               // x and y are 0-1 from the canvas loop
-              // Scale them according to config max values
-              coords[config.xIndex] = cfgXMin(config) + x * cfgXRange(config);
-              coords[config.yIndex] = cfgYMin(config) + y * cfgYRange(config);
+              // Scale them according to config max values (invert if needed)
+              const xN = config.xInvert ? 1 - x : x;
+              const yN = config.yInvert ? 1 - y : y;
+              coords[config.xIndex] = cfgXMin(config) + xN * cfgXRange(config);
+              coords[config.yIndex] = cfgYMin(config) + yN * cfgYRange(config);
               return { spaceId: color.spaceId, coords, alpha: null };
             }, dpr);
             if (ctx && config.gamutBoundary) {

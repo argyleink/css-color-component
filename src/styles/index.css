@@ -43,6 +43,7 @@ button {
     place-content: center;
     border-radius: var(--radius-round);
     cursor: pointer;
+    anchor-name: --trigger;
 
     .chip {
       display: inline-block;
@@ -115,6 +116,8 @@ button {
 /* Panel: popover container for preview + controls; positioned via Popover API */
 .panel {
   margin: 0;
+  inset: unset;
+  position-area: block-start span-inline-end;
   max-inline-size: min(92vw, 560px);
   background: var(--canvas);
   color: var(--canvas-text);
@@ -136,6 +139,28 @@ button {
     scale var(--duration-normal) var(--ease),
     display var(--duration-normal) allow-discrete,
     overlay var(--duration-normal) allow-discrete;
+}
+
+@supports (anchor-name: --a) {
+  .panel {
+    position-anchor: --trigger;
+    position-area: block-start span-inline-end;
+    align-self: block-end;
+    justify-self: self-start;
+    margin: 0;
+    margin-block-end: 8px;
+    position-try-fallbacks: flip-block, flip-inline, flip-block flip-inline;
+    position-try-order: most-block-size;
+    inset: auto;
+    transform-origin: block-end inline-start;
+  }
+}
+
+.panel[data-placement^="top"] {
+  transform-origin: bottom center;
+}
+.panel[data-placement^="bottom"] {
+  transform-origin: top center;
 }
 
 .panel:not(:popover-open) {

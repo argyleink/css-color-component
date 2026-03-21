@@ -70,21 +70,37 @@ const codeSnippet = `<color-input value="${value}"${themeAttr}${noAlphaAttr}></c
     const contrastColorReadout = container.querySelector('[data-readout="contrast-color"]');
     const contrastSwatch = container.querySelector('[data-readout="contrast-swatch"]') as HTMLElement;
 
-    function updateReadout() {
-      if (valueReadout) valueReadout.textContent = picker.value || '—';
-      if (colorspaceReadout) colorspaceReadout.textContent = picker.colorspace || '—';
-      if (gamutReadout) gamutReadout.textContent = picker.gamut || '—';
+    function flashDD(dd: Element | null) {
+      if (!dd) return;
+      dd.classList.add('just-changed');
+      clearTimeout((dd as any)._flashTimer);
+      (dd as any)._flashTimer = setTimeout(() => dd.classList.remove('just-changed'), 300);
+    }
+
+    function updateReadout(flash = false) {
+      if (valueReadout) {
+        valueReadout.textContent = picker.value || '—';
+        if (flash) flashDD(valueReadout);
+      }
+      if (colorspaceReadout) {
+        colorspaceReadout.textContent = picker.colorspace || '—';
+      }
+      if (gamutReadout) {
+        const prev = gamutReadout.textContent;
+        gamutReadout.textContent = picker.gamut || '—';
+        if (flash && gamutReadout.textContent !== prev) flashDD(gamutReadout);
+      }
       if (contrastColorReadout) contrastColorReadout.textContent = picker.contrastColor || '—';
       if (contrastSwatch && picker.contrastColor) {
         contrastSwatch.style.backgroundColor = picker.contrastColor;
       }
     }
 
-    picker.addEventListener('change', updateReadout);
+    picker.addEventListener('change', () => updateReadout(true));
     
     // Initial update after a brief delay to ensure the element is upgraded
     requestAnimationFrame(() => {
-      setTimeout(updateReadout, 100);
+      setTimeout(() => updateReadout(false), 100);
     });
   }
 
@@ -124,16 +140,9 @@ const codeSnippet = `<color-input value="${value}"${themeAttr}${noAlphaAttr}></c
     user-select: none;
   }
 
+
   .code-content {
     margin-top: 0.75rem;
-    animation: code-reveal 0.3s ease both;
-  }
-
-  @keyframes code-reveal {
-    from {
-      opacity: 0;
-      translate: 0 -4px;
-    }
   }
 
   .code-content :global(pre) {

@@ -18,6 +18,7 @@ import {
   getSafeAreaInsets,
   getScrollParents,
   getViewportClampRect,
+  GUTTER,
   type Placement,
   type Rect,
   type Size
@@ -28,6 +29,8 @@ import styles from './styles/index.css?inline'
 
 export type { Theme, ColorSpace }
 export interface ChangeDetail { value: string; colorspace: ColorSpace; gamut: string }
+
+const supportsAnchor = CSS.supports?.('anchor-name: --a') ?? false
 
 const DEFAULT_VALUE = 'oklch(75% 75% 180)'
 const DEFAULT_SPACE: ColorSpace = 'oklch'
@@ -180,11 +183,13 @@ export class ColorInput extends HTMLElement {
     // Initialize AreaPicker only when visible
     const areaPickerEl = this.#root.querySelector<HTMLElement>('.area-picker')
     if (areaPickerEl && getComputedStyle(areaPickerEl).display !== 'none') {
-      this.#areaPicker = new AreaPicker(areaPickerEl, (color) => {
+      this.#areaPicker = new AreaPicker(areaPickerEl, (color, isDragging) => {
         this.#value.value = color
+        this.#programmaticUpdate = true
         this.setAttribute('value', color)
+        this.#programmaticUpdate = false
         this.#emitChange()
-        this.#renderControls()
+        if (!isDragging) this.#renderControls()
       })
 
       // Sync area picker when color changes
@@ -470,7 +475,15 @@ export class ColorInput extends HTMLElement {
   #cleanup: Array<() => void> = []
   #rafId: number | null = null
 
+  #usingCSSAnchor() {
+    const anchor = this.#anchor.value
+    const isInternal = !anchor || anchor === this.#internalTrigger
+    return supportsAnchor && isInternal && !this.#lastInvoker
+  }
+
   #startReposition() {
+    if (this.#usingCSSAnchor()) return
+
     if (this.#cleanup.length) return
     this.#scheduleReposition()
 
@@ -532,6 +545,7 @@ export class ColorInput extends HTMLElement {
 
   #positionNow() {
     if (!this.#panel) return
+    if (this.#usingCSSAnchor()) return
     const panel = this.#panel as HTMLElement
 
     const anchorRect = this.#getAnchorRect()
@@ -544,7 +558,13 @@ export class ColorInput extends HTMLElement {
     this.#lastPlacement = pick.placement
 
     const left = Math.round(Math.min(Math.max(pick.left, viewport.left), viewport.right - size.width))
-    const top = Math.round(Math.min(Math.max(pick.top, viewport.top), viewport.bottom - size.height))
+    let top = Math.round(Math.min(Math.max(pick.top, viewport.top), viewport.bottom - size.height))
+
+    // Fix overlap: if "top" placement got clamped into the anchor, flip to bottom
+    if (pick.placement.startsWith('top') && top + size.height > anchorRect.top - GUTTER) {
+      top = Math.round(anchorRect.bottom + GUTTER)
+      pick.placement = pick.placement.replace('top', 'bottom') as Placement
+    }
 
     const maxPanelHeight = viewport.bottom - viewport.top
     if (size.height > maxPanelHeight) {
@@ -555,31 +575,28 @@ export class ColorInput extends HTMLElement {
       panel.style.overflow = ''
     }
 
-    panel.style.position = 'absolute'
+    panel.style.position = 'fixed'
     panel.style.left = `${left}px`
     panel.style.top = `${top}px`
-    panel.style.setProperty('--ci-panel-placement', pick.placement)
     panel.dataset.placement = pick.placement
   }
 
   #getAnchorRect(): Rect {
     const anchor = this.#anchor.value ?? this.#lastInvoker ?? this.#internalTrigger ?? this
-    const scrollX = window.pageXOffset || document.documentElement.scrollLeft
-    const scrollY = window.pageYOffset || document.documentElement.scrollTop
 
     if (!anchor.isConnected) {
       const vw = window.visualViewport?.width ?? window.innerWidth
       const vh = window.visualViewport?.height ?? window.innerHeight
-      const cx = vw / 2 + scrollX
-      const cy = vh / 2 + scrollY
+      const cx = vw / 2
+      const cy = vh / 2
       return { left: cx, top: cy, right: cx, bottom: cy, width: 0, height: 0 }
     }
     const rect = anchor.getBoundingClientRect()
     return {
-      left: rect.left + scrollX,
-      top: rect.top + scrollY,
-      right: rect.right + scrollX,
-      bottom: rect.bottom + scrollY,
+      left: rect.left,
+      top: rect.top,
+      right: rect.right,
+      bottom: rect.bottom,
       width: rect.width,
       height: rect.height,
     }
@@ -601,7 +618,7 @@ export class ColorInput extends HTMLElement {
       maxHeight: panel.style.maxHeight,
     }
     panel.style.display = 'block'
-    panel.style.position = 'absolute'
+    panel.style.position = 'fixed'
     panel.style.left = '-99999px'
     panel.style.top = '0'
     panel.style.visibility = 'hidden'

@@ -1,21 +1,13 @@
-/* ===== Entrance animation ===== */
-@keyframes demo-enter {
-  from {
-    opacity: 0;
-    translate: 0 8px;
-  }
-}
-
 /* ===== Demo containers ===== */
 .demo {
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
-  padding: 1.5rem;
-  background: var(--sl-color-bg-sidebar);
   border-radius: 12px;
-  border: 1px solid var(--sl-color-hairline);
-  animation: demo-enter 0.4s ease both;
+}
+
+:root:not([data-theme='dark']) .demo {
+  background: var(--sl-color-bg-sidebar);
 }
 
 .demo-group {
@@ -55,17 +47,15 @@
   cursor: pointer;
   transition:
     background 0.2s ease,
-    border-color 0.2s ease,
     transform 0.1s ease;
 }
 
 .demo-controls button:hover {
   background: var(--sl-color-bg-sidebar);
-  border-color: var(--sl-color-accent);
 }
 
 .demo-controls button:active {
-  transform: scale(0.97);
+  transform: scale(0.98);
 }
 
 .demo-grid {
@@ -82,30 +72,27 @@
   padding: 1rem 1.25rem;
   background: var(--sl-color-bg-inline-code);
   border-radius: 10px;
-  border: 1px solid var(--sl-color-hairline);
-  transition: border-color 0.2s ease;
   display: grid;
   grid-template-columns: auto 1fr;
   gap: 0.25rem 1rem;
   align-items: baseline;
 }
 
-.readout:hover {
-  border-color: var(--sl-color-accent);
-}
-
 .readout dt {
-  font-weight: 600;
-  font-size: 0.6875rem;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
+  font-weight: 500;
+  font-size: 0.75rem;
   color: var(--sl-color-text-accent);
-  opacity: 0.8;
+  opacity: 0.65;
 }
 
 .readout dd {
   margin: 0;
   color: var(--sl-color-text);
+  transition: color 0.15s ease;
+}
+
+.readout dd.just-changed {
+  color: var(--sl-color-accent);
 }
 
 /* ===== Swatches ===== */
@@ -115,21 +102,22 @@
   height: 48px;
   border-radius: 8px;
   border: 1px solid var(--sl-color-hairline);
-  box-shadow: 0 2px 8px rgb(0 0 0 / 0.1);
+  box-shadow: 0 1px 4px rgb(0 0 0 / 0.08);
   transition:
     transform 0.2s ease,
     box-shadow 0.2s ease;
 }
 
 .swatch:hover {
-  transform: scale(1.08);
-  box-shadow: 0 4px 16px rgb(0 0 0 / 0.15);
+  transform: scale(1.04);
+  box-shadow: 0 2px 8px rgb(0 0 0 / 0.1);
 }
 
 .swatch-sm {
   width: 24px;
   height: 24px;
   border-radius: 4px;
+  transition: background-color 0.2s ease;
 }
 
 .swatch-lg {
@@ -175,17 +163,15 @@
   cursor: pointer;
   transition:
     background 0.2s ease,
-    border-color 0.2s ease,
     transform 0.1s ease;
 }
 
 .code-toggle:hover {
   background: var(--sl-color-bg-sidebar);
-  border-color: var(--sl-color-accent);
 }
 
 .code-toggle:active {
-  transform: scale(0.97);
+  transform: scale(0.98);
 }
 
 /* ===== Event log ===== */
@@ -195,28 +181,21 @@
   padding: 1rem 1.25rem;
   background: var(--sl-color-bg-inline-code);
   border-radius: 10px;
-  border: 1px solid var(--sl-color-hairline);
   font-family: ui-monospace, 'Cascadia Code', 'Source Code Pro', Menlo, Consolas, 'DejaVu Sans Mono', monospace;
   font-size: 0.75rem;
   line-height: 1.6;
-  transition: border-color 0.2s ease;
-}
-
-.event-log:hover {
-  border-color: var(--sl-color-accent);
 }
 
 @keyframes log-entry {
   from {
     opacity: 0;
-    translate: -4px 0;
   }
 }
 
 .event-log-item {
   padding: 0.4rem 0;
-  border-bottom: 1px solid oklch(50% 0% 0 / 0.06);
-  animation: log-entry 0.25s ease both;
+  border-bottom: 1px solid oklch(50% 0% 0 / 0.05);
+  animation: log-entry 0.3s ease both;
 }
 
 .event-log-item:last-child {
@@ -225,13 +204,23 @@
 
 .event-log-time {
   color: var(--sl-color-text-accent);
-  opacity: 0.5;
+  opacity: 0.4;
   font-size: 0.6875rem;
 }
 
 .event-log-type {
-  font-weight: 600;
+  font-weight: 500;
   color: var(--sl-color-accent);
+}
+
+.event-log-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  vertical-align: middle;
+  margin-inline-end: 0.25rem;
+  transition: background-color 0.2s ease;
 }
 
 /* ===== Showcase cards ===== */
@@ -243,14 +232,11 @@
   display: flex;
   flex-direction: column;
   gap: 1rem;
-  transition:
-    border-color 0.2s ease,
-    box-shadow 0.3s ease;
+  transition: box-shadow 0.3s ease;
 }
 
 .showcase-card:hover {
-  border-color: var(--sl-color-accent);
-  box-shadow: 0 4px 24px oklch(50% 10% 280 / 0.08);
+  box-shadow: 0 2px 12px oklch(50% 5% 280 / 0.06);
 }
 
 .showcase-card h4 {
@@ -266,10 +252,6 @@
 
 /* ===== Responsive ===== */
 @media (max-width: 768px) {
-  .demo {
-    padding: 1rem;
-  }
-
   .demo-grid {
     grid-template-columns: 1fr;
   }
@@ -309,10 +291,6 @@ summary {
   .demo-controls button:active,
   .code-toggle:active {
     transform: none;
-  }
-
-  .demo {
-    animation: none;
   }
 
   .event-log-item {
