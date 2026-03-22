@@ -189,7 +189,7 @@ export class ColorInput extends HTMLElement {
         this.setAttribute('value', color)
         this.#programmaticUpdate = false
         this.#emitChange()
-        if (!isDragging) this.#renderControls()
+        this.#renderControls()
       })
 
       // Sync area picker when color changes

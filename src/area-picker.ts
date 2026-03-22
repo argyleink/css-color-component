@@ -1,6 +1,6 @@
 import { computed, effect, signal } from "@preact/signals-core";
 import { ColorConstructor, inGamut, serialize, to } from "colorjs.io/fn";
-import { getColorJSSpaceID, type ColorSpace } from "./color";
+import { getColorJSSpaceID, isRGBLike, type ColorSpace } from "./color";
 import { gencolor, parseIntoChannels } from "./utils/color-conversion";
 
 type AreaConfig = {
@@ -97,6 +97,19 @@ const getAreaConfig = (color: null | ColorConstructor) => {
   }
 };
 
+// Detect wide-gamut canvas support by testing the actual API
+const supportsP3Canvas = (() => {
+  try {
+    const c = document.createElement("canvas");
+    c.width = 1;
+    c.height = 1;
+    const ctx = c.getContext("2d", { colorSpace: "display-p3" });
+    return (ctx as any)?.getContextAttributes?.()?.colorSpace === "display-p3";
+  } catch {
+    return false;
+  }
+})();
+
 function renderAreaGradient(
   canvas: HTMLCanvasElement,
   getColor: (x: number, y: number) => ColorConstructor,
@@ -108,13 +121,16 @@ function renderAreaGradient(
   const backingW = Math.round(cssW * dpr);
   const backingH = Math.round(cssH * dpr);
 
+  const canvasColorSpace = supportsP3Canvas ? "display-p3" : "srgb";
+  const targetSpace = supportsP3Canvas ? "p3" : "srgb";
+
   // Render gradient at half backing resolution for performance
   const W = Math.round(backingW / 2);
   const H = Math.round(backingH / 2);
   const offscreen = document.createElement("canvas");
   offscreen.width = W;
   offscreen.height = H;
-  const offCtx = offscreen.getContext("2d");
+  const offCtx = offscreen.getContext("2d", { colorSpace: canvasColorSpace });
   if (!offCtx) {
     return;
   }
@@ -124,11 +140,11 @@ function renderAreaGradient(
     const Y = 1 - y / (H - 1);
     for (let x = 0; x < W; x++) {
       const X = x / (W - 1);
-      const [r, g, b] = to(getColor(X, Y), "srgb").coords;
+      const [r, g, b] = to(getColor(X, Y), targetSpace).coords;
       const i = (y * W + x) * 4;
-      d[i] = Math.round((r ?? 0) * 255);
-      d[i + 1] = Math.round((g ?? 0) * 255);
-      d[i + 2] = Math.round((b ?? 0) * 255);
+      d[i] = Math.round(Math.max(0, Math.min(1, r ?? 0)) * 255);
+      d[i + 1] = Math.round(Math.max(0, Math.min(1, g ?? 0)) * 255);
+      d[i + 2] = Math.round(Math.max(0, Math.min(1, b ?? 0)) * 255);
       d[i + 3] = 255;
     }
   }
@@ -136,7 +152,7 @@ function renderAreaGradient(
   // Set canvas backing store to full DPR resolution
   canvas.width = backingW;
   canvas.height = backingH;
-  const ctx = canvas.getContext("2d");
+  const ctx = canvas.getContext("2d", { colorSpace: canvasColorSpace });
   if (!ctx) {
     return;
   }
@@ -179,6 +195,7 @@ function renderGamutBoundaries(
   ctx: CanvasRenderingContext2D,
   config: AreaConfig,
   spaceId: string,
+  userSpaceId: string,
   fixedValue: number,
   dpr: number
 ) {
@@ -194,86 +211,118 @@ function renderGamutBoundaries(
     return;
   }
 
-  const gamuts: { space: string; color: string; lineWidth: number; dash: number[] }[] = [
+  // Default gamut boundaries from widest to narrowest
+  const defaultGamuts: { space: string; color: string; lineWidth: number; dash: number[] }[] = [
+    { space: 'prophoto-rgb', color: 'rgba(255,255,255,0.3)', lineWidth: 0.75 * dpr, dash: [2 * dpr, 3 * dpr] },
+    { space: 'rec2020', color: 'rgba(255,255,255,0.4)', lineWidth: 1 * dpr, dash: [3 * dpr, 3 * dpr] },
     { space: 'p3', color: 'rgba(255,255,255,0.55)', lineWidth: 1.25 * dpr, dash: [6 * dpr, 4 * dpr] },
     { space: 'srgb', color: 'rgba(255,255,255,0.7)', lineWidth: 1.5 * dpr, dash: [] },
   ];
+
+  // Specialty spaces: show only own gamut boundary + srgb for focused context
+  // The area picker spaceId is always oklch (wide gamut RGB spaces route through it),
+  // so we need the *user-selected* space passed via the caller. We approximate by
+  // checking spaceId against known colorjs IDs.
+  const focusedBoundaries: Record<string, { space: string; color: string; lineWidth: number; dash: number[] }[]> = {
+    'a98rgb': [
+      { space: 'a98rgb', color: 'rgba(255,255,255,0.55)', lineWidth: 1.25 * dpr, dash: [6 * dpr, 4 * dpr] },
+      { space: 'srgb', color: 'rgba(255,255,255,0.7)', lineWidth: 1.5 * dpr, dash: [] },
+    ],
+    'prophoto-rgb': [
+      { space: 'prophoto-rgb', color: 'rgba(255,255,255,0.55)', lineWidth: 1.25 * dpr, dash: [6 * dpr, 4 * dpr] },
+      { space: 'srgb', color: 'rgba(255,255,255,0.7)', lineWidth: 1.5 * dpr, dash: [] },
+    ],
+    'rec2020': [
+      { space: 'rec2020', color: 'rgba(255,255,255,0.55)', lineWidth: 1.25 * dpr, dash: [6 * dpr, 4 * dpr] },
+      { space: 'srgb', color: 'rgba(255,255,255,0.7)', lineWidth: 1.5 * dpr, dash: [] },
+    ],
+    'p3': [
+      { space: 'p3', color: 'rgba(255,255,255,0.55)', lineWidth: 1.25 * dpr, dash: [6 * dpr, 4 * dpr] },
+      { space: 'srgb', color: 'rgba(255,255,255,0.7)', lineWidth: 1.5 * dpr, dash: [] },
+    ],
+  };
+
+  const gamuts = focusedBoundaries[userSpaceId] ?? defaultGamuts;
 
   if (config.gamutBoundary === 'row-scan') {
     // OKLCH: x=chroma, y=lightness. For each row (lightness), binary search max chroma.
     const ROWS = 100;
     for (const gamut of gamuts) {
-      const points: { x: number; y: number }[] = [];
-      for (let row = 0; row <= ROWS; row++) {
-        const yNorm = row / ROWS; // 0..1 normalized lightness
-        const yVal = cfgYMin(config) + yNorm * cfgYRange(config);
-        // Binary search for max x (chroma) in gamut
-        let lo = 0;
-        let hi = 1;
-        // Check if anything is in gamut at this row
-        const coords: [number, number, number] = [0, 0, 0];
-        coords[config.fixedIndex] = fixedValue;
-        coords[config.yIndex] = yVal;
-        coords[config.xIndex] = cfgXMin(config);
-        if (!isInGamut(spaceId, coords, gamut.space)) continue;
+      try {
+        const points: { x: number; y: number }[] = [];
+        for (let row = 0; row <= ROWS; row++) {
+          const yNorm = row / ROWS; // 0..1 normalized lightness
+          const yVal = cfgYMin(config) + yNorm * cfgYRange(config);
+          // Binary search for max x (chroma) in gamut
+          let lo = 0;
+          let hi = 1;
+          // Check if anything is in gamut at this row
+          const coords: [number, number, number] = [0, 0, 0];
+          coords[config.fixedIndex] = fixedValue;
+          coords[config.yIndex] = yVal;
+          coords[config.xIndex] = cfgXMin(config);
+          if (!isInGamut(spaceId, coords, gamut.space)) continue;
 
-        for (let i = 0; i < 10; i++) {
-          const mid = (lo + hi) / 2;
-          const xVal = cfgXMin(config) + mid * cfgXRange(config);
-          const c: [number, number, number] = [0, 0, 0];
-          c[config.fixedIndex] = fixedValue;
-          c[config.xIndex] = xVal;
-          c[config.yIndex] = yVal;
-          if (isInGamut(spaceId, c, gamut.space)) {
-            lo = mid;
-          } else {
-            hi = mid;
+          for (let i = 0; i < 10; i++) {
+            const mid = (lo + hi) / 2;
+            const xVal = cfgXMin(config) + mid * cfgXRange(config);
+            const c: [number, number, number] = [0, 0, 0];
+            c[config.fixedIndex] = fixedValue;
+            c[config.xIndex] = xVal;
+            c[config.yIndex] = yVal;
+            if (isInGamut(spaceId, c, gamut.space)) {
+              lo = mid;
+            } else {
+              hi = mid;
+            }
           }
+          const xCanvas = lo * W;
+          const yCanvas = (1 - yNorm) * H;
+          points.push({ x: xCanvas, y: yCanvas });
         }
-        const xCanvas = lo * W;
-        const yCanvas = (1 - yNorm) * H;
-        points.push({ x: xCanvas, y: yCanvas });
-      }
-      drawBoundaryLine(ctx, points, false, gamut.color, gamut.lineWidth, gamut.dash);
+        drawBoundaryLine(ctx, points, false, gamut.color, gamut.lineWidth, gamut.dash);
+      } catch { /* skip unsupported gamut */ }
     }
   } else if (config.gamutBoundary === 'polar-scan') {
     // OKLab/Lab: x=a, y=b. From center (0,0), sweep angles, binary search max radius.
     const ANGLES = 180;
     for (const gamut of gamuts) {
-      const points: { x: number; y: number }[] = [];
-      for (let i = 0; i <= ANGLES; i++) {
-        const angle = (i / ANGLES) * Math.PI * 2;
-        const dx = Math.cos(angle);
-        const dy = Math.sin(angle);
-        // Binary search for max radius
-        let lo = 0;
-        let hi = 1;
-        for (let j = 0; j < 10; j++) {
-          const mid = (lo + hi) / 2;
-          // mid is 0..1 normalized radius, scale to actual range
-          const xVal = mid * dx * cfgXRange(config) / 2; // half range = max from center
-          const yVal = mid * dy * cfgYRange(config) / 2;
-          const coords: [number, number, number] = [0, 0, 0];
-          coords[config.fixedIndex] = fixedValue;
-          coords[config.xIndex] = xVal;
-          coords[config.yIndex] = yVal;
-          if (isInGamut(spaceId, coords, gamut.space)) {
-            lo = mid;
-          } else {
-            hi = mid;
+      try {
+        const points: { x: number; y: number }[] = [];
+        for (let i = 0; i <= ANGLES; i++) {
+          const angle = (i / ANGLES) * Math.PI * 2;
+          const dx = Math.cos(angle);
+          const dy = Math.sin(angle);
+          // Binary search for max radius
+          let lo = 0;
+          let hi = 1;
+          for (let j = 0; j < 10; j++) {
+            const mid = (lo + hi) / 2;
+            // mid is 0..1 normalized radius, scale to actual range
+            const xVal = mid * dx * cfgXRange(config) / 2; // half range = max from center
+            const yVal = mid * dy * cfgYRange(config) / 2;
+            const coords: [number, number, number] = [0, 0, 0];
+            coords[config.fixedIndex] = fixedValue;
+            coords[config.xIndex] = xVal;
+            coords[config.yIndex] = yVal;
+            if (isInGamut(spaceId, coords, gamut.space)) {
+              lo = mid;
+            } else {
+              hi = mid;
+            }
           }
+          // Convert found boundary point to canvas coords
+          const xVal = lo * dx * cfgXRange(config) / 2;
+          const yVal = lo * dy * cfgYRange(config) / 2;
+          // Normalize to 0..1
+          const xNorm = (xVal - cfgXMin(config)) / cfgXRange(config);
+          const yNorm = (yVal - cfgYMin(config)) / cfgYRange(config);
+          const xCanvas = xNorm * W;
+          const yCanvas = (1 - yNorm) * H;
+          points.push({ x: xCanvas, y: yCanvas });
         }
-        // Convert found boundary point to canvas coords
-        const xVal = lo * dx * cfgXRange(config) / 2;
-        const yVal = lo * dy * cfgYRange(config) / 2;
-        // Normalize to 0..1
-        const xNorm = (xVal - cfgXMin(config)) / cfgXRange(config);
-        const yNorm = (yVal - cfgYMin(config)) / cfgYRange(config);
-        const xCanvas = xNorm * W;
-        const yCanvas = (1 - yNorm) * H;
-        points.push({ x: xCanvas, y: yCanvas });
-      }
-      drawBoundaryLine(ctx, points, true, gamut.color, gamut.lineWidth, gamut.dash);
+        drawBoundaryLine(ctx, points, true, gamut.color, gamut.lineWidth, gamut.dash);
+      } catch { /* skip unsupported gamut */ }
     }
   }
 }
@@ -387,6 +436,11 @@ export class AreaPicker {
       "pointerup",
       (event) => {
         element.releasePointerCapture(event.pointerId);
+        // Emit final non-dragging change so sliders update
+        const color = this.#draggingColor.value;
+        if (color) {
+          handleChange(color, false);
+        }
         this.#draggingColor.value = null;
         pointerOffset = { x: 0, y: 0 };
         cachedRect = null;
@@ -495,31 +549,37 @@ export class AreaPicker {
 
       if (animationId === null) {
         animationId = requestAnimationFrame(() => {
-          if (canvas && pendingHue !== null && this.#space.value) {
-            const color = this.#color.value
-            const config = getAreaConfig(color);
-            if (!color || !config) {
-              return;
+          try {
+            if (canvas && pendingHue !== null && this.#space.value) {
+              const color = this.#color.value
+              const config = getAreaConfig(color);
+              if (!color || !config) {
+                return;
+              }
+              const dpr = window.devicePixelRatio || 1;
+              const ctx = renderAreaGradient(canvas, (x, y) => {
+                // Build coords array with fixedIndex getting pendingHue
+                const coords: [number, number, number] = [0, 0, 0];
+                coords[config.fixedIndex] = pendingHue ?? 0;
+                // x and y are 0-1 from the canvas loop
+                // Scale them according to config max values (invert if needed)
+                const xN = config.xInvert ? 1 - x : x;
+                const yN = config.yInvert ? 1 - y : y;
+                coords[config.xIndex] = cfgXMin(config) + xN * cfgXRange(config);
+                coords[config.yIndex] = cfgYMin(config) + yN * cfgYRange(config);
+                return { spaceId: color.spaceId, coords, alpha: null };
+              }, dpr);
+              if (ctx && config.gamutBoundary) {
+                const userSpaceId = this.#space.value
+                  ? getColorJSSpaceID(this.#space.value === 'hex' ? 'srgb' : this.#space.value)
+                  : color.spaceId;
+                renderGamutBoundaries(ctx, config, color.spaceId, userSpaceId, pendingHue ?? 0, dpr);
+              }
             }
-            const dpr = window.devicePixelRatio || 1;
-            const ctx = renderAreaGradient(canvas, (x, y) => {
-              // Build coords array with fixedIndex getting pendingHue
-              const coords: [number, number, number] = [0, 0, 0];
-              coords[config.fixedIndex] = pendingHue ?? 0;
-              // x and y are 0-1 from the canvas loop
-              // Scale them according to config max values (invert if needed)
-              const xN = config.xInvert ? 1 - x : x;
-              const yN = config.yInvert ? 1 - y : y;
-              coords[config.xIndex] = cfgXMin(config) + xN * cfgXRange(config);
-              coords[config.yIndex] = cfgYMin(config) + yN * cfgYRange(config);
-              return { spaceId: color.spaceId, coords, alpha: null };
-            }, dpr);
-            if (ctx && config.gamutBoundary) {
-              renderGamutBoundaries(ctx, config, color.spaceId, pendingHue ?? 0, dpr);
-            }
+          } finally {
+            animationId = null;
+            pendingHue = null;
           }
-          animationId = null;
-          pendingHue = null;
         });
       }
     });
@@ -549,6 +609,10 @@ export class AreaPicker {
         colorObject = to(color, "lab");
       } else if (space === 'hwb') {
         colorObject = to(color, "hwb");
+      } else if (isRGBLike(space)) {
+        // Wide gamut RGB spaces use oklch for the area picker,
+        // which provides a perceptual lightness×chroma plane with gamut boundaries
+        colorObject = to(color, "oklch");
       } else {
         // For srgb/hex, convert to OKHSV
         colorObject = to(color, "okhsv");
