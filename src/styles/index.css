@@ -231,7 +231,7 @@ button {
 
   &:hover .eyedropper-btn, &:focus-within .eyedropper-btn,
   &:hover .copy-btn, &:focus-within .copy-btn {
-    opacity: 1;
+    opacity: 0.75;
   }
   .eyedropper-btn[hidden] {
     display: none;
@@ -240,11 +240,11 @@ button {
   & > *:not(:hover) {opacity:.9}
   .tools {
     position: absolute;
-    top: 0.5rem;
-    right: 0.5rem;
+    top: 2px;
+    right: 2px;
     display: flex;
     align-items: flex-start;
-    gap: 0.25rem;
+    gap: 0;
   }
   .copy-wrap {
     display: flex;
@@ -257,7 +257,7 @@ button {
     background: none;
     border: 1px solid transparent;
     border-radius: 0;
-    padding: 0;
+    padding: 5px;
     cursor: pointer;
     opacity: 0;
     transition: opacity var(--duration-normal) var(--ease),
@@ -265,13 +265,15 @@ button {
     display: inline-flex;
     align-items: center;
   }
-  .eyedropper-btn:hover, .copy-btn:hover {
+  .eyedropper-btn:hover, .copy-btn:hover,
+  .eyedropper-btn:focus, .copy-btn:focus {
+    opacity: 1;
     scale: 1.1;
   }
   .eyedropper-btn:active, .copy-btn:active {
     scale: 0.9;
   }
-  .copy-btn svg { display: block; }
+  .eyedropper-btn svg, .copy-btn svg { display: block; width: 18px; height: 18px; }
   .copy-message {
     color: var(--contrast);
     font-size: 0.8rem;
@@ -475,20 +477,38 @@ button {
   }
   /* Slider thumb styles */
   .control input[type="range"]::-webkit-slider-thumb {
-    cursor: grab; appearance: none; border: 4px solid white;
-    height: calc(1rem + 8px); aspect-ratio: 1; border-radius: var(--radius-round);
+    cursor: grab; appearance: none;
+    height: calc(1rem + 8px); width: calc(1rem + 8px); border-radius: var(--radius-round);
+    background: white;
+    border: 4px solid white;
+    box-shadow: 0 0px 1px 1px rgba(0,0,0,.25);
+    transform: scale(0.2);
+    transition: transform .15s ease, box-shadow .15s ease, background .15s ease;
+  }
+  .control input[type="range"]:hover::-webkit-slider-thumb,
+  .control input[type="range"]:focus::-webkit-slider-thumb {
+    transform: scale(1);
+    background: none;
     box-shadow: 0 0px 1px 1px rgba(0,0,0,.25), inset 0 1px 2px rgba(0,0,0,.15);
   }
   .control input[type="range"]:active::-webkit-slider-thumb {
     cursor: grabbing;
   }
   .control input[type="range"]::-moz-range-thumb {
-    cursor: grab; appearance: none; border: 4px solid white;
-    height: calc(1rem + 8px); aspect-ratio: 1; border-radius: var(--radius-round);
-    box-shadow: 0 0px 1px 1px rgba(0,0,0,.25), inset 0 1px 2px rgba(0,0,0,.15);
-    width: calc(8px + 1rem);
-    background: none;
+    cursor: grab; appearance: none;
+    height: calc(1rem + 8px); width: calc(1rem + 8px); border-radius: var(--radius-round);
+    background: white;
+    border: 4px solid white;
+    box-shadow: 0 0px 1px 1px rgba(0,0,0,.25);
     box-sizing: border-box;
+    transform: scale(0.2);
+    transition: transform .15s ease, box-shadow .15s ease, background .15s ease;
+  }
+  .control input[type="range"]:hover::-moz-range-thumb,
+  .control input[type="range"]:focus::-moz-range-thumb {
+    transform: scale(1);
+    background: none;
+    box-shadow: 0 0px 1px 1px rgba(0,0,0,.25), inset 0 1px 2px rgba(0,0,0,.15);
   }
   .control input[type="range"]:active::-moz-range-thumb {
     cursor: grabbing;
