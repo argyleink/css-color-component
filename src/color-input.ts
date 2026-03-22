@@ -655,6 +655,9 @@ export class ColorInput extends HTMLElement {
       channelSignals[key] = signal(String(ch[key]))
     })
 
+    let rafId: number | null = null
+    let pendingApply: (() => void) | null = null
+
     const make = (label: string, key: string, min: number, max: number, step = 1, bg?: string, bgColor?: string) => {
       const wrapHue = key === 'H'
       const isPercentage = ['L', 'S', 'C', 'W', 'B', 'R', 'G', 'ALP'].includes(key)
@@ -743,7 +746,16 @@ export class ColorInput extends HTMLElement {
         // keep controls in sync
         range.value = String(ch[key])
         num.value = String(ch[key])
-        apply()
+        pendingApply = apply
+        if (rafId === null) {
+          rafId = requestAnimationFrame(() => {
+            rafId = null
+            if (pendingApply) {
+              pendingApply()
+              pendingApply = null
+            }
+          })
+        }
       }
 
       range.addEventListener('input', onInput)
