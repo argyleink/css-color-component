@@ -23,6 +23,16 @@ const cfgYMin = (c: AreaConfig) => c.yMin ?? 0;
 const cfgXRange = (c: AreaConfig) => c.xMax - cfgXMin(c);
 const cfgYRange = (c: AreaConfig) => c.yMax - cfgYMin(c);
 
+/** Linearly interpolate a LUT at normalized position t ∈ [0,1] */
+function lerpLUT(lut: Float64Array, t: number): number {
+  const n = lut.length - 1;
+  const i = Math.max(0, Math.min(n, t * n));
+  const lo = Math.floor(i);
+  const hi = Math.min(lo + 1, n);
+  const f = i - lo;
+  return lut[lo]! * (1 - f) + lut[hi]! * f;
+}
+
 const AREA_CONFIGS: Record<string, undefined | AreaConfig> = {
   okhsv: {
     fixedIndex: 0,
@@ -175,6 +185,17 @@ function getZoomTargetGamut(userSpaceId: string): string {
   }
 }
 
+/** Determine the outermost gamut for stretch mode (matches boundary list) */
+function getStretchGamut(userSpaceId: string): string {
+  switch (userSpaceId) {
+    case 'p3': return 'p3';
+    case 'a98rgb': return 'a98rgb';
+    case 'rec2020': return 'rec2020';
+    case 'prophoto-rgb': return 'prophoto-rgb';
+    default: return 'p3'; // default/oklch: stretch to P3 for best usability
+  }
+}
+
 /** Quick pre-scan to find the outermost gamut boundary extent in color-space values */
 function computeGamutExtent(
   config: AreaConfig,
@@ -270,6 +291,118 @@ function createEffectiveConfig(
   return config;
 }
 
+/**
+ * Compute a per-row chroma LUT for gamut stretch mode.
+ * For each lightness step, binary-searches the max chroma within the target gamut.
+ * The LUT maps normalized y (lightness) → max chroma value.
+ */
+function computeChromaLUT(
+  config: AreaConfig,
+  spaceId: string,
+  fixedValue: number,
+  gamutSpace: string,
+  size: number
+): Float64Array {
+  const lut = new Float64Array(size);
+  const maxSearch = 0.5; // generous upper bound for OKLCH chroma
+  for (let i = 0; i < size; i++) {
+    const yNorm = i / (size - 1);
+    const yVal = cfgYMin(config) + yNorm * cfgYRange(config);
+    // Check if chroma=0 is in gamut at this lightness
+    const coords: [number, number, number] = [0, 0, 0];
+    coords[config.fixedIndex] = fixedValue;
+    coords[config.yIndex] = yVal;
+    coords[config.xIndex] = 0;
+    if (!isInGamut(spaceId, coords, gamutSpace)) {
+      lut[i] = 0;
+      continue;
+    }
+    // Binary search for max chroma in the target gamut
+    let lo = 0, hi = maxSearch;
+    for (let j = 0; j < 16; j++) {
+      const mid = (lo + hi) / 2;
+      const c: [number, number, number] = [0, 0, 0];
+      c[config.fixedIndex] = fixedValue;
+      c[config.xIndex] = mid;
+      c[config.yIndex] = yVal;
+      if (isInGamut(spaceId, c, gamutSpace)) lo = mid;
+      else hi = mid;
+    }
+    lut[i] = lo;
+  }
+  return lut;
+}
+
+/**
+ * Compute a polar LUT for gamut stretch mode on polar-scan spaces (OKLab/Lab).
+ * For each angle around the origin, binary-searches the max radius within the target gamut.
+ * The LUT maps angle index → max radius value.
+ */
+function computePolarLUT(
+  config: AreaConfig,
+  spaceId: string,
+  fixedValue: number,
+  gamutSpace: string,
+  size: number
+): Float64Array {
+  const lut = new Float64Array(size);
+  const halfX = cfgXRange(config) / 2;
+  const halfY = cfgYRange(config) / 2;
+  const maxSearch = Math.sqrt(halfX * halfX + halfY * halfY) * 1.5;
+  for (let i = 0; i < size; i++) {
+    const angle = (i / size) * Math.PI * 2;
+    const dx = Math.cos(angle);
+    const dy = Math.sin(angle);
+    let lo = 0, hi = maxSearch;
+    for (let j = 0; j < 16; j++) {
+      const mid = (lo + hi) / 2;
+      const coords: [number, number, number] = [0, 0, 0];
+      coords[config.fixedIndex] = fixedValue;
+      coords[config.xIndex] = mid * dx;
+      coords[config.yIndex] = mid * dy;
+      if (isInGamut(spaceId, coords, gamutSpace)) lo = mid;
+      else hi = mid;
+    }
+    lut[i] = lo;
+  }
+  return lut;
+}
+
+/** Interpolate a polar LUT at a given angle (wrapping) */
+function lerpAngleLUT(lut: Float64Array, angle: number): number {
+  const n = lut.length;
+  const a = ((angle % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
+  const idx = (a / (Math.PI * 2)) * n;
+  const lo = Math.floor(idx) % n;
+  const hi = (lo + 1) % n;
+  const f = idx - Math.floor(idx);
+  return lut[lo]! * (1 - f) + lut[hi]! * f;
+}
+
+/** Convert centered canvas coords [-1,1] to polar-stretched color coords */
+function polarStretchToColor(cx: number, cy: number, polarLUT: Float64Array): [number, number] {
+  const dist = Math.sqrt(cx * cx + cy * cy);
+  if (dist < 1e-10) return [0, 0];
+  const angle = Math.atan2(cy, cx);
+  const edgeDist = 1 / Math.max(Math.abs(Math.cos(angle)), Math.abs(Math.sin(angle)));
+  const t = Math.min(1, dist / edgeDist);
+  const maxR = lerpAngleLUT(polarLUT, angle);
+  const r = t * maxR;
+  return [r * Math.cos(angle), r * Math.sin(angle)];
+}
+
+/** Convert color coords to centered canvas coords [-1,1] using polar stretch */
+function colorToPolarStretch(a: number, b: number, polarLUT: Float64Array): [number, number] {
+  const r = Math.sqrt(a * a + b * b);
+  if (r < 1e-10) return [0, 0];
+  const angle = Math.atan2(b, a);
+  const maxR = lerpAngleLUT(polarLUT, angle);
+  const t = maxR > 0 ? Math.min(1, r / maxR) : 0;
+  const edgeDist = 1 / Math.max(Math.abs(Math.cos(angle)), Math.abs(Math.sin(angle)));
+  const canvasDist = t * edgeDist;
+  return [canvasDist * Math.cos(angle), canvasDist * Math.sin(angle)];
+}
+
 function drawBoundaryLine(
   ctx: CanvasRenderingContext2D,
   points: { x: number; y: number }[],
@@ -301,7 +434,10 @@ function renderGamutBoundaries(
   spaceId: string,
   userSpaceId: string,
   fixedValue: number,
-  dpr: number
+  dpr: number,
+  chromaLUT?: Float64Array | null,
+  stretchGamut?: string,
+  polarLUT?: Float64Array | null
 ) {
   const W = ctx.canvas.width;
   const H = ctx.canvas.height;
@@ -352,37 +488,54 @@ function renderGamutBoundaries(
     // OKLCH: x=chroma, y=lightness. For each row (lightness), binary search max chroma.
     const ROWS = 100;
     for (const gamut of gamuts) {
+      // In stretch mode, skip the stretch target gamut (it's the canvas edge)
+      if (chromaLUT && stretchGamut && gamut.space === stretchGamut) continue;
       try {
         const points: { x: number; y: number }[] = [];
         for (let row = 0; row <= ROWS; row++) {
           const yNorm = row / ROWS; // 0..1 normalized lightness
           const yVal = cfgYMin(config) + yNorm * cfgYRange(config);
-          // Binary search for max x (chroma) in gamut
-          let lo = 0;
-          let hi = 1;
           // Check if anything is in gamut at this row
           const coords: [number, number, number] = [0, 0, 0];
           coords[config.fixedIndex] = fixedValue;
           coords[config.yIndex] = yVal;
-          coords[config.xIndex] = cfgXMin(config);
+          coords[config.xIndex] = 0;
           if (!isInGamut(spaceId, coords, gamut.space)) continue;
 
-          for (let i = 0; i < 10; i++) {
-            const mid = (lo + hi) / 2;
-            const xVal = cfgXMin(config) + mid * cfgXRange(config);
-            const c: [number, number, number] = [0, 0, 0];
-            c[config.fixedIndex] = fixedValue;
-            c[config.xIndex] = xVal;
-            c[config.yIndex] = yVal;
-            if (isInGamut(spaceId, c, gamut.space)) {
-              lo = mid;
-            } else {
-              hi = mid;
+          if (chromaLUT) {
+            // Stretch mode: binary search absolute chroma, normalize against LUT
+            const maxChromaOuter = lerpLUT(chromaLUT, yNorm);
+            if (maxChromaOuter <= 0) continue;
+            let lo = 0, hi = maxChromaOuter;
+            for (let i = 0; i < 10; i++) {
+              const mid = (lo + hi) / 2;
+              const c: [number, number, number] = [0, 0, 0];
+              c[config.fixedIndex] = fixedValue;
+              c[config.xIndex] = mid;
+              c[config.yIndex] = yVal;
+              if (isInGamut(spaceId, c, gamut.space)) lo = mid;
+              else hi = mid;
             }
+            const xCanvas = (lo / maxChromaOuter) * W;
+            const yCanvas = (1 - yNorm) * H;
+            points.push({ x: xCanvas, y: yCanvas });
+          } else {
+            // Linear mode: binary search in normalized config range
+            let lo = 0, hi = 1;
+            for (let i = 0; i < 10; i++) {
+              const mid = (lo + hi) / 2;
+              const xVal = cfgXMin(config) + mid * cfgXRange(config);
+              const c: [number, number, number] = [0, 0, 0];
+              c[config.fixedIndex] = fixedValue;
+              c[config.xIndex] = xVal;
+              c[config.yIndex] = yVal;
+              if (isInGamut(spaceId, c, gamut.space)) lo = mid;
+              else hi = mid;
+            }
+            const xCanvas = lo * W;
+            const yCanvas = (1 - yNorm) * H;
+            points.push({ x: xCanvas, y: yCanvas });
           }
-          const xCanvas = lo * W;
-          const yCanvas = (1 - yNorm) * H;
-          points.push({ x: xCanvas, y: yCanvas });
         }
         drawBoundaryLine(ctx, points, false, gamut.color, gamut.lineWidth, gamut.dash);
       } catch { /* skip unsupported gamut */ }
@@ -391,39 +544,60 @@ function renderGamutBoundaries(
     // OKLab/Lab: x=a, y=b. From center (0,0), sweep angles, binary search max radius.
     const ANGLES = 180;
     for (const gamut of gamuts) {
+      // In stretch mode, skip the stretch target gamut (it's the canvas edge)
+      if (polarLUT && stretchGamut && gamut.space === stretchGamut) continue;
       try {
         const points: { x: number; y: number }[] = [];
         for (let i = 0; i <= ANGLES; i++) {
           const angle = (i / ANGLES) * Math.PI * 2;
           const dx = Math.cos(angle);
           const dy = Math.sin(angle);
-          // Binary search for max radius
-          let lo = 0;
-          let hi = 1;
-          for (let j = 0; j < 10; j++) {
-            const mid = (lo + hi) / 2;
-            // mid is 0..1 normalized radius, scale to actual range
-            const xVal = mid * dx * cfgXRange(config) / 2; // half range = max from center
-            const yVal = mid * dy * cfgYRange(config) / 2;
-            const coords: [number, number, number] = [0, 0, 0];
-            coords[config.fixedIndex] = fixedValue;
-            coords[config.xIndex] = xVal;
-            coords[config.yIndex] = yVal;
-            if (isInGamut(spaceId, coords, gamut.space)) {
-              lo = mid;
-            } else {
-              hi = mid;
+
+          if (polarLUT) {
+            // Stretch mode: binary search absolute radius, normalize against LUT
+            const maxROuter = lerpAngleLUT(polarLUT, angle);
+            if (maxROuter <= 0) continue;
+            let lo = 0, hi = maxROuter;
+            for (let j = 0; j < 10; j++) {
+              const mid = (lo + hi) / 2;
+              const coords: [number, number, number] = [0, 0, 0];
+              coords[config.fixedIndex] = fixedValue;
+              coords[config.xIndex] = mid * dx;
+              coords[config.yIndex] = mid * dy;
+              if (isInGamut(spaceId, coords, gamut.space)) lo = mid;
+              else hi = mid;
             }
+            // Map through polar stretch to canvas coords
+            const t = lo / maxROuter;
+            const edgeDist = 1 / Math.max(Math.abs(dx), Math.abs(dy));
+            const canvasDist = t * edgeDist;
+            const cx = canvasDist * dx;
+            const cy = canvasDist * dy;
+            const xCanvas = ((cx + 1) / 2) * W;
+            const yCanvas = (1 - (cy + 1) / 2) * H;
+            points.push({ x: xCanvas, y: yCanvas });
+          } else {
+            // Linear mode: binary search in normalized range
+            let lo = 0, hi = 1;
+            for (let j = 0; j < 10; j++) {
+              const mid = (lo + hi) / 2;
+              const xVal = mid * dx * cfgXRange(config) / 2;
+              const yVal = mid * dy * cfgYRange(config) / 2;
+              const coords: [number, number, number] = [0, 0, 0];
+              coords[config.fixedIndex] = fixedValue;
+              coords[config.xIndex] = xVal;
+              coords[config.yIndex] = yVal;
+              if (isInGamut(spaceId, coords, gamut.space)) lo = mid;
+              else hi = mid;
+            }
+            const xVal = lo * dx * cfgXRange(config) / 2;
+            const yVal = lo * dy * cfgYRange(config) / 2;
+            const xNorm = (xVal - cfgXMin(config)) / cfgXRange(config);
+            const yNorm = (yVal - cfgYMin(config)) / cfgYRange(config);
+            const xCanvas = xNorm * W;
+            const yCanvas = (1 - yNorm) * H;
+            points.push({ x: xCanvas, y: yCanvas });
           }
-          // Convert found boundary point to canvas coords
-          const xVal = lo * dx * cfgXRange(config) / 2;
-          const yVal = lo * dy * cfgYRange(config) / 2;
-          // Normalize to 0..1
-          const xNorm = (xVal - cfgXMin(config)) / cfgXRange(config);
-          const yNorm = (yVal - cfgYMin(config)) / cfgYRange(config);
-          const xCanvas = xNorm * W;
-          const yCanvas = (1 - yNorm) * H;
-          points.push({ x: xCanvas, y: yCanvas });
         }
         drawBoundaryLine(ctx, points, true, gamut.color, gamut.lineWidth, gamut.dash);
       } catch { /* skip unsupported gamut */ }
@@ -439,6 +613,8 @@ export class AreaPicker {
   // store color during drag to prevent jitter from conversions
   #draggingColor = signal<null | ColorConstructor>(null);
   #effectiveConfig = signal<null | AreaConfig>(null);
+  #chromaLUT = signal<null | Float64Array>(null);
+  #polarLUT = signal<null | Float64Array>(null);
 
   constructor(
     element: null | HTMLElement,
@@ -490,8 +666,23 @@ export class AreaPicker {
       const newCoords: [number, number, number] = [color.coords[0], color.coords[1], color.coords[2]];
       const xN = config.xInvert ? 1 - x : x;
       const yN = config.yInvert ? 1 - y : y;
-      newCoords[config.xIndex] = cfgXMin(config) + xN * cfgXRange(config);
-      newCoords[config.yIndex] = cfgYMin(config) + yN * cfgYRange(config);
+      const chromaLUT = this.#chromaLUT.value;
+      const polarLUT = this.#polarLUT.value;
+      if (polarLUT) {
+        // Polar stretch mode: convert canvas position to color coords via polar mapping
+        const cx = xN * 2 - 1;
+        const cy = yN * 2 - 1;
+        const [a, b] = polarStretchToColor(cx, cy, polarLUT);
+        newCoords[config.xIndex] = a;
+        newCoords[config.yIndex] = b;
+      } else if (chromaLUT) {
+        // Row stretch mode: x maps to fraction of max chroma at this lightness
+        newCoords[config.xIndex] = xN * lerpLUT(chromaLUT, yN);
+        newCoords[config.yIndex] = cfgYMin(config) + yN * cfgYRange(config);
+      } else {
+        newCoords[config.xIndex] = cfgXMin(config) + xN * cfgXRange(config);
+        newCoords[config.yIndex] = cfgYMin(config) + yN * cfgYRange(config);
+      }
       this.#draggingColor.value = { ...color, coords: newCoords };
       handleChange(this.#draggingColor.value, true);
     };
@@ -597,13 +788,30 @@ export class AreaPicker {
         const prevY = color.coords[config.yIndex] ?? 0;
         const effXDelta = config.xInvert ? -xDelta : xDelta;
         const effYDelta = config.yInvert ? -yDelta : yDelta;
-        const newX = Math.max(cfgXMin(config), Math.min(config.xMax, prevX + effXDelta * config.xStep));
-        const newY = Math.max(cfgYMin(config), Math.min(config.yMax, prevY + effYDelta * config.yStep));
 
         // Build new coords array
         const newCoords: [number, number, number] = [color.coords[0], color.coords[1], color.coords[2]];
-        newCoords[config.xIndex] = newX;
-        newCoords[config.yIndex] = newY;
+        const chromaLUT = this.#chromaLUT.value;
+        const polarLUT = this.#polarLUT.value;
+        if (polarLUT) {
+          // Polar stretch mode: step relative to gamut extent along each axis
+          const xMaxR = lerpAngleLUT(polarLUT, 0); // max extent along positive a-axis
+          const yMaxR = lerpAngleLUT(polarLUT, Math.PI / 2); // max extent along positive b-axis
+          const xStep = xMaxR / 50;
+          const yStep = yMaxR / 50;
+          newCoords[config.xIndex] = prevX + effXDelta * xStep;
+          newCoords[config.yIndex] = prevY + effYDelta * yStep;
+        } else if (chromaLUT) {
+          // Row stretch mode: step is 1% of max chroma at current lightness
+          const yNorm = (prevY - cfgYMin(config)) / cfgYRange(config);
+          const maxChroma = lerpLUT(chromaLUT, yNorm);
+          const xStep = maxChroma / 100;
+          newCoords[config.xIndex] = Math.max(0, Math.min(maxChroma, prevX + effXDelta * xStep));
+          newCoords[config.yIndex] = Math.max(cfgYMin(config), Math.min(config.yMax, prevY + effYDelta * config.yStep));
+        } else {
+          newCoords[config.xIndex] = Math.max(cfgXMin(config), Math.min(config.xMax, prevX + effXDelta * config.xStep));
+          newCoords[config.yIndex] = Math.max(cfgYMin(config), Math.min(config.yMax, prevY + effYDelta * config.yStep));
+        }
         handleChange({ ...color, coords: newCoords });
       },
       { signal: this.#controller.signal }
@@ -626,8 +834,26 @@ export class AreaPicker {
       }
 
       // Calculate percentage positions from coords
-      const x = (((color.coords[config.xIndex] ?? 0) - cfgXMin(config)) / cfgXRange(config)) * 100;
-      const y = (((color.coords[config.yIndex] ?? 0) - cfgYMin(config)) / cfgYRange(config)) * 100;
+      const chromaLUT = this.#chromaLUT.value;
+      const polarLUT = this.#polarLUT.value;
+      let x: number, y: number;
+      if (polarLUT) {
+        // Polar stretch mode: convert color coords to canvas position
+        const a = color.coords[config.xIndex] ?? 0;
+        const b = color.coords[config.yIndex] ?? 0;
+        const [cx, cy] = colorToPolarStretch(a, b, polarLUT);
+        x = ((cx + 1) / 2) * 100;
+        y = ((cy + 1) / 2) * 100;
+      } else if (chromaLUT) {
+        // Row stretch mode: x is fraction of max chroma at this lightness
+        const yNorm = ((color.coords[config.yIndex] ?? 0) - cfgYMin(config)) / cfgYRange(config);
+        const maxChroma = lerpLUT(chromaLUT, yNorm);
+        x = maxChroma > 0 ? Math.min(100, ((color.coords[config.xIndex] ?? 0) / maxChroma) * 100) : 0;
+        y = yNorm * 100;
+      } else {
+        x = (((color.coords[config.xIndex] ?? 0) - cfgXMin(config)) / cfgXRange(config)) * 100;
+        y = (((color.coords[config.yIndex] ?? 0) - cfgYMin(config)) / cfgYRange(config)) * 100;
+      }
 
       this.#area?.style.setProperty("--thumb-x", `${config.xInvert ? 100 - x : x}%`);
       this.#area?.style.setProperty("--thumb-y", `${config.yInvert ? y : 100 - y}%`);
@@ -663,45 +889,55 @@ export class AreaPicker {
               }
               const dpr = window.devicePixelRatio || 1;
 
-              // Compute effective config with zoom-to-fit for gamut boundary spaces
+              // Compute effective config and stretch LUTs
               let effCfg = config;
-              if (config.gamutBoundary) {
-                const userSpaceId = getColorJSSpaceID(this.#space.value === 'hex' ? 'srgb' : this.#space.value);
-                const zoomTarget = getZoomTargetGamut(userSpaceId);
+              let chromaLUT: Float64Array | null = null;
+              let polarLUT: Float64Array | null = null;
+              let stretchGamut: string | undefined;
+              const userSpaceId = config.gamutBoundary
+                ? getColorJSSpaceID(this.#space.value === 'hex' ? 'srgb' : this.#space.value)
+                : '';
+
+              if (config.gamutBoundary === 'row-scan') {
+                // Row gamut stretch: compute per-row chroma LUT
+                stretchGamut = getStretchGamut(userSpaceId);
                 try {
-                  const extent = computeGamutExtent(config, color.spaceId, pendingHue ?? 0, zoomTarget);
-                  if (extent) {
-                    effCfg = createEffectiveConfig(config, extent);
-                    // Expand to include current color position so thumb stays on-canvas
-                    const cx = color.coords[config.xIndex] ?? 0;
-                    const cy = color.coords[config.yIndex] ?? 0;
-                    if (config.gamutBoundary === 'row-scan' && cx > effCfg.xMax) {
-                      const newXMax = cx * 1.05;
-                      effCfg = { ...effCfg, xMax: newXMax, xStep: newXMax / 100 };
-                    } else if (config.gamutBoundary === 'polar-scan') {
-                      const needed = Math.max(Math.abs(cx), Math.abs(cy));
-                      if (needed > effCfg.xMax) {
-                        const h = needed * 1.05;
-                        effCfg = { ...effCfg, xMin: -h, xMax: h, xStep: h * 2 / 100, yMin: -h, yMax: h, yStep: h * 2 / 100 };
-                      }
-                    }
-                  }
-                } catch { /* fallback to static config */ }
+                  chromaLUT = computeChromaLUT(config, color.spaceId, pendingHue ?? 0, stretchGamut, 128);
+                } catch { /* fallback to linear */ }
+              } else if (config.gamutBoundary === 'polar-scan') {
+                // Polar gamut stretch: compute per-angle radius LUT
+                stretchGamut = getStretchGamut(userSpaceId);
+                try {
+                  polarLUT = computePolarLUT(config, color.spaceId, pendingHue ?? 0, stretchGamut, 180);
+                } catch { /* fallback to linear */ }
               }
               this.#effectiveConfig.value = effCfg;
+              this.#chromaLUT.value = chromaLUT;
+              this.#polarLUT.value = polarLUT;
 
               const ctx = renderAreaGradient(canvas, (x, y) => {
                 const coords: [number, number, number] = [0, 0, 0];
                 coords[effCfg.fixedIndex] = pendingHue ?? 0;
                 const xN = effCfg.xInvert ? 1 - x : x;
                 const yN = effCfg.yInvert ? 1 - y : y;
-                coords[effCfg.xIndex] = cfgXMin(effCfg) + xN * cfgXRange(effCfg);
-                coords[effCfg.yIndex] = cfgYMin(effCfg) + yN * cfgYRange(effCfg);
+                if (polarLUT) {
+                  // Polar stretch: map canvas position to color coords via polar mapping
+                  const cx = xN * 2 - 1;
+                  const cy = yN * 2 - 1;
+                  const [a, b] = polarStretchToColor(cx, cy, polarLUT);
+                  coords[effCfg.xIndex] = a;
+                  coords[effCfg.yIndex] = b;
+                } else if (chromaLUT) {
+                  coords[effCfg.xIndex] = xN * lerpLUT(chromaLUT, yN);
+                  coords[effCfg.yIndex] = cfgYMin(effCfg) + yN * cfgYRange(effCfg);
+                } else {
+                  coords[effCfg.xIndex] = cfgXMin(effCfg) + xN * cfgXRange(effCfg);
+                  coords[effCfg.yIndex] = cfgYMin(effCfg) + yN * cfgYRange(effCfg);
+                }
                 return { spaceId: color.spaceId, coords, alpha: null };
               }, dpr);
               if (ctx && config.gamutBoundary) {
-                const userSpaceId = getColorJSSpaceID(this.#space.value === 'hex' ? 'srgb' : this.#space.value);
-                renderGamutBoundaries(ctx, effCfg, color.spaceId, userSpaceId, pendingHue ?? 0, dpr);
+                renderGamutBoundaries(ctx, effCfg, color.spaceId, userSpaceId, pendingHue ?? 0, dpr, chromaLUT, stretchGamut, polarLUT);
               }
             }
           } finally {
