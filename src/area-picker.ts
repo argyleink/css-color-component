@@ -36,9 +36,8 @@ const AREA_CONFIGS: Record<string, undefined | AreaConfig> = {
   oklch: {
     fixedIndex: 2,
     xIndex: 1,
-    // 0.4 is approximately supported gamut by displays
-    xMax: 0.4,
-    xStep: 0.4 / 100,
+    xMax: 0.37,
+    xStep: 0.37 / 100,
     yIndex: 0,
     yMax: 1,
     yStep: 1 / 100,
@@ -56,25 +55,25 @@ const AREA_CONFIGS: Record<string, undefined | AreaConfig> = {
   oklab: {
     fixedIndex: 0,
     xIndex: 1,
-    xMin: -0.4,
-    xMax: 0.4,
-    xStep: 0.8 / 100,
+    xMin: -0.33,
+    xMax: 0.33,
+    xStep: 0.66 / 100,
     yIndex: 2,
-    yMin: -0.4,
-    yMax: 0.4,
-    yStep: 0.8 / 100,
+    yMin: -0.33,
+    yMax: 0.33,
+    yStep: 0.66 / 100,
     gamutBoundary: 'polar-scan',
   },
   lab: {
     fixedIndex: 0,
     xIndex: 1,
-    xMin: -125,
-    xMax: 125,
-    xStep: 250 / 100,
+    xMin: -110,
+    xMax: 110,
+    xStep: 220 / 100,
     yIndex: 2,
-    yMin: -125,
-    yMax: 125,
-    yStep: 250 / 100,
+    yMin: -110,
+    yMax: 110,
+    yStep: 220 / 100,
     gamutBoundary: 'polar-scan',
   },
   hwb: {
@@ -164,6 +163,111 @@ function renderAreaGradient(
 function isInGamut(spaceId: string, coords: [number, number, number], gamutSpace: string): boolean {
   const converted = to({ spaceId, coords, alpha: 1 }, gamutSpace);
   return inGamut({ spaceId: gamutSpace, coords: converted.coords, alpha: null });
+}
+
+/** Determine which gamut to zoom-to-fit (outermost relevant gamut) */
+function getZoomTargetGamut(userSpaceId: string): string {
+  switch (userSpaceId) {
+    case 'prophoto-rgb': return 'prophoto-rgb';
+    case 'rec2020': return 'rec2020';
+    case 'a98rgb': return 'a98rgb';
+    default: return 'p3';
+  }
+}
+
+/** Quick pre-scan to find the outermost gamut boundary extent in color-space values */
+function computeGamutExtent(
+  config: AreaConfig,
+  spaceId: string,
+  fixedValue: number,
+  gamutSpace: string
+): { xMin: number; xMax: number; yMin: number; yMax: number } | null {
+  if (config.gamutBoundary === 'row-scan') {
+    const ROWS = 25;
+    // Search wider than static range so wide gamuts (rec2020) aren't clipped
+    const searchRange = cfgXRange(config) * 1.5;
+    let maxX = 0;
+    for (let row = 0; row <= ROWS; row++) {
+      const yNorm = row / ROWS;
+      const yVal = cfgYMin(config) + yNorm * cfgYRange(config);
+      const coords: [number, number, number] = [0, 0, 0];
+      coords[config.fixedIndex] = fixedValue;
+      coords[config.yIndex] = yVal;
+      coords[config.xIndex] = cfgXMin(config);
+      if (!isInGamut(spaceId, coords, gamutSpace)) continue;
+      let lo = 0, hi = 1;
+      for (let i = 0; i < 8; i++) {
+        const mid = (lo + hi) / 2;
+        const xVal = cfgXMin(config) + mid * searchRange;
+        const c: [number, number, number] = [0, 0, 0];
+        c[config.fixedIndex] = fixedValue;
+        c[config.xIndex] = xVal;
+        c[config.yIndex] = yVal;
+        if (isInGamut(spaceId, c, gamutSpace)) lo = mid;
+        else hi = mid;
+      }
+      maxX = Math.max(maxX, cfgXMin(config) + lo * searchRange);
+    }
+    if (maxX <= 0) return null;
+    return { xMin: cfgXMin(config), xMax: maxX, yMin: cfgYMin(config), yMax: config.yMax };
+  }
+  if (config.gamutBoundary === 'polar-scan') {
+    const ANGLES = 36;
+    const searchXRange = cfgXRange(config) * 1.5;
+    const searchYRange = cfgYRange(config) * 1.5;
+    let maxA = 0, maxB = 0;
+    for (let i = 0; i <= ANGLES; i++) {
+      const angle = (i / ANGLES) * Math.PI * 2;
+      const dx = Math.cos(angle);
+      const dy = Math.sin(angle);
+      let lo = 0, hi = 1;
+      for (let j = 0; j < 8; j++) {
+        const mid = (lo + hi) / 2;
+        const xVal = mid * dx * searchXRange / 2;
+        const yVal = mid * dy * searchYRange / 2;
+        const coords: [number, number, number] = [0, 0, 0];
+        coords[config.fixedIndex] = fixedValue;
+        coords[config.xIndex] = xVal;
+        coords[config.yIndex] = yVal;
+        if (isInGamut(spaceId, coords, gamutSpace)) lo = mid;
+        else hi = mid;
+      }
+      maxA = Math.max(maxA, Math.abs(lo * dx * searchXRange / 2));
+      maxB = Math.max(maxB, Math.abs(lo * dy * searchYRange / 2));
+    }
+    if (maxA <= 0 && maxB <= 0) return null;
+    return { xMin: -maxA, xMax: maxA, yMin: -maxB, yMax: maxB };
+  }
+  return null;
+}
+
+/** Create config with ranges adjusted to make the gamut boundary fill the canvas */
+function createEffectiveConfig(
+  config: AreaConfig,
+  extent: { xMin: number; xMax: number; yMin: number; yMax: number },
+  targetFill = 0.88,
+  maxScale = 1.8
+): AreaConfig {
+  if (config.gamutBoundary === 'row-scan') {
+    const desiredXMax = extent.xMax / targetFill;
+    const minXMax = config.xMax / maxScale;
+    // Allow expanding up to 1.5× static range for wide gamuts like rec2020
+    const newXMax = Math.min(config.xMax * 1.5, Math.max(desiredXMax, minXMax));
+    return { ...config, xMax: newXMax, xStep: newXMax / 100 };
+  }
+  if (config.gamutBoundary === 'polar-scan') {
+    const maxExtent = Math.max(extent.xMax, extent.yMax);
+    const desiredHalf = maxExtent / targetFill;
+    const currentHalf = cfgXRange(config) / 2;
+    const minHalf = currentHalf / maxScale;
+    const newHalf = Math.min(currentHalf * 1.5, Math.max(desiredHalf, minHalf));
+    return {
+      ...config,
+      xMin: -newHalf, xMax: newHalf, xStep: (newHalf * 2) / 100,
+      yMin: -newHalf, yMax: newHalf, yStep: (newHalf * 2) / 100,
+    };
+  }
+  return config;
 }
 
 function drawBoundaryLine(
@@ -334,6 +438,7 @@ export class AreaPicker {
   #space = signal<null | ColorSpace>(null);
   // store color during drag to prevent jitter from conversions
   #draggingColor = signal<null | ColorConstructor>(null);
+  #effectiveConfig = signal<null | AreaConfig>(null);
 
   constructor(
     element: null | HTMLElement,
@@ -371,7 +476,7 @@ export class AreaPicker {
 
     const handleMove = (event: PointerEvent) => {
       const color = this.#draggingColor.value ?? this.#color.value;
-      const config = getAreaConfig(color);
+      const config = this.#effectiveConfig.value ?? getAreaConfig(color);
       if (!color || !config) {
         return;
       }
@@ -462,7 +567,7 @@ export class AreaPicker {
       "keydown",
       (event) => {
         const color = this.#color.value;
-        const config = getAreaConfig(color);
+        const config = this.#effectiveConfig.value ?? getAreaConfig(color);
         if (!color || !config) {
           return;
         }
@@ -514,7 +619,7 @@ export class AreaPicker {
     // update thumb position whenever color changes or during drag
     const cleanupColor = effect(() => {
       const color = this.#draggingColor.value ?? this.#color.value;
-      const config = getAreaConfig(color);
+      const config = this.#effectiveConfig.value ?? getAreaConfig(color);
 
       if (!color || !config) {
         return;
@@ -557,23 +662,46 @@ export class AreaPicker {
                 return;
               }
               const dpr = window.devicePixelRatio || 1;
+
+              // Compute effective config with zoom-to-fit for gamut boundary spaces
+              let effCfg = config;
+              if (config.gamutBoundary) {
+                const userSpaceId = getColorJSSpaceID(this.#space.value === 'hex' ? 'srgb' : this.#space.value);
+                const zoomTarget = getZoomTargetGamut(userSpaceId);
+                try {
+                  const extent = computeGamutExtent(config, color.spaceId, pendingHue ?? 0, zoomTarget);
+                  if (extent) {
+                    effCfg = createEffectiveConfig(config, extent);
+                    // Expand to include current color position so thumb stays on-canvas
+                    const cx = color.coords[config.xIndex] ?? 0;
+                    const cy = color.coords[config.yIndex] ?? 0;
+                    if (config.gamutBoundary === 'row-scan' && cx > effCfg.xMax) {
+                      const newXMax = cx * 1.05;
+                      effCfg = { ...effCfg, xMax: newXMax, xStep: newXMax / 100 };
+                    } else if (config.gamutBoundary === 'polar-scan') {
+                      const needed = Math.max(Math.abs(cx), Math.abs(cy));
+                      if (needed > effCfg.xMax) {
+                        const h = needed * 1.05;
+                        effCfg = { ...effCfg, xMin: -h, xMax: h, xStep: h * 2 / 100, yMin: -h, yMax: h, yStep: h * 2 / 100 };
+                      }
+                    }
+                  }
+                } catch { /* fallback to static config */ }
+              }
+              this.#effectiveConfig.value = effCfg;
+
               const ctx = renderAreaGradient(canvas, (x, y) => {
-                // Build coords array with fixedIndex getting pendingHue
                 const coords: [number, number, number] = [0, 0, 0];
-                coords[config.fixedIndex] = pendingHue ?? 0;
-                // x and y are 0-1 from the canvas loop
-                // Scale them according to config max values (invert if needed)
-                const xN = config.xInvert ? 1 - x : x;
-                const yN = config.yInvert ? 1 - y : y;
-                coords[config.xIndex] = cfgXMin(config) + xN * cfgXRange(config);
-                coords[config.yIndex] = cfgYMin(config) + yN * cfgYRange(config);
+                coords[effCfg.fixedIndex] = pendingHue ?? 0;
+                const xN = effCfg.xInvert ? 1 - x : x;
+                const yN = effCfg.yInvert ? 1 - y : y;
+                coords[effCfg.xIndex] = cfgXMin(effCfg) + xN * cfgXRange(effCfg);
+                coords[effCfg.yIndex] = cfgYMin(effCfg) + yN * cfgYRange(effCfg);
                 return { spaceId: color.spaceId, coords, alpha: null };
               }, dpr);
               if (ctx && config.gamutBoundary) {
-                const userSpaceId = this.#space.value
-                  ? getColorJSSpaceID(this.#space.value === 'hex' ? 'srgb' : this.#space.value)
-                  : color.spaceId;
-                renderGamutBoundaries(ctx, config, color.spaceId, userSpaceId, pendingHue ?? 0, dpr);
+                const userSpaceId = getColorJSSpaceID(this.#space.value === 'hex' ? 'srgb' : this.#space.value);
+                renderGamutBoundaries(ctx, effCfg, color.spaceId, userSpaceId, pendingHue ?? 0, dpr);
               }
             }
           } finally {
