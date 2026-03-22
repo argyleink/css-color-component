@@ -2,6 +2,7 @@ import { computed, effect, signal } from "@preact/signals-core";
 import { ColorConstructor, inGamut, serialize, to } from "colorjs.io/fn";
 import { getColorJSSpaceID, isRGBLike, type ColorSpace } from "./color";
 import { gencolor, parseIntoChannels } from "./utils/color-conversion";
+import AreaPickerWorker from './area-picker.worker.ts?worker&inline';
 
 type AreaConfig = {
   fixedIndex: number;
@@ -615,6 +616,11 @@ export class AreaPicker {
   #effectiveConfig = signal<null | AreaConfig>(null);
   #chromaLUT = signal<null | Float64Array>(null);
   #polarLUT = signal<null | Float64Array>(null);
+  #worker: Worker | null = null;
+  #renderSeqId = 0;
+  #lastRenderedId = 0;
+  #workerBusy = false;
+  #pendingWorkerMsg: any = null;
 
   constructor(
     element: null | HTMLElement,
@@ -624,6 +630,61 @@ export class AreaPicker {
     const canvas = element?.querySelector<HTMLCanvasElement>(".area-canvas");
     if (!element || !canvas) {
       return;
+    }
+
+    // Initialize worker for off-thread gradient computation
+    try {
+      this.#worker = new AreaPickerWorker();
+      this.#worker.onmessage = (e: MessageEvent) => {
+        const result = e.data;
+        if (result.id < this.#lastRenderedId) return; // discard stale
+        this.#lastRenderedId = result.id;
+
+        // Update signals so thumb position effect can use them
+        this.#effectiveConfig.value = result.effConfig;
+        this.#chromaLUT.value = result.chromaLUT;
+        this.#polarLUT.value = result.polarLUT;
+
+        // Paint pixel data to canvas
+        const canvasColorSpace = supportsP3Canvas ? "display-p3" : "srgb";
+        const offscreen = document.createElement("canvas");
+        offscreen.width = result.W;
+        offscreen.height = result.H;
+        const offCtx = offscreen.getContext("2d", { colorSpace: canvasColorSpace });
+        if (!offCtx) return;
+        const img = offCtx.createImageData(result.W, result.H);
+        img.data.set(new Uint8ClampedArray(result.pixels));
+        offCtx.putImageData(img, 0, 0);
+
+        canvas.width = result.backingW;
+        canvas.height = result.backingH;
+        const ctx = canvas.getContext("2d", { colorSpace: canvasColorSpace });
+        if (!ctx) return;
+        ctx.imageSmoothingEnabled = true;
+        ctx.drawImage(offscreen, 0, 0, result.backingW, result.backingH);
+
+        // Draw boundary lines on main thread (just path drawing, no color math)
+        for (const b of result.boundaries) {
+          drawBoundaryLine(ctx, b.points, b.closed, b.color, b.lineWidth, b.dash);
+        }
+
+        // If a newer render was requested while busy, send it now
+        this.#workerBusy = false;
+        if (this.#pendingWorkerMsg) {
+          const msg = this.#pendingWorkerMsg;
+          this.#pendingWorkerMsg = null;
+          this.#workerBusy = true;
+          this.#worker!.postMessage(msg);
+        }
+      };
+      this.#worker.onerror = () => {
+        this.#workerBusy = false;
+        this.#pendingWorkerMsg = null;
+        this.#worker?.terminate();
+        this.#worker = null;
+      };
+    } catch {
+      this.#worker = null;
     }
 
     const handleChange = (newColor: ColorConstructor, isDragging = false) => {
@@ -888,56 +949,73 @@ export class AreaPicker {
                 return;
               }
               const dpr = window.devicePixelRatio || 1;
-
-              // Compute effective config and stretch LUTs
-              let effCfg = config;
-              let chromaLUT: Float64Array | null = null;
-              let polarLUT: Float64Array | null = null;
-              let stretchGamut: string | undefined;
               const userSpaceId = config.gamutBoundary
                 ? getColorJSSpaceID(this.#space.value === 'hex' ? 'srgb' : this.#space.value)
                 : '';
 
-              if (config.gamutBoundary === 'row-scan') {
-                // Row gamut stretch: compute per-row chroma LUT
-                stretchGamut = getStretchGamut(userSpaceId);
-                try {
-                  chromaLUT = computeChromaLUT(config, color.spaceId, pendingHue ?? 0, stretchGamut, 128);
-                } catch { /* fallback to linear */ }
-              } else if (config.gamutBoundary === 'polar-scan') {
-                // Polar gamut stretch: compute per-angle radius LUT
-                stretchGamut = getStretchGamut(userSpaceId);
-                try {
-                  polarLUT = computePolarLUT(config, color.spaceId, pendingHue ?? 0, stretchGamut, 180);
-                } catch { /* fallback to linear */ }
-              }
-              this.#effectiveConfig.value = effCfg;
-              this.#chromaLUT.value = chromaLUT;
-              this.#polarLUT.value = polarLUT;
-
-              const ctx = renderAreaGradient(canvas, (x, y) => {
-                const coords: [number, number, number] = [0, 0, 0];
-                coords[effCfg.fixedIndex] = pendingHue ?? 0;
-                const xN = effCfg.xInvert ? 1 - x : x;
-                const yN = effCfg.yInvert ? 1 - y : y;
-                if (polarLUT) {
-                  // Polar stretch: map canvas position to color coords via polar mapping
-                  const cx = xN * 2 - 1;
-                  const cy = yN * 2 - 1;
-                  const [a, b] = polarStretchToColor(cx, cy, polarLUT);
-                  coords[effCfg.xIndex] = a;
-                  coords[effCfg.yIndex] = b;
-                } else if (chromaLUT) {
-                  coords[effCfg.xIndex] = xN * lerpLUT(chromaLUT, yN);
-                  coords[effCfg.yIndex] = cfgYMin(effCfg) + yN * cfgYRange(effCfg);
+              if (this.#worker) {
+                // Worker path: only one message in-flight at a time
+                const msg = {
+                  id: ++this.#renderSeqId,
+                  spaceId: color.spaceId,
+                  fixedValue: pendingHue ?? 0,
+                  userSpaceId,
+                  cssW: canvas.clientWidth || 320,
+                  cssH: canvas.clientHeight || 200,
+                  dpr,
+                  supportsP3: supportsP3Canvas,
+                };
+                if (this.#workerBusy) {
+                  this.#pendingWorkerMsg = msg;
                 } else {
-                  coords[effCfg.xIndex] = cfgXMin(effCfg) + xN * cfgXRange(effCfg);
-                  coords[effCfg.yIndex] = cfgYMin(effCfg) + yN * cfgYRange(effCfg);
+                  this.#workerBusy = true;
+                  this.#worker.postMessage(msg);
                 }
-                return { spaceId: color.spaceId, coords, alpha: null };
-              }, dpr);
-              if (ctx && config.gamutBoundary) {
-                renderGamutBoundaries(ctx, effCfg, color.spaceId, userSpaceId, pendingHue ?? 0, dpr, chromaLUT, stretchGamut, polarLUT);
+              } else {
+                // Synchronous fallback when worker is unavailable
+                let effCfg = config;
+                let chromaLUT: Float64Array | null = null;
+                let polarLUT: Float64Array | null = null;
+                let stretchGamut: string | undefined;
+
+                if (config.gamutBoundary === 'row-scan') {
+                  stretchGamut = getStretchGamut(userSpaceId);
+                  try {
+                    chromaLUT = computeChromaLUT(config, color.spaceId, pendingHue ?? 0, stretchGamut, 128);
+                  } catch { /* fallback to linear */ }
+                } else if (config.gamutBoundary === 'polar-scan') {
+                  stretchGamut = getStretchGamut(userSpaceId);
+                  try {
+                    polarLUT = computePolarLUT(config, color.spaceId, pendingHue ?? 0, stretchGamut, 180);
+                  } catch { /* fallback to linear */ }
+                }
+                this.#effectiveConfig.value = effCfg;
+                this.#chromaLUT.value = chromaLUT;
+                this.#polarLUT.value = polarLUT;
+
+                const ctx = renderAreaGradient(canvas, (x, y) => {
+                  const coords: [number, number, number] = [0, 0, 0];
+                  coords[effCfg.fixedIndex] = pendingHue ?? 0;
+                  const xN = effCfg.xInvert ? 1 - x : x;
+                  const yN = effCfg.yInvert ? 1 - y : y;
+                  if (polarLUT) {
+                    const cx = xN * 2 - 1;
+                    const cy = yN * 2 - 1;
+                    const [a, b] = polarStretchToColor(cx, cy, polarLUT);
+                    coords[effCfg.xIndex] = a;
+                    coords[effCfg.yIndex] = b;
+                  } else if (chromaLUT) {
+                    coords[effCfg.xIndex] = xN * lerpLUT(chromaLUT, yN);
+                    coords[effCfg.yIndex] = cfgYMin(effCfg) + yN * cfgYRange(effCfg);
+                  } else {
+                    coords[effCfg.xIndex] = cfgXMin(effCfg) + xN * cfgXRange(effCfg);
+                    coords[effCfg.yIndex] = cfgYMin(effCfg) + yN * cfgYRange(effCfg);
+                  }
+                  return { spaceId: color.spaceId, coords, alpha: null };
+                }, dpr);
+                if (ctx && config.gamutBoundary) {
+                  renderGamutBoundaries(ctx, effCfg, color.spaceId, userSpaceId, pendingHue ?? 0, dpr, chromaLUT, stretchGamut, polarLUT);
+                }
               }
             }
           } finally {
@@ -994,5 +1072,7 @@ export class AreaPicker {
 
   unmount() {
     this.#controller.abort();
+    this.#worker?.terminate();
+    this.#worker = null;
   }
 }
