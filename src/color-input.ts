@@ -658,9 +658,12 @@ export class ColorInput extends HTMLElement {
     let rafId: number | null = null
     let pendingApply: (() => void) | null = null
 
-    const make = (label: string, key: string, min: number, max: number, step = 1, bg?: string, bgColor?: string) => {
+    const stripLeadingZeros = (s: string) => s.replace(/^0+(\d)/, '$1').replace(/^0\./, '.')
+
+    const make =(label: string, key: string, min: number, max: number, step = 1, bg?: string, bgColor?: string) => {
       const wrapHue = key === 'H'
-      const isPercentage = ['L', 'S', 'C', 'W', 'B', 'R', 'G', 'ALP'].includes(key)
+      const isLabAB = (key === 'A' || key === 'B') && (space === 'lab' || space === 'oklab')
+      const isPercentage = !isLabAB && ['L', 'S', 'C', 'W', 'B', 'R', 'G', 'ALP'].includes(key)
       const isAngle = key === 'H'
 
       const group = document.createElement('div')
@@ -709,11 +712,11 @@ export class ColorInput extends HTMLElement {
       }
       const num = document.createElement('input')
       num.type = 'number'
-      num.min = String(min)
-      num.max = String(max)
+      num.min = isLabAB ? '0' : String(min)
+      num.max = isLabAB ? String(Math.max(Math.abs(min), Math.abs(max))) : String(max)
       num.step = String(step)
       num.classList.add(`ch-${key.toLowerCase()}`)
-      num.value = String(ch[key] ?? 0)
+      num.value = isLabAB ? String(Math.abs(Number(ch[key] ?? 0))) : String(ch[key] ?? 0)
 
       const numWrapper = document.createElement('div')
       numWrapper.className = 'num-wrapper'
@@ -722,6 +725,14 @@ export class ColorInput extends HTMLElement {
         const unit = document.createElement('sup')
         unit.textContent = isAngle ? '°' : '%'
         numWrapper.appendChild(unit)
+      }
+      let signSup: HTMLElement | null = null
+      if (isLabAB) {
+        signSup = document.createElement('sup')
+        const val = Number(ch[key] ?? 0)
+        signSup.textContent = val < 0 ? '−' : '+'
+        numWrapper.appendChild(signSup)
+        num.value = stripLeadingZeros(String(Math.abs(val)))
       }
 
       const apply = () => {
@@ -735,6 +746,10 @@ export class ColorInput extends HTMLElement {
         const target = ev.target as HTMLInputElement
         let val = Number(target.value)
         if (!Number.isFinite(val)) return
+        if (isLabAB && target === num) {
+          // number input shows absolute value; apply sign from sup
+          val = Math.abs(val) * (signSup && signSup.textContent === '−' ? -1 : 1)
+        }
         if (wrapHue) {
           val = ((val % 360) + 360) % 360
         } else {
@@ -745,7 +760,13 @@ export class ColorInput extends HTMLElement {
         channelSignals[key].value = formatted
         // keep controls in sync
         range.value = String(ch[key])
-        num.value = String(ch[key])
+        if (isLabAB) {
+          const n = Number(ch[key])
+          if (signSup) signSup.textContent = n < 0 ? '−' : '+'
+          num.value = stripLeadingZeros(String(Math.abs(n)))
+        } else {
+          num.value = String(ch[key])
+        }
         pendingApply = apply
         if (rafId === null) {
           rafId = requestAnimationFrame(() => {

@@ -456,8 +456,8 @@ self.onmessage = (e: MessageEvent) => {
   const targetSpace = supportsP3 ? "p3" : "srgb";
   const backingW = Math.round(cssW * dpr);
   const backingH = Math.round(cssH * dpr);
-  const W = Math.round(backingW / 2);
-  const H = Math.round(backingH / 2);
+  const W = Math.round(backingW / 4);
+  const H = Math.round(backingH / 4);
 
   // Compute stretch LUTs
   let effCfg = config;

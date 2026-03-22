@@ -314,9 +314,9 @@ button {
   border: none;
 
   &::picker-icon {
-    content: "›";
+    content: "▾";
     -webkit-appearance: none;
-    transform: rotate(90deg) scale(1.5);
+    transform: scale(1.5) translateY(-.2ex);
   }
 }
 
@@ -433,6 +433,7 @@ button {
   .control input[type="number"] {
     text-align: end;
     font-size: 0.75rem;
+    max-inline-size: 4ch;
     padding: 0.125rem 0.25rem;
     background: transparent;
     border: 1px solid transparent;
