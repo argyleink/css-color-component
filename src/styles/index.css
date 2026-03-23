@@ -308,6 +308,7 @@ button {
   font-weight: bold;
   margin: 0;
   padding: 0;
+  cursor: pointer;
   color: var(--contrast);
   background: transparent;
   border-radius: 0;
@@ -317,6 +318,11 @@ button {
     content: "▾";
     -webkit-appearance: none;
     transform: scale(1.5) translateY(-.2ex);
+    transition: translate 0.15s ease;
+  }
+
+  &:hover::picker-icon {
+    translate: 0 1px;
   }
 }
 
