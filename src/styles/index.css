@@ -427,7 +427,6 @@ button {
   display: grid;
   gap: 0.5rem;
   padding: 0.75rem;
-  border-radius: 0 0 var(--radius-3) var(--radius-3);
   .control {
     display: grid;
     grid-template-columns: min-content 1fr 4ch;

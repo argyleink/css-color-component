@@ -1,10 +1,10 @@
 ---
 title: color-input
-description: A modern color picker web component with wide-gamut support, multiple color spaces, and Shadow DOM encapsulation
+description: A modern web component color picker with wide-gamut support, multiple editing modes, and a gamut-aware area picker
 template: splash
 hero:
   title: color-input
-  tagline: A wide-gamut color picker web component
+  tagline: A wide-gamut color picker web component for modern CSS color workflows
   actions:
     - text: Get Started
       link: /#quick-start
@@ -28,18 +28,31 @@ import { Card, CardGrid } from "@astrojs/starlight/components";
 
 <CardGrid>
   <Card title="Wide-Gamut Colors" icon="star">
-    sRGB, Display P3, Rec2020, and beyond. Automatic gamut detection shows which space contains your color.
+    Work with sRGB, Display P3, A98 RGB, Rec2020, ProPhoto, XYZ, and perceptual spaces like OKLCH and OKLab. The picker also detects which gamut contains the current color.
   </Card>
-  <Card title="Multiple Color Spaces" icon="palette">
-    HSL, HWB, LAB, LCH, OKLCH, OKLAB, and wide-gamut RGB spaces with seamless conversion.
+  <Card title="Multiple Editing Modes" icon="palette">
+    Edit the same color through text input, sliders, numeric fields, a colorspace select, and a 2D area picker without losing sync.
   </Card>
-  <Card title="Area Picker" icon="open-book">
-    2D color area that adapts its axes to the active color space. Pointer drag and keyboard arrow-key support.
+  <Card title="Gamut-Aware Area Picker" icon="open-book">
+    The 2D picker adapts to the active colorspace and can render gamut-aware boundaries for perceptual and wide-gamut workflows.
   </Card>
-  <Card title="CSS Parts" icon="puzzle">
-    Style every part of the picker with `::part()` selectors — trigger, panel, sliders, and more.
+  <Card title="Customizable UI" icon="puzzle">
+    Shadow DOM keeps the component self-contained while CSS parts expose the trigger, panel, input, controls, area, and readouts for styling.
   </Card>
 </CardGrid>
+
+## What it includes
+
+`<color-input>` is more than a swatch and a few sliders. The current picker UI includes:
+
+- an inline text field for raw CSS color strings
+- numeric channel inputs paired with sliders
+- a colorspace selector
+- a 2D area picker that changes model per space
+- a preview area with copy and EyeDropper tools
+- a gamut indicator and black/white contrast readouts
+
+These pieces stay synchronized whether the value changes through the UI, attributes, or properties.
 
 ## Quick Start
 
@@ -62,11 +75,32 @@ import { Card, CardGrid } from "@astrojs/starlight/components";
 </Tabs>
 
 :::note
-The custom element auto-registers on import. Use it in any HTML document or framework. The [Popover API](https://developer.mozilla.org/en-US/docs/Web/API/Popover_API) is required (Chrome 114+, Safari 17+, Firefox 125+).
+The custom element auto-registers on import. Use it in any HTML document or framework. The popover UI relies on the [Popover API](https://developer.mozilla.org/en-US/docs/Web/API/Popover_API), and the EyeDropper tool appears only in browsers that support the EyeDropper API.
 :::
+
+## How the picker behaves
+
+The component chooses a different editing plane depending on the current colorspace:
+
+- `srgb` and `hex` use an OKHSV-style plane for practical RGB picking
+- `hsl` uses saturation × lightness
+- `oklch`, `lch`, and wide-gamut RGB-like spaces use a chroma × lightness plane
+- `oklab` and `lab` use an `a × b` plane around the origin
+- `hwb` uses whiteness × blackness
+
+For spaces that benefit from it, the area picker can render gamut boundaries and stretch the interactive mapping so the useful region fills more of the canvas.
+
+## Who this is for
+
+Use it when you want a custom element that:
+
+- works outside a framework or inside one
+- accepts modern CSS color syntax
+- can expose wide-gamut colors instead of collapsing everything to sRGB
+- still gives users a familiar picker UI with copy, eyedropper, and keyboard support
 
 ## Next Steps
 
 - [API Reference](/api) — Attributes, properties, methods, and events
-- [Styling](/styling) — Themes and CSS parts
-- [Advanced](/advanced) — Architecture and performance
+- [Styling](/styling) — Themes, CSS parts, and customization patterns
+- [Advanced](/advanced) — Architecture, gamut behavior, and performance

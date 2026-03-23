@@ -1,6 +1,6 @@
 ---
 title: Styling & Customization
-description: Customize the color picker appearance with themes and CSS parts
+description: Customize the color picker with theme modes, CSS parts, and common layout patterns
 ---
 
 import ColorInputDemo from "../../components/ColorInputDemo.astro";
@@ -43,21 +43,66 @@ The `<color-input>` component supports three theme modes via the `theme` attribu
 <color-input theme="dark"></color-input>
 ```
 
+Internally the component aligns its `color-scheme` with the chosen mode so native rendering and form control behavior fit the picker better.
+
 ## CSS Parts
 
-Style any part of the picker with `::part()` selectors:
+Style exposed regions of the picker with `::part()`:
 
-| Part       | Description                    |
-| ---------- | ------------------------------ |
-| `trigger`  | Button that opens the picker   |
-| `chip`     | Color swatch preview           |
-| `input`    | Text input for entering colors |
-| `error`    | Color parsing error message    |
-| `panel`    | Popover container              |
-| `output`   | Current color value display    |
-| `gamut`    | Gamut badge                    |
-| `controls` | Sliders and inputs container   |
-| `area`     | Area picker container          |
+- `trigger` — button that opens the picker
+- `chip` — color swatch inside the trigger
+- `input` — inline text input
+- `error` — parse error message
+- `panel` — popover surface
+- `output` — serialized color value in the preview
+- `gamut` — gamut indicator
+- `controls` — slider and numeric input region
+- `area` — 2D color area container
+
+These parts intentionally cover the major UI regions rather than every internal node, which keeps styling flexibility without making the internal shadow DOM structure part of the public API.
+
+## Common customization patterns
+
+### Compact swatch-only trigger
+
+If you want the element to behave more like a swatch launcher, hide the text field and enlarge the trigger:
+
+```css
+color-input.swatch::part(input) {
+  display: none;
+}
+
+color-input.swatch::part(trigger) {
+  inline-size: 3rem;
+  block-size: 3rem;
+}
+```
+
+### Spacious panel
+
+```css
+color-input::part(panel) {
+  max-inline-size: min(90vw, 42rem);
+}
+
+color-input::part(area) {
+  border-radius: 1rem;
+}
+```
+
+### Custom invalid styling
+
+When the inline text value is invalid, the host receives `data-error`.
+
+```css
+color-input[data-error]::part(input) {
+  border-color: oklch(62% 0.25 25);
+}
+
+color-input[data-error]::part(error) {
+  color: oklch(62% 0.25 25);
+}
+```
 
 ## Example: Circle Swatches
 
@@ -157,5 +202,36 @@ A compact swatch style, perfect for color palettes:
 </Tabs>
 
 :::tip
-Combine parts for more control — hide `::part(area)` for a compact picker, or hide `::part(input)` for a pure swatch. Target theme-specific styles with `color-input[theme="dark"]::part(trigger)`.
+Combine parts for more control. For example, hide `::part(area)` for a more compact picker or hide `::part(input)` for a pure swatch launcher. Theme-specific styling can target selectors like `color-input[theme="dark"]::part(trigger)`.
 :::
+
+## Things to keep in mind
+
+### Shadow DOM boundaries
+
+Prefer:
+
+- `::part(...)` for exposed regions
+- host attributes such as `[theme]` and `[data-error]`
+- layout styles on the custom element itself
+
+Avoid depending on undocumented internal descendants in the shadow tree.
+
+### Layout behavior
+
+The host element contains:
+
+- the trigger button
+- the inline text input wrapper
+- the popover panel
+
+That means the easiest external customizations are usually host-level spacing plus part-level styling of the trigger, input, panel, and area.
+
+### Accessibility-friendly customization
+
+When customizing the picker:
+
+- keep the trigger visibly interactive
+- preserve visible focus treatment
+- maintain readable contrast in the text field and panel
+- make sure custom panel sizes still leave enough room for the area picker and controls
