@@ -785,6 +785,42 @@ export class ColorInput extends HTMLElement {
         }
       }
 
+      num.addEventListener('keydown', (ev: KeyboardEvent) => {
+        if (ev.key !== 'ArrowUp' && ev.key !== 'ArrowDown') return
+        if (!ev.shiftKey && !ev.altKey) return
+        ev.preventDefault()
+        const dir = ev.key === 'ArrowUp' ? 1 : -1
+        const delta = ev.shiftKey ? step * 10 : ev.altKey ? step * 0.1 : step
+        let val = Number(num.value) * (isLabAB && signSup?.textContent === '−' ? -1 : 1)
+        val += dir * delta
+        if (wrapHue) {
+          val = ((val % 360) + 360) % 360
+        } else {
+          val = Math.max(min, Math.min(max, val))
+        }
+        const formatted = formatChannel(space, key, val)
+        ch[key] = formatted
+        channelSignals[key].value = formatted
+        range.value = String(ch[key])
+        if (isLabAB) {
+          const n = Number(ch[key])
+          if (signSup) signSup.textContent = n < 0 ? '−' : '+'
+          num.value = stripLeadingZeros(String(Math.abs(n)))
+        } else {
+          num.value = String(ch[key])
+        }
+        pendingApply = apply
+        if (rafId === null) {
+          rafId = requestAnimationFrame(() => {
+            rafId = null
+            if (pendingApply) {
+              pendingApply()
+              pendingApply = null
+            }
+          })
+        }
+      })
+
       range.addEventListener('input', onInput)
       num.addEventListener('input', onInput)
       group.append(lab, range, numWrapper)
