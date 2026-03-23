@@ -294,13 +294,6 @@ function computeBoundaryPoints(
   const results: BoundarySpec[] = [];
 
   if (config.gamutBoundary === 'diagonal') {
-    results.push({
-      points: [{ x: W, y: H }, { x: 0, y: 0 }],
-      closed: false,
-      color: 'rgba(255,255,255,0.6)',
-      lineWidth: 1 * dpr,
-      dash: [4 * dpr, 3 * dpr],
-    });
     return results;
   }
 

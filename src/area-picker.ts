@@ -444,11 +444,6 @@ function renderGamutBoundaries(
   const H = ctx.canvas.height;
 
   if (config.gamutBoundary === 'diagonal') {
-    const points = [
-      { x: W, y: H }, // W=100, B=0 (bottom-right)
-      { x: 0, y: 0 }, // W=0, B=100 (top-left)
-    ];
-    drawBoundaryLine(ctx, points, false, 'rgba(255,255,255,0.6)', 1 * dpr, [4 * dpr, 3 * dpr]);
     return;
   }
 
