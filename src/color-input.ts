@@ -152,7 +152,7 @@ export class ColorInput extends HTMLElement {
 
   constructor() {
     super()
-    this.#root = this.attachShadow({ mode: 'open', delegatesFocus: true })
+    this.#root = this.attachShadow({ mode: 'open' })
 
     // Adopt shared stylesheet if supported, otherwise inject inline styles
     if ('adoptedStyleSheets' in this.#root && typeof sheet.replaceSync === 'function') {
@@ -167,6 +167,12 @@ export class ColorInput extends HTMLElement {
     // Add template content
     const template = createTemplate()
     this.#root.appendChild(template.content.cloneNode(true))
+  }
+
+  // Delegate focus to the text input (replaces delegatesFocus behavior
+  // without the sticky side-effect of auto-focusing on every click)
+  focus(options?: FocusOptions) {
+    (this.#textInput ?? this.#internalTrigger)?.focus(options)
   }
 
   connectedCallback() {
