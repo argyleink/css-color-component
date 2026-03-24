@@ -92,6 +92,20 @@ The `no-alpha` attribute hides the alpha channel control from the color picker. 
 Use `no-alpha` when you want to enforce fully opaque colors or prevent users from adjusting transparency in your application.
 :::
 
+### no-hex-shorten
+
+When present, hex color values are always output as their full 6-digit (or 8-digit with alpha) form instead of being shortened to 3- or 4-digit form where possible.
+
+```html
+<color-input colorspace="hex" value="#ffffff" no-hex-shorten></color-input>
+```
+
+<ColorInputDemo colorspace="hex" value="#ffffff" noHexShorten={true} />
+
+:::tip
+Without `no-hex-shorten`, `#ffffff` is shortened to `#fff`. With it, the full form is always preserved.
+:::
+
 ## Inline Text Input
 
 Every `<color-input>` now includes an inline text field for editing the current color string. It accepts anything the CSS Color Level 4 parser understands and keeps the sliders, preview, and computed properties in sync as you type.
@@ -185,6 +199,14 @@ picker.noAlpha = true; // Hides alpha controls
 picker.noAlpha = false; // Shows alpha controls
 ```
 
+**noHexShorten** - Controls hex shortening
+
+```js
+console.log(picker.noHexShorten); // false
+picker.noHexShorten = true;  // Always output full 6/8-digit hex
+picker.noHexShorten = false; // Allow #fff shorthand (default)
+```
+
 ### Read-Only Properties
 
 **gamut** - Detected gamut (smallest gamut that contains the current color)
@@ -200,7 +222,7 @@ console.log(picker.contrastColor); // "white" or "black"
 ```
 
 :::note
-`value`, `colorspace`, `theme`, and `noAlpha` reflect to attributes. `gamut` and `contrastColor` are derived read-only values.
+`value`, `colorspace`, `theme`, `noAlpha`, and `noHexShorten` reflect to attributes. `gamut` and `contrastColor` are derived read-only values.
 :::
 
 ## Methods
