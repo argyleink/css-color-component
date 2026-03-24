@@ -1,5 +1,10 @@
 import { beforeAll, describe, expect, it } from 'vitest'
 
+// Polyfill CSS.supports for jsdom (not available natively)
+if (typeof globalThis.CSS === 'undefined') {
+  (globalThis as any).CSS = { supports: () => false }
+}
+
 // Minimal popover polyfill for jsdom tests
 function installPopoverPolyfill() {
   if (typeof (HTMLElement.prototype as any).showPopover === 'function') return

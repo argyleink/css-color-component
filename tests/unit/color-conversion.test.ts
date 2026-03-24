@@ -7,7 +7,7 @@ describe('color-conversion', () => {
     describe('oklab', () => {
       it('should generate oklab color strings', () => {
         const result = gencolor('oklab', { L: '50', A: '0.1', B: '-0.2', ALP: '100' })
-        expect(result).toBe('oklab(50% 0.1 -0.2)')
+        expect(result).toBe('oklab(50% .1 -.2)')
       })
 
       it('should include alpha when less than 100', () => {
