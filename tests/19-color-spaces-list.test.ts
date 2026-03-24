@@ -36,9 +36,12 @@ describe('color-spaces filtering', () => {
 
   it('accepts valid custom colorjs spaces in the list', () => {
     const el = makeEl({ 'color-spaces': 'acescg hex invalid acescg' })
+    const options = getSpaceOptions(el)
     const ranges = el.shadowRoot.querySelectorAll('.controls input[type="range"]')
 
-    expect(getSpaceOptions(el)).toEqual(['acescg', 'hex'])
+    expect(options).toEqual(['acescg', 'hex'])
+    expect(options.filter(space => space === 'acescg')).toHaveLength(1)
+    expect(options).not.toContain('invalid')
     expect(el.colorspace).toBe('acescg')
     expect(el.value).toContain('acescg')
     expect(ranges.length).toBeGreaterThanOrEqual(4)

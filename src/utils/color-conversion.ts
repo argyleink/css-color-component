@@ -34,6 +34,10 @@ const noLeadZero = (v: any) => String(v).replace(/^(-?)0\./, '$1.')
  * // → 'hsl(120 100% 50% / 50%)'
  */
 export function gencolor(space: ColorSpace | string, ch: ChannelRecord): string {
+  if (space !== 'hex' && !ensureColorSpace(space)) {
+    return 'oklch(75% 75% 180)'
+  }
+
   const L = (ch.L ?? 50) as any
   const A = (ch.A ?? 0) as any
   const B = (ch.B ?? 0) as any

@@ -96,9 +96,9 @@ export class ColorInput extends HTMLElement {
   set colorSpaces(spaces: string[] | string) {
     const next = this.#parseColorSpacesAttribute(Array.isArray(spaces) ? spaces.join(' ') : spaces)
     this.#allowedSpaces = next
-    this.#programmaticUpdate = true
-    this.setAttribute('color-spaces', next.join(' '))
-    this.#programmaticUpdate = false
+    this.#withProgrammaticUpdate(() => {
+      this.setAttribute('color-spaces', next.join(' '))
+    })
     this.#renderSpaceOptions()
     this.#syncAllowedSpace()
   }
@@ -135,6 +135,15 @@ export class ColorInput extends HTMLElement {
 
   #defaultAllowedSpace() {
     return this.#allowedSpaces[0] ?? DEFAULT_SPACE
+  }
+
+  #withProgrammaticUpdate(fn: () => void) {
+    this.#programmaticUpdate = true
+    try {
+      fn()
+    } finally {
+      this.#programmaticUpdate = false
+    }
   }
 
   #parseColorSpacesAttribute(value: string | null) {
@@ -183,10 +192,10 @@ export class ColorInput extends HTMLElement {
 
     this.#space.value = nextSpace
     this.#value.value = nextValue
-    this.#programmaticUpdate = true
-    this.setAttribute('value', nextValue)
-    this.setAttribute('colorspace', nextSpace)
-    this.#programmaticUpdate = false
+    this.#withProgrammaticUpdate(() => {
+      this.setAttribute('value', nextValue)
+      this.setAttribute('colorspace', nextSpace)
+    })
     if (this.#spaceSelect) this.#spaceSelect.value = nextSpace
     if (emit) this.#emitChange()
     if (this.#controls) this.#renderControls()
@@ -197,17 +206,21 @@ export class ColorInput extends HTMLElement {
     const next = this.#allowedSpaces.includes(requested) ? requested : this.#defaultAllowedSpace()
 
     this.#space.value = next
-    this.#programmaticUpdate = true
-    if (reflect) this.setAttribute('colorspace', next)
     try {
-      const newValue = this.#convertValueToSpace(this.#value.value, next)
-      this.#value.value = newValue
-      if (reflect) this.setAttribute('value', newValue)
-      if (emit) this.#emitChange()
+      this.#withProgrammaticUpdate(() => {
+        if (reflect) this.setAttribute('colorspace', next)
+        const newValue = this.#convertValueToSpace(this.#value.value, next)
+        this.#value.value = newValue
+        if (reflect) this.setAttribute('value', newValue)
+      })
     } catch { }
-    this.#programmaticUpdate = false
+    if (emit) this.#emitChange()
     if (this.#spaceSelect) this.#spaceSelect.value = next
     if (this.#controls) this.#renderControls()
+  }
+
+  #colorSpaceLabel(space: string) {
+    return space === 'srgb' ? 'rgb' : space
   }
 
   #renderSpaceOptions() {
@@ -217,25 +230,35 @@ export class ColorInput extends HTMLElement {
       this.#allowedSpaces.length === DEFAULT_COLOR_SPACES.length &&
       this.#allowedSpaces.every((space, index) => space === DEFAULT_COLOR_SPACES[index])
 
+    const fragment = document.createDocumentFragment()
+
+    const appendOption = (parent: HTMLElement | HTMLOptGroupElement, space: string) => {
+      const option = document.createElement('option')
+      option.value = space
+      option.textContent = this.#colorSpaceLabel(space)
+      parent.appendChild(option)
+    }
+
     if (!useDefaultGrouping) {
-      this.#spaceSelect.innerHTML = this.#allowedSpaces
-        .map(space => `<option value="${space}">${space}</option>`)
-        .join('')
+      this.#allowedSpaces.forEach(space => appendOption(fragment as any, space))
+      this.#spaceSelect.replaceChildren(fragment)
       return
     }
 
     const allowed = new Set(this.#allowedSpaces)
-    const groupMarkup = SPACE_GROUPS
-      .map(({ label, spaces }) => {
-        const options = spaces
-          .filter(space => allowed.has(space))
-          .map(space => `<option value="${space}">${space === 'srgb' ? 'rgb' : space}</option>`)
-          .join('')
+    SPACE_GROUPS.forEach(({ label, spaces }) => {
+      const group = document.createElement('optgroup')
+      group.label = label
+      spaces
+        .filter(space => allowed.has(space))
+        .forEach(space => appendOption(group, space))
 
-        return options ? `<optgroup label="${label}">${options}</optgroup>` : ''
-      })
-      .join('')
-    this.#spaceSelect.innerHTML = groupMarkup
+      if (group.childElementCount > 0) {
+        fragment.appendChild(group)
+      }
+    })
+
+    this.#spaceSelect.replaceChildren(fragment)
   }
 
   #syncAllowedSpace() {
@@ -314,7 +337,10 @@ export class ColorInput extends HTMLElement {
       this.#areaPickerEffectCleanup = effect(() => {
         const v = this.#value.value
         const space = this.#space.value
-        this.#areaPicker?.setValue(v, DEFAULT_COLOR_SPACES.includes(space) ? (space as ColorSpace) : 'srgb')
+        const pickerSpace = DEFAULT_COLOR_SPACES.includes(space)
+          ? space
+          : (this.#allowedSpaces.find(candidate => DEFAULT_COLOR_SPACES.includes(candidate)) ?? 'srgb')
+        this.#areaPicker?.setValue(v, pickerSpace as ColorSpace)
       })
     }
 
