@@ -60,7 +60,7 @@ When this changes, the component converts the current color into the requested s
 
 ### color-spaces
 
-The `color-spaces` attribute limits which spaces appear in the select dropdown. Provide a space-delimited list of Color.js/CSS color space names.
+The `color-spaces` attribute limits which spaces appear in the select dropdown. Provide a space-delimited list using only the spaces this component already supports.
 
 ```html
 <color-input
@@ -70,8 +70,58 @@ The `color-spaces` attribute limits which spaces appear in the select dropdown. 
 ```
 
 - The first listed space becomes the default editing space.
-- If a manually entered color parses into a space that is not in the list, the component converts it into the first listed space.
+- If a manually entered color parses into a supported space that is not in the list, the component converts it into the first listed space.
+- Unsupported names are ignored.
+- If every token is unsupported, the component falls back to the full default dropdown.
 - The default dropdown remains unchanged when `color-spaces` is omitted.
+
+Supported tokens are:
+
+- `hex`
+- `srgb`
+- `srgb-linear`
+- `hsl`
+- `hwb`
+- `lab`
+- `lch`
+- `oklab`
+- `oklch`
+- `display-p3`
+- `a98-rgb`
+- `rec2020`
+- `prophoto`
+- `xyz`
+- `xyz-d50`
+- `xyz-d65`
+
+<Tabs>
+  <TabItem label="Perceptual + Hex">
+    <ColorInputDemo
+      value="color(display-p3 0.3 0.7 0.95)"
+      colorSpaces="oklch oklab hex"
+      description="The dropdown is limited to three spaces. Because `oklch` is listed first, it becomes the default editing space."
+    />
+  </TabItem>
+  <TabItem label="Wide Gamut Workflow">
+    <ColorInputDemo
+      value="color(display-p3 0.82 0.42 0.18)"
+      colorSpaces="display-p3 rec2020 xyz"
+      colorspace="display-p3"
+      description="Use a focused list when your UI should stay inside the wide-gamut spaces the component already supports."
+    />
+  </TabItem>
+</Tabs>
+
+```js
+const picker = document.querySelector('color-input')
+
+picker.colorSpaces = ['oklch', 'oklab', 'hex']
+// same as: <color-input color-spaces="oklch oklab hex">
+```
+
+:::tip
+Use `color-spaces` when you want a simpler picker for a specific workflow, such as hex export, perceptual editing, or a narrow wide-gamut handoff.
+:::
 
 ### theme
 
@@ -165,6 +215,15 @@ The legacy setter `picker.setColor = '...'` is also supported.
 console.log(picker.colorspace); // "oklch"
 picker.colorspace = "hsl";
 ```
+
+**colorSpaces** - Allowed colorspace subset for the dropdown
+
+```js
+console.log(picker.colorSpaces); // ["hex", "srgb", ...]
+picker.colorSpaces = ["oklch", "oklab", "hex"];
+```
+
+When set, the first entry becomes the default editing space and any disallowed parsed input is converted back into that first space.
 
 Supported values:
 

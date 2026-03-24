@@ -24,6 +24,30 @@ import { Card, CardGrid } from "@astrojs/starlight/components";
 
 <ColorInputDemo value="#0bf8" />
 
+## Limit the dropdown to the spaces you want
+
+You can tailor the colorspace menu to a smaller supported subset with `color-spaces`.
+
+<Tabs>
+  <TabItem label="Perceptual + Hex">
+    <ColorInputDemo
+      value="color(display-p3 0.3 0.7 0.95)"
+      colorSpaces="oklch oklab hex"
+      description="Only `oklch`, `oklab`, and `hex` are shown. The first item becomes the default editing space."
+    />
+  </TabItem>
+  <TabItem label="UI Code">
+    ```html
+    <color-input
+      value="color(display-p3 0.3 0.7 0.95)"
+      color-spaces="oklch oklab hex"
+    ></color-input>
+    ```
+  </TabItem>
+</Tabs>
+
+If the user types a supported color in a different space, the component converts it back into the first listed space so the UI stays inside the allowed subset.
+
 ## Features
 
 <CardGrid>

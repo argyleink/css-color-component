@@ -34,16 +34,15 @@ describe('color-spaces filtering', () => {
     expect(el.value).toContain('oklch(')
   })
 
-  it('accepts valid custom colorjs spaces in the list', () => {
-    const el = makeEl({ 'color-spaces': 'acescg hex invalid acescg' })
+  it('ignores unsupported spaces and deduplicates supported entries', () => {
+    const el = makeEl({ 'color-spaces': 'oklch acescg hex invalid oklch' })
     const options = getSpaceOptions(el)
-    const ranges = el.shadowRoot.querySelectorAll('.controls input[type="range"]')
 
-    expect(options).toEqual(['acescg', 'hex'])
-    expect(options.filter(space => space === 'acescg')).toHaveLength(1)
+    expect(options).toEqual(['oklch', 'hex'])
+    expect(options.filter(space => space === 'oklch')).toHaveLength(1)
+    expect(options).not.toContain('acescg')
     expect(options).not.toContain('invalid')
-    expect(el.colorspace).toBe('acescg')
-    expect(el.value).toContain('acescg')
-    expect(ranges.length).toBeGreaterThanOrEqual(4)
+    expect(el.colorspace).toBe('oklch')
+    expect(el.value).toContain('oklch(')
   })
 })
