@@ -8,6 +8,7 @@ import {
   isValidColorSpace,
   isRGBLike,
   reverseColorJSSpaceID,
+  type Gamut,
   type Theme,
   type ColorSpace
 } from './color'
@@ -30,7 +31,7 @@ import { createTemplate } from './utils/template'
 import styles from './styles/index.css?inline'
 
 export type { Theme, ColorSpace }
-export interface ChangeDetail { value: string; colorspace: string; gamut: string }
+export interface ChangeDetail { value: string; colorspace: ColorSpace; gamut: Gamut }
 
 const supportsAnchor = CSS.supports?.('anchor-name: --a') ?? false
 
@@ -56,7 +57,7 @@ export class ColorInput extends HTMLElement {
   // State: Reactive signals (Preact Signals Core)
   // ──────────────────────────────────────────────────────────────────────────────
   #value = signal<string>(DEFAULT_VALUE)
-  #space = signal<string>(DEFAULT_SPACE)
+  #space = signal<ColorSpace>(DEFAULT_SPACE)
   #theme = signal<Theme>('auto')
   #open = signal(false)
   #anchor: Signal<HTMLElement | null> = signal(null)
@@ -160,16 +161,17 @@ export class ColorInput extends HTMLElement {
     const parsed = parse(value)
     const sid = reverseColorJSSpaceID(parsed.spaceId)
     const isHex = typeof value === 'string' && value.trim().startsWith('#')
-    return isHex ? 'hex' : (sid === 'rgb' ? 'srgb' : sid)
+    const next = isHex ? 'hex' : (sid === 'rgb' ? 'srgb' : sid)
+    return isValidColorSpace(next) ? next : DEFAULT_SPACE
   }
 
-  #convertValueToSpace(value: string, space: string) {
+  #convertValueToSpace(value: string, space: ColorSpace) {
     const current = parse(value)
     const targetSpace = space === 'hex' ? 'srgb' : space
     const converted = toGamut(to(current, getColorJSSpaceID(targetSpace)))
     const tempStr = serialize(converted, { precision: 12 })
-    const parsed = parseIntoChannels(space as ColorSpace, tempStr)
-    return gencolor(space as ColorSpace, parsed.ch)
+    const parsed = parseIntoChannels(space, tempStr)
+    return gencolor(space, parsed.ch)
   }
 
   #applyValue(value: string, emit = true) {
@@ -194,7 +196,9 @@ export class ColorInput extends HTMLElement {
 
   #applyColorspace(space: ColorSpace | string, emit = true, reflect = true) {
     const requested = typeof space === 'string' ? space.trim().toLowerCase() : String(space)
-    const next = this.#allowedSpaces.includes(requested) ? requested : this.#defaultAllowedSpace()
+    const next = isValidColorSpace(requested) && this.#allowedSpaces.includes(requested)
+      ? requested
+      : this.#defaultAllowedSpace()
 
     this.#space.value = next
     try {
@@ -223,7 +227,7 @@ export class ColorInput extends HTMLElement {
 
     const fragment = document.createDocumentFragment()
 
-    const appendOption = (parent: HTMLElement | HTMLOptGroupElement, space: string) => {
+    const appendOption = (parent: ParentNode, space: string) => {
       const option = document.createElement('option')
       option.value = space
       option.textContent = this.#colorSpaceLabel(space)
@@ -231,7 +235,7 @@ export class ColorInput extends HTMLElement {
     }
 
     if (!useDefaultGrouping) {
-      this.#allowedSpaces.forEach(space => appendOption(fragment as any, space))
+      this.#allowedSpaces.forEach(space => appendOption(fragment, space))
       this.#spaceSelect.replaceChildren(fragment)
       return
     }
@@ -327,11 +331,7 @@ export class ColorInput extends HTMLElement {
       // Sync area picker when color changes
       this.#areaPickerEffectCleanup = effect(() => {
         const v = this.#value.value
-        const space = this.#space.value
-        const pickerSpace = DEFAULT_COLOR_SPACES.includes(space)
-          ? space
-          : (this.#allowedSpaces.find(candidate => DEFAULT_COLOR_SPACES.includes(candidate)) ?? 'srgb')
-        this.#areaPicker?.setValue(v, pickerSpace as ColorSpace)
+        this.#areaPicker?.setValue(v, this.#space.value)
       })
     }
 
@@ -350,7 +350,7 @@ export class ColorInput extends HTMLElement {
               const serialized = serialize(converted, {
                 format: space === "hex" ? "hex" : undefined,
               })
-              const color = gencolor(space as ColorSpace, parseIntoChannels(space as ColorSpace, serialized).ch)
+              const color = gencolor(space, parseIntoChannels(space, serialized).ch)
               this.#value.value = color
               this.setAttribute('value', color)
               this.#emitChange()
@@ -505,8 +505,8 @@ export class ColorInput extends HTMLElement {
     // Normalize value on load so chroma (and other channels) are in consistent form
     // (e.g. percentage notation), matching what gencolor produces after any change
     try {
-      const { ch } = parseIntoChannels(this.#space.value as ColorSpace, this.#value.value)
-      this.#value.value = gencolor(this.#space.value as ColorSpace, ch)
+      const { ch } = parseIntoChannels(this.#space.value, this.#value.value)
+      this.#value.value = gencolor(this.#space.value, ch)
     } catch {}
 
     this.#renderControls()
@@ -747,7 +747,7 @@ export class ColorInput extends HTMLElement {
     if (this.#controlsEffectCleanup) this.#controlsEffectCleanup()
     const space = this.#space.value
     if (!this.#controls) return
-    const current = parseIntoChannels(space as ColorSpace, this.#value.value)
+    const current = parseIntoChannels(space, this.#value.value)
     const ch = current.ch
 
     const channelSignals: Record<string, ReturnType<typeof signal<string>>> = {}
@@ -765,9 +765,6 @@ export class ColorInput extends HTMLElement {
       const isLabAB = (key === 'A' || key === 'B') && (space === 'lab' || space === 'oklab')
       const isPercentage = !isLabAB && ['L', 'S', 'C', 'W', 'B', 'R', 'G', 'ALP'].includes(key)
       const isAngle = key === 'H'
-      const formatValue = (value: number) => {
-        return formatChannel(space as ColorSpace, key, value)
-      }
 
       const group = document.createElement('div')
       group.className = 'control'
@@ -807,8 +804,8 @@ export class ColorInput extends HTMLElement {
       if (key === 'ALP') {
         range.classList.add('alpha')
         try {
-          const c0 = gencolor(space as ColorSpace, { ...ch, ALP: '0' })
-          const c1 = gencolor(space as ColorSpace, { ...ch, ALP: '100' })
+          const c0 = gencolor(space, { ...ch, ALP: '0' })
+          const c1 = gencolor(space, { ...ch, ALP: '100' })
           const interpSpace = space === 'hsl' ? 'hsl' : (space === 'lch' ? 'lch' : (space === 'oklch' ? 'oklch' : 'oklab'))
           range.style.background = `linear-gradient(to right in ${interpSpace}, ${c0}, ${c1}), var(--checker)`
         } catch { }
@@ -839,7 +836,7 @@ export class ColorInput extends HTMLElement {
       }
 
       const apply = () => {
-        const next = gencolor(space as ColorSpace, ch)
+        const next = gencolor(space, ch)
         this.#value.value = next
         this.setAttribute('value', next)
         this.#emitChange()
@@ -858,7 +855,7 @@ export class ColorInput extends HTMLElement {
         } else {
           val = Math.max(min, Math.min(max, val))
         }
-        const formatted = formatValue(val)
+        const formatted = formatChannel(space, key, val)
         ch[key] = formatted
         channelSignals[key].value = formatted
         // keep controls in sync
@@ -895,7 +892,7 @@ export class ColorInput extends HTMLElement {
         } else {
           val = Math.max(min, Math.min(max, val))
         }
-        const formatted = formatValue(val)
+        const formatted = formatChannel(space, key, val)
         ch[key] = formatted
         channelSignals[key].value = formatted
         range.value = String(ch[key])
@@ -1083,8 +1080,8 @@ export class ColorInput extends HTMLElement {
         const G = channelSignals.G.value || '0'
         const B = channelSignals.B.value || '0'
         if (alphaRange) {
-          const c0 = gencolor(space as ColorSpace, { ...ch, R, G, B, ALP: '0' })
-          const c1 = gencolor(space as ColorSpace, { ...ch, R, G, B, ALP: '100' })
+          const c0 = gencolor(space, { ...ch, R, G, B, ALP: '0' })
+          const c1 = gencolor(space, { ...ch, R, G, B, ALP: '100' })
           alphaRange.style.background = `linear-gradient(to right, ${c0}, ${c1}), var(--checker)`
         }
       })

@@ -41,8 +41,8 @@ colorjs.ColorSpace.register(colorjs.XYZ_D65);
 colorjs.ColorSpace.register(colorjs.XYZ_D50);
 colorjs.ColorSpace.register(colorjs.Okhsv);
 
-export function isValidColorSpace(space: string) {
-  return DEFAULT_COLOR_SPACES.includes(space)
+export function isValidColorSpace(space: string): space is ColorSpace {
+  return DEFAULT_COLOR_SPACES.includes(space as ColorSpace)
 }
 
 export function parseCoords(x: number, min = 0, max = 100) {
