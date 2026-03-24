@@ -441,7 +441,7 @@ function computeBoundaryPoints(
 // ─── Message handler ────────────────────────────────────────────────────────
 
 self.onmessage = (e: MessageEvent) => {
-  const { id, spaceId, fixedValue, userSpaceId, cssW, cssH, dpr, supportsP3 } = e.data;
+  const { id, spaceId, fixedValue, userSpaceId, cssW, cssH, dpr, supportsP3, showGamutBoundaries } = e.data;
 
   const config = AREA_CONFIGS[spaceId];
   if (!config) return;
@@ -470,7 +470,7 @@ self.onmessage = (e: MessageEvent) => {
   const pixels = computePixels(effCfg, spaceId, fixedValue, W, H, targetSpace, chromaLUT, polarLUT);
 
   // Compute boundary points at full canvas resolution
-  const boundaries = config.gamutBoundary
+  const boundaries = showGamutBoundaries && config.gamutBoundary
     ? computeBoundaryPoints(effCfg, spaceId, userSpaceId, fixedValue, backingW, backingH, dpr, chromaLUT, stretchGamut, polarLUT)
     : [];
 

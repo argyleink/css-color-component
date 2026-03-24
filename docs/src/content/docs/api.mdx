@@ -92,6 +92,18 @@ The `no-alpha` attribute hides the alpha channel control from the color picker. 
 Use `no-alpha` when you want to enforce fully opaque colors or prevent users from adjusting transparency in your application.
 :::
 
+### no-gamut-boundaries
+
+The `no-gamut-boundaries` attribute hides the gamut boundary guide lines from the 2D area picker while leaving the underlying color editing behavior unchanged.
+
+```html
+<color-input value="color(display-p3 0.3 0.7 0.95)" no-gamut-boundaries></color-input>
+```
+
+:::tip
+Use `no-gamut-boundaries` when you want a cleaner color field presentation without the extra gamut reference overlays.
+:::
+
 ## Inline Text Input
 
 Every `<color-input>` now includes an inline text field for editing the current color string. It accepts anything the CSS Color Level 4 parser understands and keeps the sliders, preview, and computed properties in sync as you type.
@@ -185,6 +197,14 @@ picker.noAlpha = true; // Hides alpha controls
 picker.noAlpha = false; // Shows alpha controls
 ```
 
+**showGamutBoundaries** - Controls gamut boundary guide visibility
+
+```js
+console.log(picker.showGamutBoundaries); // true
+picker.showGamutBoundaries = false; // Hides gamut boundary lines
+picker.showGamutBoundaries = true; // Shows gamut boundary lines
+```
+
 ### Read-Only Properties
 
 **gamut** - Detected gamut (smallest gamut that contains the current color)
@@ -200,7 +220,7 @@ console.log(picker.contrastColor); // "white" or "black"
 ```
 
 :::note
-`value`, `colorspace`, `theme`, and `noAlpha` reflect to attributes. `gamut` and `contrastColor` are derived read-only values.
+`value`, `colorspace`, `theme`, `noAlpha`, and `showGamutBoundaries` reflect to attributes. `gamut` and `contrastColor` are derived read-only values.
 :::
 
 ## Methods
