@@ -12,6 +12,26 @@
   --sl-color-text-accent: var(--sl-color-accent-high);
 }
 
+/* Accessible text on accent backgrounds */
+.sl-link-button.primary,
+.sl-link-button.primary:hover {
+  color: contrast-color(var(--sl-color-text-accent));
+}
+
+[aria-current='page'],
+[aria-current='page']:hover,
+[aria-current='page']:focus {
+  color: contrast-color(var(--sl-color-text-accent));
+}
+
+starlight-file-tree .highlight {
+  color: contrast-color(var(--sl-color-text-accent));
+}
+
+.skip-link a:focus {
+  color: contrast-color(var(--sl-color-text-accent));
+}
+
 /* Hero inline picker */
 .hero-picker {
   display: grid;
