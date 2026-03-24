@@ -1,7 +1,9 @@
 ---
-// Custom Head component to load color-input on the client side only
-// We can't import it here because it uses browser APIs (document)
+// Custom Head component — extends Starlight's default Head with color-input loader
+const { head } = Astro.locals.starlightRoute;
 ---
+
+{head.map(({ tag: Tag, attrs, content }) => <Tag {...attrs} set:html={content} />)}
 
 <script>
   // Load the color-input web component on the client side only
@@ -53,6 +55,26 @@
     });
   });
 
+  // Sync scrollbar color to the first color-input on the page
+  function syncScrollbarColor() {
+    const first = document.querySelector('color-input') as any;
+    if (!first?.value) return;
+
+    let pendingFrame = 0;
+    function applyScrollbarColor() {
+      const color = first.value;
+      document.documentElement.style.setProperty('scrollbar-color', `${color} transparent`);
+      document.documentElement.style.setProperty('--sl-color-accent-high', color);
+      pendingFrame = 0;
+    }
+
+    applyScrollbarColor();
+
+    first.addEventListener('change', () => {
+      if (!pendingFrame) pendingFrame = requestAnimationFrame(applyScrollbarColor);
+    });
+  }
+
   // Initialize theme sync after custom element is defined
   async function initializeThemeSync() {
     // Wait for the custom element to be defined
@@ -62,6 +84,7 @@
     // Now set up the observer and do initial sync
     themeObserver.observe(document.documentElement, { attributes: true });
     syncThemeToColorInputs();
+    syncScrollbarColor();
   }
 
   // Start observing when DOM is ready

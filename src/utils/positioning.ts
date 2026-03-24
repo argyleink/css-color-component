@@ -73,13 +73,11 @@ export function getSafeAreaInsets(): { top: number; right: number; bottom: numbe
 export function getViewportClampRect(insets: { top: number; right: number; bottom: number; left: number }): Rect {
   const vw = window.visualViewport?.width ?? window.innerWidth
   const vh = window.visualViewport?.height ?? window.innerHeight
-  const scrollX = window.pageXOffset || document.documentElement.scrollLeft
-  const scrollY = window.pageYOffset || document.documentElement.scrollTop
 
-  const left = insets.left + VIEWPORT_MARGIN + scrollX
-  const top = insets.top + VIEWPORT_MARGIN + scrollY
-  const right = vw - insets.right - VIEWPORT_MARGIN + scrollX
-  const bottom = vh - insets.bottom - VIEWPORT_MARGIN + scrollY
+  const left = insets.left + VIEWPORT_MARGIN
+  const top = insets.top + VIEWPORT_MARGIN
+  const right = vw - insets.right - VIEWPORT_MARGIN
+  const bottom = vh - insets.bottom - VIEWPORT_MARGIN
 
   return {
     left,
@@ -98,27 +96,27 @@ export function computeCandidates(anchor: Rect, size: Size): Candidate[] {
   const { width: w, height: h } = size
   const placements: Candidate[] = [
     {
-      placement: 'bottom-center',
-      left: anchor.left + anchor.width / 2 - w / 2,
-      top: anchor.bottom + GUTTER,
-      right: 0, bottom: 0
-    },
-    {
       placement: 'top-center',
       left: anchor.left + anchor.width / 2 - w / 2,
       top: anchor.top - GUTTER - h,
       right: 0, bottom: 0
     },
     {
-      placement: 'right-start',
-      left: anchor.right + GUTTER,
-      top: anchor.top,
+      placement: 'top-left',
+      left: anchor.left,
+      top: anchor.top - GUTTER - h,
       right: 0, bottom: 0
     },
     {
-      placement: 'left-start',
-      left: anchor.left - GUTTER - w,
-      top: anchor.top,
+      placement: 'top-right',
+      left: anchor.right - w,
+      top: anchor.top - GUTTER - h,
+      right: 0, bottom: 0
+    },
+    {
+      placement: 'bottom-center',
+      left: anchor.left + anchor.width / 2 - w / 2,
+      top: anchor.bottom + GUTTER,
       right: 0, bottom: 0
     },
     {
@@ -134,15 +132,15 @@ export function computeCandidates(anchor: Rect, size: Size): Candidate[] {
       right: 0, bottom: 0
     },
     {
-      placement: 'top-left',
-      left: anchor.left,
-      top: anchor.top - GUTTER - h,
+      placement: 'right-start',
+      left: anchor.right + GUTTER,
+      top: anchor.top,
       right: 0, bottom: 0
     },
     {
-      placement: 'top-right',
-      left: anchor.right - w,
-      top: anchor.top - GUTTER - h,
+      placement: 'left-start',
+      left: anchor.left - GUTTER - w,
+      top: anchor.top,
       right: 0, bottom: 0
     },
   ]

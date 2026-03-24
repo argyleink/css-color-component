@@ -11,6 +11,8 @@ import { toFixed } from './channel-formatting'
 
 export type ChannelRecord = Record<string, string | number>
 
+const noLeadZero = (v: any) => String(v).replace(/^(-?)0\./, '$1.')
+
 /**
  * Generate a CSS color string from channel values and color space identifier.
  * Handles percentage/angle notation and alpha transparency per CSS Color spec.
@@ -40,9 +42,9 @@ export function gencolor(space: ColorSpace, ch: ChannelRecord): string {
   const ALP = (ch.ALP ?? 100) as any
 
   switch (space) {
-    case 'oklab': return `oklab(${L}% ${A} ${B}${alphaToString(ALP)})`
+    case 'oklab': return `oklab(${L}% ${noLeadZero(A)} ${noLeadZero(B)}${alphaToString(ALP)})`
     case 'oklch': return `oklch(${L}% ${C}% ${H}${alphaToString(ALP)})` // Chroma as percentage
-    case 'lab': return `lab(${L}% ${A} ${B}${alphaToString(ALP)})`
+    case 'lab': return `lab(${L}% ${noLeadZero(A)} ${noLeadZero(B)}${alphaToString(ALP)})`
     case 'lch': return `lch(${L}% ${C}% ${H}${alphaToString(ALP)})` // Chroma as percentage
     case 'hsl': return `hsl(${H} ${S}% ${L}%${alphaToString(ALP)})`
     case 'hwb': return `hwb(${H} ${W}% ${B}%${alphaToString(ALP)})`

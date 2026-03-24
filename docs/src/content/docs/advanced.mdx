@@ -1,188 +1,136 @@
 ---
 title: Advanced Topics
-description: Architecture, performance, and advanced features
+description: Architecture, gamut-aware rendering, performance decisions, and integration details
 ---
-
-import ColorInputDemo from "../../components/ColorInputDemo.astro";
 
 ## Architecture
 
 ### Signals-Based Reactivity
 
-The component uses Preact Signals for efficient, fine-grained reactivity:
+The component uses [Preact Signals](https://preactjs.com/guide/v10/signals/) for fine-grained reactivity. State changes update only the affected parts of the UI instead of causing a broad re-render of the whole component.
 
-- **Minimal Re-renders**: Only affected parts of the UI update
-- **Automatic Dependency Tracking**: Signals track dependencies automatically
-- **Lightweight**: Small runtime overhead
+### Shadow DOM
 
-### Shadow DOM Encapsulation
-
-The component uses Shadow DOM for style isolation:
-
-- **No Style Conflicts**: Component styles don't leak to the page
-- **CSS Parts API**: Customize via `::part()` selectors
-- **Composability**: Use multiple instances without conflicts
+Styles and internal markup are encapsulated in Shadow DOM. That keeps the picker stable when embedded in very different host apps while still exposing major styling hooks through `::part()`.
 
 ### Area Picker
 
-The 2D color area is driven by its own `AreaPicker` class:
+The 2D color area is not a single generic gradient. It changes its model depending on the active editing space:
 
-- **Space-Aware Axes**: Automatically selects OkHSV, OKLCH, or HSL axes depending on the active color space
-- **Canvas Rendering**: Gradients are rendered at half resolution via an off-screen `<canvas>` for performance, then scaled up with CSS
-- **Frame-Throttled Updates**: Hue changes are batched with `requestAnimationFrame` to avoid redundant paints
-- **Keyboard Accessible**: Arrow keys adjust the X/Y channels in fine steps while the area is focused
+- `srgb` and `hex` use an OKHSV-style plane
+- `hsl` uses saturation × lightness
+- `oklch`, `lch`, and wide-gamut RGB-like spaces use a chroma × lightness plane
+- `oklab` and `lab` use a centered `a × b` plane
+- `hwb` uses whiteness × blackness
+
+That choice makes the picker behave more naturally for different color models instead of forcing everything through one generic RGB-oriented interaction.
+
+### Gamut-aware rendering
+
+For spaces where gamut boundaries are especially relevant, the area picker can render overlays for multiple gamuts and adjust its mapping so the useful region fills more of the control.
+
+Examples:
+
+- `oklch`-style picking can show row-scanned chroma boundaries across lightness
+- `oklab` and `lab` can show polar gamut boundaries across the `a × b` plane
+- wide-gamut RGB-like spaces are edited through a perceptual plane while still reflecting the chosen output space
+
+This helps the picker communicate when a color fits within sRGB, P3, Rec2020, or beyond.
 
 ### Color Math
 
-Color calculations are powered by [colorjs.io](https://colorjs.io):
-
-- **Accurate Conversions**: Between all supported color spaces
-- **Gamut Mapping**: Automatic handling of out-of-gamut colors
-- **Standards Compliant**: Follows CSS Color Module Level 4
+Color calculations are powered by [colorjs.io](https://colorjs.io), which provides the parsing, conversion, gamut checks, and serialization logic behind the UI.
 
 ## Performance
 
-### Bundle Size
+The current implementation uses several practical performance strategies:
 
-The component is designed for minimal bundle impact:
+- Signals prevent unnecessary UI work
+- hue-driven area updates are batched with `requestAnimationFrame`
+- the area gradient is drawn into canvas rather than constructed from many DOM nodes
+- wide-gamut canvas rendering is used when supported and falls back to sRGB otherwise
+- a worker can be used to move expensive area and boundary computation off the main thread
+- boundary overlays are drawn separately from the underlying gradient
 
-- **Tree-Shakeable**: ES modules allow unused code elimination
-- **No Framework Dependencies**: Only Preact Signals and colorjs.io
-- **Modern Output**: Targets ES2020+ for smaller bundles
-
-### Runtime Performance
-
-**Efficient Updates:**
-
-- Signals prevent unnecessary re-renders
-- Color conversions are cached
-- Popover uses native Popover API (hardware accelerated)
-
-**Lazy Loading:**
-
-- Component registers on import
-- Popover content rendered on-demand
+The worker-backed path is especially useful for perceptual and wide-gamut modes, where generating the area and boundary data involves many color-space conversions.
 
 ## Popover Positioning
 
-The component uses the native Popover API with intelligent positioning:
+The popover automatically positions relative to the trigger button, respects viewport boundaries, and accounts for safe-area constraints.
 
-### Automatic Placement
+The implementation has two positioning modes:
 
-The popover automatically positions relative to the trigger button:
+- native CSS anchor positioning when supported and when the internal trigger is the anchor
+- a manual fixed-position fallback when a custom anchor is used or anchor positioning is unavailable
 
-- Respects viewport boundaries
-- Handles safe areas (notches, system UI)
-- Flips when near edges
-- No manual positioning required
+The fallback mode observes relevant layout changes and clamps the panel to the visible viewport.
 
-### Custom Anchoring
-
-Use `setAnchor()` to position relative to a different element:
+For custom placement, use `setAnchor()`:
 
 ```js
 const picker = document.querySelector("color-input");
-const customAnchor = document.querySelector("#my-anchor");
-
-picker.setAnchor(customAnchor);
+picker.setAnchor(document.querySelector("#my-anchor"));
 picker.show();
 ```
-
-### Browser Support
-
-The Popover API is required:
-
-- **Chrome**: 114+
-- **Safari**: 17+
-- **Firefox**: 125+
 
 ## Gamut Detection
 
-The component automatically detects which color gamut contains the current color:
+The read-only `gamut` property reports the smallest tracked gamut that contains the current color:
 
-### Gamut Property
+- `srgb` — safe for standard displays
+- `p3` — requires Display P3 or better
+- `rec2020` — requires a wider display pipeline
+- `xyz` — outside the named RGB gamuts tracked by the picker
 
-The read-only `gamut` property returns the smallest gamut:
+A visual badge appears in the UI, and the `change` event includes `event.detail.gamut` for programmatic use.
 
-```js
-console.log(picker.gamut); // "srgb" | "p3" | "rec2020" | "xyz"
-```
+## Value flow and normalization
 
-### Visual Badge
+From a developer’s perspective, the component typically does this when values change:
 
-A gamut badge appears in the picker UI showing the current gamut. This helps you understand:
+1. parse the incoming CSS color string
+2. infer or apply the active editing colorspace
+3. convert the color for the relevant controls
+4. serialize a normalized string back to `value`
+5. emit `change` with the latest `value`, `colorspace`, and `gamut`
 
-- **srgb**: Works on all displays
-- **p3**: Requires Display P3 or better
-- **rec2020**: Requires ultra-wide gamut
-- **xyz**: Beyond Rec2020
+That means `value` is best treated as the component’s canonical serialized output, not necessarily a byte-for-byte preservation of the original source string.
 
-### Gamut in Events
+## Progressive enhancement
 
-The `change` event includes gamut information:
+Several parts of the component are intentionally opportunistic:
 
-```js
-picker.addEventListener("change", (e) => {
-  console.log(e.detail.gamut); // "srgb" | "p3" | "rec2020" | "xyz"
-});
-```
+- EyeDropper controls appear only in supporting browsers
+- wide-gamut canvas rendering is used only when supported by the browser’s canvas implementation
+- native anchor positioning is used only when available
+- worker-backed area rendering falls back to synchronous rendering if needed
+
+The goal is to improve the experience in modern browsers without making the component unusable elsewhere.
 
 ## Form Integration
 
-While the component doesn't inherit from `HTMLInputElement`, you can integrate it with forms:
-
-### Hidden Input Pattern
+The component does not extend `HTMLInputElement`, but it integrates easily with forms through a hidden input:
 
 ```html
-<form id="settings-form">
-  <label for="theme-color">Theme Color</label>
-  <color-input id="theme-color" value="oklch(70% 20% 240)"></color-input>
-  <input type="hidden" name="theme_color" id="theme-color-input" />
+<form>
+  <color-input id="picker" value="oklch(70% 20% 240)"></color-input>
+  <input type="hidden" name="color" id="color-input" />
 </form>
 
 <script>
-  const picker = document.querySelector("#theme-color");
-  const hiddenInput = document.querySelector("#theme-color-input");
+  const picker = document.querySelector("#picker");
+  const hidden = document.querySelector("#color-input");
 
-  picker.addEventListener("change", (e) => {
-    hiddenInput.value = e.detail.value;
+  hidden.value = picker.value;
+  picker.addEventListener("change", (event) => {
+    hidden.value = event.detail.value;
   });
-
-  // Set initial value
-  hiddenInput.value = picker.value;
 </script>
-```
-
-### Programmatic Control
-
-Use properties and methods to control the picker:
-
-```js
-const picker = document.querySelector("color-input");
-
-// Read state
-console.log(picker.value);
-console.log(picker.colorspace);
-console.log(picker.gamut);
-console.log(picker.contrastColor);
-
-// Update state
-picker.value = "oklch(80% 15% 180)";
-picker.theme = "dark";
-
-// Control popover
-picker.show();
-picker.close();
 ```
 
 ## Resources
 
-### Specifications
-
 - [CSS Color Module Level 4](https://www.w3.org/TR/css-color-4/)
 - [Popover API](https://developer.mozilla.org/en-US/docs/Web/API/Popover_API)
-
-### Tools
-
-- [colorjs.io](https://colorjs.io) - Color science library
-- [OKLCH Color Picker](https://oklch.com)
+- [colorjs.io](https://colorjs.io)
+- [EyeDropper API](https://developer.mozilla.org/en-US/docs/Web/API/EyeDropper_API)

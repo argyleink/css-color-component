@@ -9,7 +9,7 @@ import { Tabs, TabItem } from "@astrojs/starlight/components";
 
 ## Attributes
 
-The `<color-input>` element accepts four HTML attributes:
+The `<color-input>` element accepts these HTML attributes:
 
 ### value
 
@@ -34,17 +34,29 @@ The `value` attribute sets the color using standard CSS color syntax.
   </TabItem>
 </Tabs>
 
-```html
-<color-input value="hsl(200 90% 50%)"></color-input>
-```
-
 :::tip
-If `value` is omitted, it defaults to `oklch(75% 75% 180)` (vibrant cyan).
+If `value` is omitted, it defaults to `oklch(75% 75% 180)`. The component parses the string, infers an initial editing space, and keeps the rest of the UI synchronized with that value.
 :::
 
-::::note
-The component automatically converts between color spaces.
-::::
+Accepted inputs include common CSS formats such as:
+
+- hex colors
+- `rgb()` / `hsl()` / `hwb()`
+- `lab()` / `lch()` / `oklab()` / `oklch()`
+- `color(display-p3 ...)`, `color(rec2020 ...)`, `color(prophoto-rgb ...)`, and similar `color(...)` forms
+
+### colorspace
+
+The `colorspace` attribute controls which editing space the UI uses.
+
+```html
+<color-input
+  value="color(display-p3 0.3 0.7 0.95)"
+  colorspace="oklch"
+></color-input>
+```
+
+When this changes, the component converts the current color into the requested space and rebuilds the controls to match.
 
 ### theme
 
@@ -86,6 +98,7 @@ Every `<color-input>` now includes an inline text field for editing the current 
 
 - Validation runs on every keystroke. When parsing fails the host gains a `data-error` attribute, the textbox sets `aria-invalid="true"`, and the inline error message becomes visible.
 - Restyle the field with `::part(input)` and target invalid states with `[data-error]`.
+- A successful parse can also update the active `colorspace` if the entered syntax implies a different space.
 
 ```html
 <color-input value="#9333ea"></color-input>
@@ -95,21 +108,23 @@ Every `<color-input>` now includes an inline text field for editing the current 
 
 Hover or focus the preview area to reveal a copy button. Activating it copies the current color string with `navigator.clipboard.writeText()` and shows a "Copied!" status message inside the panel. No configuration is required—the control works for every supported color space, including `hex`.
 
-::::note
-The Clipboard API requires a secure context (https or localhost) and a user interaction. Browsers that block it simply prevent the confirmation message from showing.
-::::
+:::note
+The Clipboard API requires a secure context (https or localhost) and a user interaction.
+:::
 
 ## Eye Dropper
 
 Hover or focus the preview area to reveal an eye dropper button to the left of the copy button. Activating it opens the native browser eye dropper, allowing you to pick colors from anywhere on your screen.
 
-::::note
-The Eye Dropper uses the native [EyeDropper API](https://developer.mozilla.org/en-US/docs/Web/API/EyeDropper_API) and is supported in Chrome and Edge 95+. The button automatically hides itself in browsers that don't support the API (Firefox, Safari).
-::::
+The browser returns an sRGB hex value, which the component then converts into the current editing space before updating `value`.
+
+:::note
+Uses the native [EyeDropper API](https://developer.mozilla.org/en-US/docs/Web/API/EyeDropper_API) (Chrome/Edge 95+). The button auto-hides in unsupported browsers.
+:::
 
 ## Properties
 
-The `<color-input>` element exposes six properties:
+The `<color-input>` element exposes these properties:
 
 ### Read/Write Properties
 
@@ -121,9 +136,13 @@ console.log(picker.value); // "oklch(70% 20% 240)"
 picker.value = "oklch(80% 15% 180)";
 ```
 
-::::note
-For backward compatibility you can also assign through the legacy setter: `picker.setColor = 'oklch(80% 15% 180)'`.
-::::
+:::note
+The component may normalize formatting when writing or converting values so the serialized result matches the active editing model.
+:::
+
+:::note
+The legacy setter `picker.setColor = '...'` is also supported.
+:::
 
 **colorspace** - Current color space
 
@@ -131,6 +150,25 @@ For backward compatibility you can also assign through the legacy setter: `picke
 console.log(picker.colorspace); // "oklch"
 picker.colorspace = "hsl";
 ```
+
+Supported values:
+
+- `hex`
+- `srgb`
+- `srgb-linear`
+- `hsl`
+- `hwb`
+- `lab`
+- `lch`
+- `oklab`
+- `oklch`
+- `display-p3`
+- `a98-rgb`
+- `rec2020`
+- `prophoto`
+- `xyz`
+- `xyz-d50`
+- `xyz-d65`
 
 **theme** - Visual theme
 
@@ -162,7 +200,7 @@ console.log(picker.contrastColor); // "white" or "black"
 ```
 
 :::note
-All read/write properties reflect to attributes and vice versa.
+`value`, `colorspace`, `theme`, and `noAlpha` reflect to attributes. `gamut` and `contrastColor` are derived read-only values.
 :::
 
 ## Methods
@@ -174,6 +212,12 @@ Opens the picker popover programmatically:
 ```js
 const picker = document.querySelector("color-input");
 picker.show();
+```
+
+`show()` can also accept a custom anchor element:
+
+```js
+picker.show(document.querySelector("#anchor"));
 ```
 
 ### showPicker()
@@ -201,11 +245,11 @@ const customAnchor = document.querySelector("#my-anchor");
 picker.setAnchor(customAnchor);
 ```
 
-By default, the popover positions relative to the trigger button.
+By default, the popover positions relative to the internal trigger button. When possible, the component can use native CSS anchor positioning; otherwise it falls back to manual viewport-aware placement.
 
-::::note
-The compatibility setter `picker.setAnchorElement = customAnchor` mirrors `setAnchor()` for drop-in upgrades.
-::::
+:::note
+The legacy setter `picker.setAnchorElement = customAnchor` is also supported.
+:::
 
 ## Command API Integration
 
@@ -283,21 +327,21 @@ All events bubble and can be captured at parent elements.
 
 ## Area Picker
 
-The popover panel includes a two-dimensional color area that lets users pick a color visually. The area automatically adapts its axes to the active color space:
+The popover includes a two-dimensional color area. Its model changes with the active colorspace:
 
-| Active color space | Internal model | X axis | Y axis | Fixed channel |
-| --- | --- | --- | --- | --- |
-| sRGB, hex, HWB, Lab, OKLab | OkHSV | Saturation | Value | Hue |
-| OKLCH, LCH | OKLCH | Chroma | Lightness | Hue |
-| HSL | HSL | Saturation | Lightness | Hue |
+- `srgb` and `hex` use an OKHSV-based plane
+- `hsl` uses saturation × lightness
+- `oklch`, `lch`, and wide-gamut RGB-like spaces use a chroma × lightness plane
+- `oklab` and `lab` use a centered `a × b` plane
+- `hwb` uses whiteness × blackness
 
 ### Pointer interaction
 
-Click or drag anywhere inside the area to select a color. The thumb tracks your pointer position and the component value updates in real time.
+Click or drag anywhere inside the area to update the current color. The thumb tracks the current position and the serialized value updates as you move.
 
 ### Keyboard navigation
 
-Focus the area (it has `role="slider"` and is focusable) and use the arrow keys:
+Focus the area and use the arrow keys:
 
 - **←/→** — adjust the X-axis channel in fine steps
 - **↑/↓** — adjust the Y-axis channel in fine steps
@@ -313,9 +357,9 @@ color-input::part(area) {
 }
 ```
 
-:::tip
-The area gradient is rendered onto a `<canvas>` at half resolution for performance and scaled up with CSS.
-:::
+### Rendering behavior
+
+For spaces with explicit gamut behavior, the area can render boundary overlays and stretch the mapping so the useful region of the gamut occupies more of the canvas.
 
 ## CSS Parts
 
@@ -330,3 +374,12 @@ The `<color-input>` element exposes several CSS parts for styling with the `::pa
 - `gamut` - Gamut badge (srgb/p3/rec2020/xyz)
 - `controls` - Container for channel sliders and inputs
 - `area` - Container for area picker
+
+## Contrast and gamut readouts
+
+The preview area also exposes two useful pieces of information:
+
+- a gamut indicator showing the smallest tracked gamut containing the current color
+- contrast ratios against white and black
+
+These are especially useful when the picker is part of a design tool, theming UI, or token editor.

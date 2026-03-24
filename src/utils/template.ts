@@ -41,6 +41,10 @@ export function createTemplate(): HTMLTemplateElement {
       <select class="space" title="Colorspace"></select>
       <output class="info" part="output"></output>
       <span class="gamut" title="Color's gamut" part="gamut"><span class="gamut-track"><span>srgb</span><span>p3</span><span>rec2020</span><span>xyz</span></span></span>
+      <div class="contrast-scores">
+        <span class="cr-w" title="WCAG 2.1 contrast ratio vs white"></span>
+        <span class="cr-b" title="WCAG 2.1 contrast ratio vs black"></span>
+      </div>
     </div>
   </div>
   `

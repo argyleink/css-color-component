@@ -1,5 +1,5 @@
 import { signal, computed, effect, Signal } from '@preact/signals-core'
-import { parse, serialize, to, toGamut } from 'colorjs.io/fn'
+import { parse, serialize, to, toGamut, contrast as contrastFn } from 'colorjs.io/fn'
 import {
   contrastColor,
   detectGamut,
@@ -18,6 +18,7 @@ import {
   getSafeAreaInsets,
   getScrollParents,
   getViewportClampRect,
+  GUTTER,
   type Placement,
   type Rect,
   type Size
@@ -28,6 +29,8 @@ import styles from './styles/index.css?inline'
 
 export type { Theme, ColorSpace }
 export interface ChangeDetail { value: string; colorspace: ColorSpace; gamut: string }
+
+const supportsAnchor = CSS.supports?.('anchor-name: --a') ?? false
 
 const DEFAULT_VALUE = 'oklch(75% 75% 180)'
 const DEFAULT_SPACE: ColorSpace = 'oklch'
@@ -149,7 +152,7 @@ export class ColorInput extends HTMLElement {
 
   constructor() {
     super()
-    this.#root = this.attachShadow({ mode: 'open', delegatesFocus: true })
+    this.#root = this.attachShadow({ mode: 'open' })
 
     // Adopt shared stylesheet if supported, otherwise inject inline styles
     if ('adoptedStyleSheets' in this.#root && typeof sheet.replaceSync === 'function') {
@@ -166,6 +169,12 @@ export class ColorInput extends HTMLElement {
     this.#root.appendChild(template.content.cloneNode(true))
   }
 
+  // Delegate focus to the text input (replaces delegatesFocus behavior
+  // without the sticky side-effect of auto-focusing on every click)
+  focus(options?: FocusOptions) {
+    (this.#textInput ?? this.#internalTrigger)?.focus(options)
+  }
+
   connectedCallback() {
     const btn = this.#root.querySelector<HTMLButtonElement>('button.trigger')
     this.#internalTrigger = btn ?? undefined
@@ -180,9 +189,11 @@ export class ColorInput extends HTMLElement {
     // Initialize AreaPicker only when visible
     const areaPickerEl = this.#root.querySelector<HTMLElement>('.area-picker')
     if (areaPickerEl && getComputedStyle(areaPickerEl).display !== 'none') {
-      this.#areaPicker = new AreaPicker(areaPickerEl, (color) => {
+      this.#areaPicker = new AreaPicker(areaPickerEl, (color, isDragging) => {
         this.#value.value = color
+        this.#programmaticUpdate = true
         this.setAttribute('value', color)
+        this.#programmaticUpdate = false
         this.#emitChange()
         this.#renderControls()
       })
@@ -341,6 +352,19 @@ export class ColorInput extends HTMLElement {
       }
       const preview = this.#root.querySelector('.preview') as HTMLElement
       if (preview) preview.style.setProperty('--value', v)
+
+      // Update WCAG contrast scores
+      const crW = this.#root.querySelector('.cr-w') as HTMLElement
+      const crB = this.#root.querySelector('.cr-b') as HTMLElement
+      if (crW && crB) {
+        try {
+          const parsed = parse(v)
+          const cw = contrastFn(parsed, 'white', 'WCAG21')
+          const cb = contrastFn(parsed, 'black', 'WCAG21')
+          crW.textContent = `${(cw as number).toFixed(1)}:1`
+          crB.textContent = `${(cb as number).toFixed(1)}:1`
+        } catch { }
+      }
     })
 
     this.#errorEffectCleanup = effect(() => {
@@ -457,7 +481,15 @@ export class ColorInput extends HTMLElement {
   #cleanup: Array<() => void> = []
   #rafId: number | null = null
 
+  #usingCSSAnchor() {
+    const anchor = this.#anchor.value
+    const isInternal = !anchor || anchor === this.#internalTrigger
+    return supportsAnchor && isInternal && !this.#lastInvoker
+  }
+
   #startReposition() {
+    if (this.#usingCSSAnchor()) return
+
     if (this.#cleanup.length) return
     this.#scheduleReposition()
 
@@ -519,6 +551,7 @@ export class ColorInput extends HTMLElement {
 
   #positionNow() {
     if (!this.#panel) return
+    if (this.#usingCSSAnchor()) return
     const panel = this.#panel as HTMLElement
 
     const anchorRect = this.#getAnchorRect()
@@ -531,7 +564,13 @@ export class ColorInput extends HTMLElement {
     this.#lastPlacement = pick.placement
 
     const left = Math.round(Math.min(Math.max(pick.left, viewport.left), viewport.right - size.width))
-    const top = Math.round(Math.min(Math.max(pick.top, viewport.top), viewport.bottom - size.height))
+    let top = Math.round(Math.min(Math.max(pick.top, viewport.top), viewport.bottom - size.height))
+
+    // Fix overlap: if "top" placement got clamped into the anchor, flip to bottom
+    if (pick.placement.startsWith('top') && top + size.height > anchorRect.top - GUTTER) {
+      top = Math.round(anchorRect.bottom + GUTTER)
+      pick.placement = pick.placement.replace('top', 'bottom') as Placement
+    }
 
     const maxPanelHeight = viewport.bottom - viewport.top
     if (size.height > maxPanelHeight) {
@@ -542,31 +581,28 @@ export class ColorInput extends HTMLElement {
       panel.style.overflow = ''
     }
 
-    panel.style.position = 'absolute'
+    panel.style.position = 'fixed'
     panel.style.left = `${left}px`
     panel.style.top = `${top}px`
-    panel.style.setProperty('--ci-panel-placement', pick.placement)
     panel.dataset.placement = pick.placement
   }
 
   #getAnchorRect(): Rect {
     const anchor = this.#anchor.value ?? this.#lastInvoker ?? this.#internalTrigger ?? this
-    const scrollX = window.pageXOffset || document.documentElement.scrollLeft
-    const scrollY = window.pageYOffset || document.documentElement.scrollTop
 
     if (!anchor.isConnected) {
       const vw = window.visualViewport?.width ?? window.innerWidth
       const vh = window.visualViewport?.height ?? window.innerHeight
-      const cx = vw / 2 + scrollX
-      const cy = vh / 2 + scrollY
+      const cx = vw / 2
+      const cy = vh / 2
       return { left: cx, top: cy, right: cx, bottom: cy, width: 0, height: 0 }
     }
     const rect = anchor.getBoundingClientRect()
     return {
-      left: rect.left + scrollX,
-      top: rect.top + scrollY,
-      right: rect.right + scrollX,
-      bottom: rect.bottom + scrollY,
+      left: rect.left,
+      top: rect.top,
+      right: rect.right,
+      bottom: rect.bottom,
       width: rect.width,
       height: rect.height,
     }
@@ -588,7 +624,7 @@ export class ColorInput extends HTMLElement {
       maxHeight: panel.style.maxHeight,
     }
     panel.style.display = 'block'
-    panel.style.position = 'absolute'
+    panel.style.position = 'fixed'
     panel.style.left = '-99999px'
     panel.style.top = '0'
     panel.style.visibility = 'hidden'
@@ -625,9 +661,15 @@ export class ColorInput extends HTMLElement {
       channelSignals[key] = signal(String(ch[key]))
     })
 
-    const make = (label: string, key: string, min: number, max: number, step = 1, bg?: string, bgColor?: string) => {
+    let rafId: number | null = null
+    let pendingApply: (() => void) | null = null
+
+    const stripLeadingZeros = (s: string) => s.replace(/^0+(\d)/, '$1').replace(/^0\./, '.')
+
+    const make =(label: string, key: string, min: number, max: number, step = 1, bg?: string, bgColor?: string) => {
       const wrapHue = key === 'H'
-      const isPercentage = ['L', 'S', 'C', 'W', 'B', 'R', 'G', 'ALP'].includes(key)
+      const isLabAB = (key === 'A' || key === 'B') && (space === 'lab' || space === 'oklab')
+      const isPercentage = !isLabAB && ['L', 'S', 'C', 'W', 'B', 'R', 'G', 'ALP'].includes(key)
       const isAngle = key === 'H'
 
       const group = document.createElement('div')
@@ -676,11 +718,11 @@ export class ColorInput extends HTMLElement {
       }
       const num = document.createElement('input')
       num.type = 'number'
-      num.min = String(min)
-      num.max = String(max)
+      num.min = isLabAB ? '0' : String(min)
+      num.max = isLabAB ? String(Math.max(Math.abs(min), Math.abs(max))) : String(max)
       num.step = String(step)
       num.classList.add(`ch-${key.toLowerCase()}`)
-      num.value = String(ch[key] ?? 0)
+      num.value = isLabAB ? String(Math.abs(Number(ch[key] ?? 0))) : String(ch[key] ?? 0)
 
       const numWrapper = document.createElement('div')
       numWrapper.className = 'num-wrapper'
@@ -689,6 +731,14 @@ export class ColorInput extends HTMLElement {
         const unit = document.createElement('sup')
         unit.textContent = isAngle ? '°' : '%'
         numWrapper.appendChild(unit)
+      }
+      let signSup: HTMLElement | null = null
+      if (isLabAB) {
+        signSup = document.createElement('sup')
+        const val = Number(ch[key] ?? 0)
+        signSup.textContent = val < 0 ? '−' : '+'
+        numWrapper.appendChild(signSup)
+        num.value = stripLeadingZeros(String(Math.abs(val)))
       }
 
       const apply = () => {
@@ -702,6 +752,10 @@ export class ColorInput extends HTMLElement {
         const target = ev.target as HTMLInputElement
         let val = Number(target.value)
         if (!Number.isFinite(val)) return
+        if (isLabAB && target === num) {
+          // number input shows absolute value; apply sign from sup
+          val = Math.abs(val) * (signSup && signSup.textContent === '−' ? -1 : 1)
+        }
         if (wrapHue) {
           val = ((val % 360) + 360) % 360
         } else {
@@ -712,9 +766,60 @@ export class ColorInput extends HTMLElement {
         channelSignals[key].value = formatted
         // keep controls in sync
         range.value = String(ch[key])
-        num.value = String(ch[key])
-        apply()
+        if (isLabAB) {
+          const n = Number(ch[key])
+          if (signSup) signSup.textContent = n < 0 ? '−' : '+'
+          num.value = stripLeadingZeros(String(Math.abs(n)))
+        } else {
+          num.value = String(ch[key])
+        }
+        pendingApply = apply
+        if (rafId === null) {
+          rafId = requestAnimationFrame(() => {
+            rafId = null
+            if (pendingApply) {
+              pendingApply()
+              pendingApply = null
+            }
+          })
+        }
       }
+
+      num.addEventListener('keydown', (ev: KeyboardEvent) => {
+        if (ev.key !== 'ArrowUp' && ev.key !== 'ArrowDown') return
+        if (!ev.shiftKey && !ev.altKey) return
+        ev.preventDefault()
+        const dir = ev.key === 'ArrowUp' ? 1 : -1
+        const delta = ev.shiftKey ? step * 10 : ev.altKey ? step * 0.1 : step
+        let val = Number(num.value) * (isLabAB && signSup?.textContent === '−' ? -1 : 1)
+        val += dir * delta
+        if (wrapHue) {
+          val = ((val % 360) + 360) % 360
+        } else {
+          val = Math.max(min, Math.min(max, val))
+        }
+        const formatted = formatChannel(space, key, val)
+        ch[key] = formatted
+        channelSignals[key].value = formatted
+        range.value = String(ch[key])
+        if (isLabAB) {
+          const n = Number(ch[key])
+          if (signSup) signSup.textContent = n < 0 ? '−' : '+'
+          num.value = stripLeadingZeros(String(Math.abs(n)))
+        } else {
+          num.value = String(ch[key])
+        }
+        pendingApply = apply
+        if (rafId === null) {
+          rafId = requestAnimationFrame(() => {
+            rafId = null
+            if (pendingApply) {
+              pendingApply()
+              pendingApply = null
+            }
+          })
+        }
+      })
 
       range.addEventListener('input', onInput)
       num.addEventListener('input', onInput)

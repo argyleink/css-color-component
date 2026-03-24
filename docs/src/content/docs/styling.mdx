@@ -1,6 +1,6 @@
 ---
 title: Styling & Customization
-description: Customize the color picker appearance with themes and CSS parts
+description: Customize the color picker with theme modes, CSS parts, and common layout patterns
 ---
 
 import ColorInputDemo from "../../components/ColorInputDemo.astro";
@@ -8,15 +8,34 @@ import { Tabs, TabItem } from "@astrojs/starlight/components";
 
 ## Theming
 
-The `<color-input>` component supports three theme modes:
+The `<color-input>` component supports three theme modes via the `theme` attribute or property:
 
-- **`auto`** (default) - Follows system preferences (prefers-color-scheme)
-- **`light`** - Always uses light theme
-- **`dark`** - Always uses dark theme
-
-### Setting Themes
-
-Use the `theme` attribute:
+<Tabs>
+  <TabItem label="Auto (default)">
+    <ColorInputDemo
+      value="oklch(65% 20% 280)"
+      colorspace="oklch"
+      theme="auto"
+      description="Follows system preference via prefers-color-scheme"
+    />
+  </TabItem>
+  <TabItem label="Light">
+    <ColorInputDemo
+      value="oklch(65% 20% 280)"
+      colorspace="oklch"
+      theme="light"
+      description="Always light, regardless of system preference"
+    />
+  </TabItem>
+  <TabItem label="Dark">
+    <ColorInputDemo
+      value="oklch(65% 20% 280)"
+      colorspace="oklch"
+      theme="dark"
+      description="Always dark, regardless of system preference"
+    />
+  </TabItem>
+</Tabs>
 
 ```html
 <color-input theme="auto"></color-input>
@@ -24,62 +43,70 @@ Use the `theme` attribute:
 <color-input theme="dark"></color-input>
 ```
 
-Or set via JavaScript:
-
-```js
-picker.theme = "dark";
-```
-
-<Tabs>
-  <TabItem label="Auto">
-    <ColorInputDemo
-      value="oklch(65% 20% 280)"
-      colorspace="oklch"
-      theme="auto"
-    />
-    Respects your system preference
-  </TabItem>
-  <TabItem label="Light">
-    <ColorInputDemo
-      value="oklch(65% 20% 280)"
-      colorspace="oklch"
-      theme="light"
-    />
-    Always light, regardless of system
-  </TabItem>
-  <TabItem label="Dark">
-    <ColorInputDemo
-      value="oklch(65% 20% 280)"
-      colorspace="oklch"
-      theme="dark"
-    />
-    Always dark, regardless of system
-  </TabItem>
-</Tabs>
-
-:::tip
-Use `theme="auto"` (the default) unless you have a specific reason to override. This provides the best user experience by respecting system preferences.
-:::
+Internally the component aligns its `color-scheme` with the chosen mode so native rendering and form control behavior fit the picker better.
 
 ## CSS Parts
 
-The `<color-input>` element exposes several CSS parts for styling with the `::part()` selector:
+Style exposed regions of the picker with `::part()`:
 
-- `trigger` - The button that opens the picker
-- `chip` - Color swatch inside the trigger button
-- `input` - Text input field for entering color values
-- `error` - Text with color parsing error message
-- `panel` - Popover container
-- `output` - CSS color string display
-- `gamut` - Gamut badge (srgb/p3/rec2020/xyz)
-- `controls` - Container for channel sliders and inputs
-- `area` - Container for area picker
+- `trigger` — button that opens the picker
+- `chip` — color swatch inside the trigger
+- `input` — inline text input
+- `error` — parse error message
+- `panel` — popover surface
+- `output` — serialized color value in the preview
+- `gamut` — gamut indicator
+- `controls` — slider and numeric input region
+- `area` — 2D color area container
 
-## Styling Examples
+These parts intentionally cover the major UI regions rather than every internal node, which keeps styling flexibility without making the internal shadow DOM structure part of the public API.
 
-### Circle Swatch
+## Common customization patterns
 
-Perfect for color palettes and compact color selection:
+### Compact swatch-only trigger
+
+If you want the element to behave more like a swatch launcher, hide the text field and enlarge the trigger:
+
+```css
+color-input.swatch::part(input) {
+  display: none;
+}
+
+color-input.swatch::part(trigger) {
+  inline-size: 3rem;
+  block-size: 3rem;
+}
+```
+
+### Spacious panel
+
+```css
+color-input::part(panel) {
+  max-inline-size: min(90vw, 42rem);
+}
+
+color-input::part(area) {
+  border-radius: 1rem;
+}
+```
+
+### Custom invalid styling
+
+When the inline text value is invalid, the host receives `data-error`.
+
+```css
+color-input[data-error]::part(input) {
+  border-color: oklch(62% 0.25 25);
+}
+
+color-input[data-error]::part(error) {
+  color: oklch(62% 0.25 25);
+}
+```
+
+## Example: Circle Swatches
+
+A compact swatch style, perfect for color palettes:
 
 <Tabs>
   <TabItem label="Result">
@@ -150,10 +177,6 @@ Perfect for color palettes and compact color selection:
         inset 0 0 0 1px rgba(0, 0, 0, 0.1);
     }
 
-    .circle-swatch::part(trigger):active {
-      transform: scale(1.05);
-    }
-
     .circle-swatch::part(chip) {
       width: 100%;
       height: 100%;
@@ -162,12 +185,10 @@ Perfect for color palettes and compact color selection:
       border-radius: 0;
     }
 
-    /* Hide the text input for a pure swatch look */
     .circle-swatch::part(input) {
       display: none;
     }
     ```
-
   </TabItem>
   <TabItem label="HTML">
     ```html
@@ -180,60 +201,37 @@ Perfect for color palettes and compact color selection:
   </TabItem>
 </Tabs>
 
-## Theme-Specific Styling
+:::tip
+Combine parts for more control. For example, hide `::part(area)` for a more compact picker or hide `::part(input)` for a pure swatch launcher. Theme-specific styling can target selectors like `color-input[theme="dark"]::part(trigger)`.
+:::
 
-Customize parts based on the current theme:
+## Things to keep in mind
 
-```css
-.circle-swatch::part(trigger) {
-  width: 48px;
-  height: 48px;
-  padding: 0;
-  border: 3px solid white;
-  border-radius: 50%;
-  background: transparent;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15), inset 0 0 0 1px rgba(0, 0, 0, 0.1);
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
-}
+### Shadow DOM boundaries
 
-.circle-swatch::part(trigger):hover {
-  transform: scale(1.1);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2), inset 0 0 0 1px rgba(0, 0, 0, 0.1);
-}
+Prefer:
 
-.circle-swatch::part(trigger):active {
-  transform: scale(1.05);
-}
+- `::part(...)` for exposed regions
+- host attributes such as `[theme]` and `[data-error]`
+- layout styles on the custom element itself
 
-.circle-swatch::part(chip) {
-  width: 100%;
-  height: 100%;
-  margin: 0;
-  border: none;
-  border-radius: 0;
-}
+Avoid depending on undocumented internal descendants in the shadow tree.
 
-/* Hide the text input for a pure swatch look */
-.circle-swatch::part(input) {
-  display: none;
-}
+### Layout behavior
 
-/* Hide the area picker for more compact look */
-.circle-swatch::part(area) {
-  display: none;
-}
-```
+The host element contains:
 
-## Parts Reference
+- the trigger button
+- the inline text input wrapper
+- the popover panel
 
-| Part       | Description                    |
-| ---------- | ------------------------------ |
-| `trigger`  | Button that opens the picker   |
-| `chip`     | Color swatch preview           |
-| `input`    | Text input for entering colors |
-| `error`    | Color parsing error message    |
-| `panel`    | Popover container              |
-| `output`   | Current color value display    |
-| `gamut`    | Gamut badge                    |
-| `controls` | Sliders and inputs container   |
-| `area`     | Area picker container          |
+That means the easiest external customizations are usually host-level spacing plus part-level styling of the trigger, input, panel, and area.
+
+### Accessibility-friendly customization
+
+When customizing the picker:
+
+- keep the trigger visibly interactive
+- preserve visible focus treatment
+- maintain readable contrast in the text field and panel
+- make sure custom panel sizes still leave enough room for the area picker and controls

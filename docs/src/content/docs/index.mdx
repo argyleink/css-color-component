@@ -1,16 +1,16 @@
 ---
 title: color-input
-description: A modern color picker web component with wide-gamut support, multiple color spaces, and Shadow DOM encapsulation
+description: A modern web component color picker with wide-gamut support, multiple editing modes, and a gamut-aware area picker
 template: splash
 hero:
   title: color-input
-  tagline: A modern color picker web component with wide-gamut support
+  tagline: A wide-gamut color picker web component for modern CSS color workflows
   actions:
     - text: Get Started
       link: /#quick-start
       icon: right-arrow
       variant: primary
-    - text: View API
+    - text: API Reference
       link: /api
       icon: external
       variant: minimal
@@ -20,50 +20,41 @@ import ColorInputDemo from "../../components/ColorInputDemo.astro";
 import { Tabs, TabItem } from "@astrojs/starlight/components";
 import { Card, CardGrid } from "@astrojs/starlight/components";
 
-## Features
-
-<CardGrid>
-  <Card title="Wide-Gamut Colors" icon="star">
-    Support for sRGB, Display P3, Rec2020, and more. Automatic gamut detection
-    shows you which color space contains your color.
-  </Card>
-  <Card title="Multiple Color Spaces" icon="palette">
-    Choose from sRGB, HSL, HWB, LAB, LCH, OKLCH, OKLAB, and wide-gamut RGB
-    spaces. Convert between them seamlessly.
-  </Card>
-  <Card title="Area Picker" icon="open-book">
-    Interactive 2D color area for intuitive selection. Adapts to the active color
-    space with pointer drag and keyboard arrow-key support.
-  </Card>
-  <Card title="Eye Dropper" icon="search">
-    Pick colors from anywhere on your screen with the native browser eye dropper.
-    Auto-hides in unsupported browsers.
-  </Card>
-  <Card title="Signals & Reactivity" icon="rocket">
-    Powered by Preact Signals for efficient, fine-grained reactivity. Shadow DOM
-    encapsulation keeps styles isolated.
-  </Card>
-  <Card title="CSS Parts" icon="puzzle">
-    Customize every part of the picker with `::part()` selectors. Style the
-    trigger, panel, sliders, and more.
-  </Card>
-  <Card title="Small Bundle" icon="document">
-    Tree-shakeable ES modules. Color math by colorjs.io. No framework
-    dependencies.
-  </Card>
-</CardGrid>
-
 ## Try it out
 
 <ColorInputDemo value="#0bf8" />
 
-:::tip[Why OKLCH?]
-OKLCH provides perceptually uniform lightness and chroma, making it ideal for creating accessible color scales and harmonious palettes.
-:::
+## Features
+
+<CardGrid>
+  <Card title="Wide-Gamut Colors" icon="star">
+    Work with sRGB, Display P3, A98 RGB, Rec2020, ProPhoto, XYZ, and perceptual spaces like OKLCH and OKLab. The picker also detects which gamut contains the current color.
+  </Card>
+  <Card title="Multiple Editing Modes" icon="palette">
+    Edit the same color through text input, sliders, numeric fields, a colorspace select, and a 2D area picker without losing sync.
+  </Card>
+  <Card title="Gamut-Aware Area Picker" icon="open-book">
+    The 2D picker adapts to the active colorspace and can render gamut-aware boundaries for perceptual and wide-gamut workflows.
+  </Card>
+  <Card title="Customizable UI" icon="puzzle">
+    Shadow DOM keeps the component self-contained while CSS parts expose the trigger, panel, input, controls, area, and readouts for styling.
+  </Card>
+</CardGrid>
+
+## What it includes
+
+`<color-input>` is more than a swatch and a few sliders. The current picker UI includes:
+
+- an inline text field for raw CSS color strings
+- numeric channel inputs paired with sliders
+- a colorspace selector
+- a 2D area picker that changes model per space
+- a preview area with copy and EyeDropper tools
+- a gamut indicator and black/white contrast readouts
+
+These pieces stay synchronized whether the value changes through the UI, attributes, or properties.
 
 ## Quick Start
-
-Try it on [Codepen](https://codepen.io/argyleink/pen/dPGBYZg)!
 
 <Tabs>
   <TabItem label="Usage">
@@ -74,7 +65,6 @@ Try it on [Codepen](https://codepen.io/argyleink/pen/dPGBYZg)!
 
     <color-input value="oklch(75% 30% 180)"></color-input>
     ```
-
   </TabItem>
   <TabItem label="Result">
     <ColorInputDemo
@@ -85,15 +75,32 @@ Try it on [Codepen](https://codepen.io/argyleink/pen/dPGBYZg)!
 </Tabs>
 
 :::note
-The custom element auto-registers when you import the module. Use it in any HTML document or framework.
+The custom element auto-registers on import. Use it in any HTML document or framework. The popover UI relies on the [Popover API](https://developer.mozilla.org/en-US/docs/Web/API/Popover_API), and the EyeDropper tool appears only in browsers that support the EyeDropper API.
 :::
 
-:::caution[Browser Support]
-The Popover API is required. Modern browsers (Chrome 114+, Safari 17+, Firefox 125+) support it natively.
-:::
+## How the picker behaves
+
+The component chooses a different editing plane depending on the current colorspace:
+
+- `srgb` and `hex` use an OKHSV-style plane for practical RGB picking
+- `hsl` uses saturation × lightness
+- `oklch`, `lch`, and wide-gamut RGB-like spaces use a chroma × lightness plane
+- `oklab` and `lab` use an `a × b` plane around the origin
+- `hwb` uses whiteness × blackness
+
+For spaces that benefit from it, the area picker can render gamut boundaries and stretch the interactive mapping so the useful region fills more of the canvas.
+
+## Who this is for
+
+Use it when you want a custom element that:
+
+- works outside a framework or inside one
+- accepts modern CSS color syntax
+- can expose wide-gamut colors instead of collapsing everything to sRGB
+- still gives users a familiar picker UI with copy, eyedropper, and keyboard support
 
 ## Next Steps
 
-- [API Reference](/api) - Explore all attributes, properties, methods, and events
-- [Styling](/styling) - Customize appearance with themes and CSS parts
-- [Advanced](/advanced) - Accessibility, architecture, and advanced features
+- [API Reference](/api) — Attributes, properties, methods, and events
+- [Styling](/styling) — Themes, CSS parts, and customization patterns
+- [Advanced](/advanced) — Architecture, gamut behavior, and performance

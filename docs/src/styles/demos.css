@@ -1,12 +1,13 @@
-/* Demo container styles */
+/* ===== Demo containers ===== */
 .demo {
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
-  padding: 1.5rem;
-  background: var(--sl-color-bg-sidebar);
   border-radius: 12px;
-  border: 1px solid var(--sl-color-hairline);
+}
+
+:root:not([data-theme='dark']) .demo {
+  background: var(--sl-color-bg-sidebar);
 }
 
 .demo-group {
@@ -40,10 +41,13 @@
   border: 1px solid var(--sl-color-hairline);
   border-radius: 8px;
   color: var(--sl-color-text);
-  font-size: 0.875rem;
+  font-size: 0.8125rem;
   font-weight: 500;
+  letter-spacing: 0.01em;
   cursor: pointer;
-  transition: background 0.2s ease, transform 0.1s ease;
+  transition:
+    background 0.2s ease,
+    transform 0.1s ease;
 }
 
 .demo-controls button:hover {
@@ -54,54 +58,58 @@
   transform: scale(0.98);
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .demo-controls button {
-    transition: none;
-  }
-
-  .demo-controls button:active {
-    transform: none;
-  }
-}
-
 .demo-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   gap: 1.5rem;
 }
 
-/* Readout panels */
+/* ===== Readout panels ===== */
 .readout {
   font-family: ui-monospace, 'Cascadia Code', 'Source Code Pro', Menlo, Consolas, 'DejaVu Sans Mono', monospace;
-  font-size: 0.875rem;
-  padding: 1rem;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  padding: 1rem 1.25rem;
   background: var(--sl-color-bg-inline-code);
-  border-radius: 8px;
-  border: 1px solid var(--sl-color-hairline);
+  border-radius: 10px;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.25rem 1rem;
+  align-items: baseline;
 }
 
 .readout dt {
-  font-weight: 600;
+  font-weight: 500;
+  font-size: 0.75rem;
   color: var(--sl-color-text-accent);
-  margin-bottom: 0.25rem;
+  opacity: 0.65;
 }
 
 .readout dd {
-  margin: 0 0 0.75rem 0;
+  margin: 0;
   color: var(--sl-color-text);
+  transition: color 0.15s ease;
 }
 
-.readout dd:last-child {
-  margin-bottom: 0;
+.readout dd.just-changed {
+  color: var(--sl-color-accent);
 }
 
-/* Swatch styles */
+/* ===== Swatches ===== */
 .swatch {
   display: inline-block;
   width: 48px;
   height: 48px;
   border-radius: 8px;
   border: 1px solid var(--sl-color-hairline);
+  box-shadow: 0 1px 4px rgb(0 0 0 / 0.08);
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.swatch:hover {
+  transform: scale(1.04);
   box-shadow: 0 2px 8px rgb(0 0 0 / 0.1);
 }
 
@@ -109,6 +117,7 @@
   width: 24px;
   height: 24px;
   border-radius: 4px;
+  transition: background-color 0.2s ease;
 }
 
 .swatch-lg {
@@ -117,15 +126,15 @@
   border-radius: 12px;
 }
 
-/* Badge styles */
+/* ===== Badges ===== */
 .badge {
   display: inline-flex;
   align-items: center;
-  padding: 0.25rem 0.75rem;
+  padding: 0.2rem 0.6rem;
   background: var(--sl-color-bg-inline-code);
   border: 1px solid var(--sl-color-hairline);
   border-radius: 6px;
-  font-size: 0.875rem;
+  font-size: 0.8125rem;
   font-weight: 500;
   font-variant-numeric: tabular-nums;
 }
@@ -133,10 +142,11 @@
 .badge-gamut {
   font-family: ui-monospace, 'Cascadia Code', 'Source Code Pro', Menlo, Consolas, 'DejaVu Sans Mono', monospace;
   text-transform: uppercase;
+  font-size: 0.6875rem;
   letter-spacing: 0.05em;
 }
 
-/* Code toggle button */
+/* ===== Code toggle ===== */
 .code-toggle {
   display: inline-flex;
   align-items: center;
@@ -147,10 +157,13 @@
   border: 1px solid var(--sl-color-hairline);
   border-radius: 8px;
   color: var(--sl-color-text);
-  font-size: 0.875rem;
+  font-size: 0.8125rem;
   font-weight: 500;
+  letter-spacing: 0.01em;
   cursor: pointer;
-  transition: background 0.2s ease, transform 0.1s ease;
+  transition:
+    background 0.2s ease,
+    transform 0.1s ease;
 }
 
 .code-toggle:hover {
@@ -161,32 +174,28 @@
   transform: scale(0.98);
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .code-toggle {
-    transition: none;
-  }
-
-  .code-toggle:active {
-    transform: none;
-  }
-}
-
-/* Event log */
+/* ===== Event log ===== */
 .event-log {
   max-height: 300px;
   overflow-y: auto;
-  padding: 1rem;
+  padding: 1rem 1.25rem;
   background: var(--sl-color-bg-inline-code);
-  border-radius: 8px;
-  border: 1px solid var(--sl-color-hairline);
+  border-radius: 10px;
   font-family: ui-monospace, 'Cascadia Code', 'Source Code Pro', Menlo, Consolas, 'DejaVu Sans Mono', monospace;
-  font-size: 0.8125rem;
+  font-size: 0.75rem;
   line-height: 1.6;
 }
 
+@keyframes log-entry {
+  from {
+    opacity: 0;
+  }
+}
+
 .event-log-item {
-  padding: 0.5rem 0;
-  border-bottom: 1px solid var(--sl-color-hairline-light);
+  padding: 0.4rem 0;
+  border-bottom: 1px solid oklch(50% 0% 0 / 0.05);
+  animation: log-entry 0.3s ease both;
 }
 
 .event-log-item:last-child {
@@ -195,15 +204,26 @@
 
 .event-log-time {
   color: var(--sl-color-text-accent);
-  opacity: 0.7;
+  opacity: 0.4;
+  font-size: 0.6875rem;
 }
 
 .event-log-type {
-  font-weight: 600;
+  font-weight: 500;
   color: var(--sl-color-accent);
 }
 
-/* Styling showcase card */
+.event-log-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  vertical-align: middle;
+  margin-inline-end: 0.25rem;
+  transition: background-color 0.2s ease;
+}
+
+/* ===== Showcase cards ===== */
 .showcase-card {
   padding: 1.5rem;
   background: var(--sl-color-bg-sidebar);
@@ -212,6 +232,11 @@
   display: flex;
   flex-direction: column;
   gap: 1rem;
+  transition: box-shadow 0.3s ease;
+}
+
+.showcase-card:hover {
+  box-shadow: 0 2px 12px oklch(50% 5% 280 / 0.06);
 }
 
 .showcase-card h4 {
@@ -225,12 +250,8 @@
   color: var(--sl-color-gray-2);
 }
 
-/* Responsive adjustments */
+/* ===== Responsive ===== */
 @media (max-width: 768px) {
-  .demo {
-    padding: 1rem;
-  }
-
   .demo-grid {
     grid-template-columns: 1fr;
   }
@@ -241,7 +262,7 @@
   }
 }
 
-/* Hit target enforcement */
+/* ===== Hit targets ===== */
 button,
 [role='button'],
 a:not(.sl-link),
@@ -257,5 +278,26 @@ summary {
   summary {
     min-height: 24px;
     min-width: 24px;
+  }
+}
+
+/* ===== Reduced motion ===== */
+@media (prefers-reduced-motion: reduce) {
+  .demo-controls button,
+  .code-toggle {
+    transition: none;
+  }
+
+  .demo-controls button:active,
+  .code-toggle:active {
+    transform: none;
+  }
+
+  .event-log-item {
+    animation: none;
+  }
+
+  .swatch:hover {
+    transform: none;
   }
 }

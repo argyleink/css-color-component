@@ -71,7 +71,7 @@ const loggerId = `logger-${Math.random().toString(36).substr(2, 9)}`;
         let detailStr = '';
         
         if (log.type === 'change' && log.detail) {
-          detailStr = ` → <strong>${log.detail.value}</strong> (${log.detail.colorspace}, ${log.detail.gamut})`;
+          detailStr = ` → <span class="event-log-dot" style="background:${log.detail.value}"></span><strong>${log.detail.value}</strong> (${log.detail.colorspace}, ${log.detail.gamut})`;
         }
 
         return `<div class="event-log-item">
