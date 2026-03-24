@@ -719,7 +719,7 @@ export class AreaPicker {
       const y = Math.max(0, Math.min(1, 1 - (event.clientY - rect.top) / rect.height - pointerOffset.y));
 
       // Modify coords directly on the dragging color
-      const newCoords: [number, number, number] = [color.coords[0], color.coords[1], color.coords[2]];
+      const newCoords: [number, number, number] = [color.coords[0] ?? 0, color.coords[1] ?? 0, color.coords[2] ?? 0];
       const xN = config.xInvert ? 1 - x : x;
       const yN = config.yInvert ? 1 - y : y;
       const chromaLUT = this.#chromaLUT.value;
@@ -846,7 +846,7 @@ export class AreaPicker {
         const effYDelta = config.yInvert ? -yDelta : yDelta;
 
         // Build new coords array
-        const newCoords: [number, number, number] = [color.coords[0], color.coords[1], color.coords[2]];
+        const newCoords: [number, number, number] = [color.coords[0] ?? 0, color.coords[1] ?? 0, color.coords[2] ?? 0];
         const chromaLUT = this.#chromaLUT.value;
         const polarLUT = this.#polarLUT.value;
         if (polarLUT) {

@@ -52,7 +52,7 @@ describe('text input validation', () => {
     expect(input.getAttribute('aria-invalid')).toBe('false')
     expect(el.value).toBe('#ff6600')
     expect(el.colorspace).toBe('hex')
-    expect(changes.at(-1)).toEqual({
+    expect(changes[changes.length - 1]).toEqual({
       value: '#ff6600',
       colorspace: 'hex',
       gamut: 'srgb',
