@@ -10,6 +10,9 @@ import {
 import { toFixed } from './channel-formatting'
 
 export type ChannelRecord = Record<string, string | number>
+export interface GenColorOptions {
+  noHexShorten?: boolean
+}
 
 const noLeadZero = (v: any) => String(v).replace(/^(-?)0\./, '$1.')
 
@@ -29,7 +32,7 @@ const noLeadZero = (v: any) => String(v).replace(/^(-?)0\./, '$1.')
  * gencolor('hsl', { H: '120', S: '100', L: '50', ALP: '50' })
  * // → 'hsl(120 100% 50% / 50%)'
  */
-export function gencolor(space: ColorSpace, ch: ChannelRecord): string {
+export function gencolor(space: ColorSpace, ch: ChannelRecord, options: GenColorOptions = {}): string {
   const L = (ch.L ?? 50) as any
   const A = (ch.A ?? 0) as any
   const B = (ch.B ?? 0) as any
@@ -61,7 +64,7 @@ export function gencolor(space: ColorSpace, ch: ChannelRecord): string {
       const bh = b.toString(16).padStart(2, '0')
 
       // Check if we can use shortened hex format (3 or 4 digits)
-      const canShorten = rh[0] === rh[1] && gh[0] === gh[1] && bh[0] === bh[1]
+      const canShorten = !options.noHexShorten && rh[0] === rh[1] && gh[0] === gh[1] && bh[0] === bh[1]
 
       if (a < 100) {
         const alpha = Math.round((a / 100) * 255)

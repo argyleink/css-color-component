@@ -11,7 +11,7 @@ import {
 } from './color'
 import { AreaPicker } from './area-picker'
 import { formatChannel } from './utils/channel-formatting'
-import { gencolor, parseIntoChannels } from './utils/color-conversion'
+import { gencolor, parseIntoChannels, type GenColorOptions } from './utils/color-conversion'
 import {
   computeCandidates,
   findFirstFitOrMaxArea,
@@ -43,7 +43,7 @@ if (typeof sheet.replaceSync === 'function') {
 }
 
 export class ColorInput extends HTMLElement {
-  static get observedAttributes() { return ['value', 'colorspace', 'theme', 'no-alpha'] }
+  static get observedAttributes() { return ['value', 'colorspace', 'theme', 'no-alpha', 'no-hex-shorten'] }
 
   // ──────────────────────────────────────────────────────────────────────────────
   // State: Reactive signals (Preact Signals Core)
@@ -55,6 +55,7 @@ export class ColorInput extends HTMLElement {
   #anchor: Signal<HTMLElement | null> = signal(null)
   #error = signal<string | null>(null)
   #noAlpha = signal(false)
+  #noHexShorten = signal(false)
 
   #contrast = computed(() => contrastColor(this.#value.value))
   #gamut = computed(() => detectGamut(this.#value.value))
@@ -96,7 +97,7 @@ export class ColorInput extends HTMLElement {
       const converted = toGamut(to(current, getColorJSSpaceID(targetSpace)))
       const tempStr = serialize(converted, { precision: 12 })
       const parsed = parseIntoChannels(next, tempStr)
-      const newValue = gencolor(next, parsed.ch)
+      const newValue = gencolor(next, parsed.ch, { noHexShorten: this.#noHexShorten.value })
       this.#value.value = newValue
       this.setAttribute('value', newValue)
       this.#emitChange()
@@ -119,6 +120,13 @@ export class ColorInput extends HTMLElement {
     this.#noAlpha.value = !!v
     if (v) this.setAttribute('no-alpha', '')
     else this.removeAttribute('no-alpha')
+  }
+
+  get noHexShorten() { return this.#noHexShorten.value }
+  set noHexShorten(v: boolean) {
+    this.#noHexShorten.value = !!v
+    if (v) this.setAttribute('no-hex-shorten', '')
+    else this.removeAttribute('no-hex-shorten')
   }
 
   get gamut() { return this.#gamut.value }
@@ -221,7 +229,7 @@ export class ColorInput extends HTMLElement {
               const serialized = serialize(converted, {
                 format: space === "hex" ? "hex" : undefined,
               })
-              const color = gencolor(space, parseIntoChannels(space, serialized).ch)
+              const color = gencolor(space, parseIntoChannels(space, serialized).ch, { noHexShorten: this.#noHexShorten.value })
               this.#value.value = color
               this.setAttribute('value', color)
               this.#emitChange()
@@ -400,7 +408,7 @@ export class ColorInput extends HTMLElement {
     // (e.g. percentage notation), matching what gencolor produces after any change
     try {
       const { ch } = parseIntoChannels(this.#space.value, this.#value.value)
-      this.#value.value = gencolor(this.#space.value, ch)
+      this.#value.value = gencolor(this.#space.value, ch, { noHexShorten: this.#noHexShorten.value })
     } catch {}
 
     this.#renderControls()
@@ -438,6 +446,17 @@ export class ColorInput extends HTMLElement {
     }
     if (name === 'no-alpha') {
       this.#noAlpha.value = value !== null
+      if (this.#controls) this.#renderControls()
+    }
+    if (name === 'no-hex-shorten') {
+      this.#noHexShorten.value = value !== null
+      if (this.#space.value === 'hex') {
+        try {
+          const { ch } = parseIntoChannels(this.#space.value, this.#value.value)
+          this.#value.value = gencolor(this.#space.value, ch, { noHexShorten: this.#noHexShorten.value })
+          this.setAttribute('value', this.#value.value)
+        } catch {}
+      }
       if (this.#controls) this.#renderControls()
     }
   }
@@ -710,8 +729,8 @@ export class ColorInput extends HTMLElement {
       if (key === 'ALP') {
         range.classList.add('alpha')
         try {
-          const c0 = gencolor(space, { ...ch, ALP: '0' })
-          const c1 = gencolor(space, { ...ch, ALP: '100' })
+          const c0 = gencolor(space, { ...ch, ALP: '0' }, { noHexShorten: this.#noHexShorten.value })
+          const c1 = gencolor(space, { ...ch, ALP: '100' }, { noHexShorten: this.#noHexShorten.value })
           const interpSpace = space === 'hsl' ? 'hsl' : (space === 'lch' ? 'lch' : (space === 'oklch' ? 'oklch' : 'oklab'))
           range.style.background = `linear-gradient(to right in ${interpSpace}, ${c0}, ${c1}), var(--checker)`
         } catch { }
@@ -742,7 +761,7 @@ export class ColorInput extends HTMLElement {
       }
 
       const apply = () => {
-        const next = gencolor(space, ch)
+        const next = gencolor(space, ch, { noHexShorten: this.#noHexShorten.value })
         this.#value.value = next
         this.setAttribute('value', next)
         this.#emitChange()
@@ -986,8 +1005,8 @@ export class ColorInput extends HTMLElement {
         const G = channelSignals.G.value || '0'
         const B = channelSignals.B.value || '0'
         if (alphaRange) {
-          const c0 = gencolor(space, { ...ch, R, G, B, ALP: '0' })
-          const c1 = gencolor(space, { ...ch, R, G, B, ALP: '100' })
+          const c0 = gencolor(space, { ...ch, R, G, B, ALP: '0' }, { noHexShorten: this.#noHexShorten.value })
+          const c1 = gencolor(space, { ...ch, R, G, B, ALP: '100' }, { noHexShorten: this.#noHexShorten.value })
           alphaRange.style.background = `linear-gradient(to right, ${c0}, ${c1}), var(--checker)`
         }
       })

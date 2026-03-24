@@ -112,6 +112,7 @@ picker.addEventListener('change', (event) => {
 - `colorspace`
 - `theme` (`auto`, `light`, `dark`)
 - `no-alpha`
+- `no-hex-shorten`
 
 ### Properties
 
@@ -119,6 +120,7 @@ picker.addEventListener('change', (event) => {
 - `colorspace`
 - `theme`
 - `noAlpha`
+- `noHexShorten`
 - `gamut` (read-only)
 - `contrastColor` (read-only)
 
@@ -163,6 +165,16 @@ When `no-alpha` is present, alpha controls are hidden but any alpha already pres
 ```html
 <color-input value="oklch(75% 30% 180 / 50%)" no-alpha></color-input>
 ```
+
+### `no-hex-shorten`
+
+When `no-hex-shorten` is present, hex color values are always output in their full 6-digit (or 8-digit with alpha) form instead of being shortened to 3- or 4-digit form where possible.
+
+```html
+<color-input colorspace="hex" value="#ffffff" no-hex-shorten></color-input>
+```
+
+Without `no-hex-shorten`, the value `#ffffff` would be shortened to `#fff`. With `no-hex-shorten`, it stays as `#ffffff`.
 
 ## Styling
 

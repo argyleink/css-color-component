@@ -129,6 +129,34 @@ describe('color-conversion', () => {
         // Alpha cannot be shortened, so should use 8-digit format
         expect(gencolor('hex', { R: '100', G: '100', B: '100', ALP: '50' })).toBe('#ffffff80') // Alpha is 0x80, cannot shorten
       })
+
+      describe('noHexShorten option', () => {
+        it('should not shorten 3-digit hex when noHexShorten is true', () => {
+          expect(gencolor('hex', { R: '100', G: '100', B: '100', ALP: '100' }, { noHexShorten: true })).toBe('#ffffff')
+          expect(gencolor('hex', { R: '0', G: '0', B: '0', ALP: '100' }, { noHexShorten: true })).toBe('#000000')
+          expect(gencolor('hex', { R: '100', G: '0', B: '0', ALP: '100' }, { noHexShorten: true })).toBe('#ff0000')
+          expect(gencolor('hex', { R: '0', G: '100', B: '0', ALP: '100' }, { noHexShorten: true })).toBe('#00ff00')
+          expect(gencolor('hex', { R: '0', G: '0', B: '100', ALP: '100' }, { noHexShorten: true })).toBe('#0000ff')
+        })
+
+        it('should not shorten 4-digit hex with alpha when noHexShorten is true', () => {
+          expect(gencolor('hex', { R: '0', G: '0', B: '0', ALP: '0' }, { noHexShorten: true })).toBe('#00000000')
+          expect(gencolor('hex', { R: '100', G: '0', B: '0', ALP: '20' }, { noHexShorten: true })).toBe('#ff000033')
+          expect(gencolor('hex', { R: '0', G: '100', B: '0', ALP: '60' }, { noHexShorten: true })).toBe('#00ff0099')
+        })
+
+        it('should still produce full-length hex for non-shortenable colors when noHexShorten is true', () => {
+          // These colors are already full-length, noHexShorten makes no difference
+          expect(gencolor('hex', { R: '100', G: '50', B: '0', ALP: '100' }, { noHexShorten: true })).toBe('#ff7f00')
+          expect(gencolor('hex', { R: '100', G: '50', B: '0', ALP: '50' }, { noHexShorten: true })).toBe('#ff7f0080')
+        })
+
+        it('should default to shortening (noHexShorten defaults to false)', () => {
+          expect(gencolor('hex', { R: '100', G: '100', B: '100', ALP: '100' })).toBe('#fff')
+          expect(gencolor('hex', { R: '100', G: '100', B: '100', ALP: '100' }, {})).toBe('#fff')
+          expect(gencolor('hex', { R: '100', G: '100', B: '100', ALP: '100' }, { noHexShorten: false })).toBe('#fff')
+        })
+      })
     })
 
     describe('RGB-like spaces', () => {
