@@ -5,6 +5,30 @@ export type Theme = 'auto' | 'light' | 'dark'
 export type StandardSpace = 'srgb' | 'hex' | 'hsl' | 'hwb' | 'lab' | 'lch' | 'oklab' | 'oklch'
 export type WideRGB = 'srgb-linear' | 'display-p3' | 'rec2020' | 'a98-rgb' | 'prophoto' | 'xyz' | 'xyz-d50' | 'xyz-d65'
 export type ColorSpace = StandardSpace | WideRGB
+export type ColorCoord = {
+  name?: string
+  range?: [number, number]
+  refRange?: [number, number]
+}
+
+export const DEFAULT_COLOR_SPACES: string[] = [
+  'hex',
+  'srgb',
+  'srgb-linear',
+  'hsl',
+  'hwb',
+  'display-p3',
+  'a98-rgb',
+  'lab',
+  'lch',
+  'oklch',
+  'oklab',
+  'rec2020',
+  'prophoto',
+  'xyz',
+  'xyz-d50',
+  'xyz-d65'
+]
 
 colorjs.ColorSpace.register(colorjs.sRGB);
 colorjs.ColorSpace.register(colorjs.sRGB_Linear);
@@ -21,6 +45,61 @@ colorjs.ColorSpace.register(colorjs.REC_2020);
 colorjs.ColorSpace.register(colorjs.XYZ_D65);
 colorjs.ColorSpace.register(colorjs.XYZ_D50);
 colorjs.ColorSpace.register(colorjs.Okhsv);
+
+function getSpaceLookupId(space: string) {
+  return getColorJSSpaceID(space.trim().toLowerCase())
+}
+
+export function ensureColorSpace(space: string) {
+  const lookupId = getSpaceLookupId(space)
+
+  try {
+    return colorjs.ColorSpace.get(lookupId)
+  } catch { }
+
+  const spaces = Object.values(colorjs.spaces as Record<string, any>)
+  const match = spaces.find((candidate: any) => {
+    if (!candidate) return false
+    if (candidate.id === lookupId) return true
+    return Array.isArray(candidate.aliases) && candidate.aliases.includes(lookupId)
+  })
+
+  if (!match) return null
+
+  colorjs.ColorSpace.register(match)
+
+  try {
+    return colorjs.ColorSpace.get(match.id)
+  } catch {
+    return null
+  }
+}
+
+export function isValidColorSpace(space: string) {
+  return !!space && (space === 'hex' || ensureColorSpace(space) !== null)
+}
+
+export function getColorSpaceCoords(space: string): Array<[string, ColorCoord]> {
+  const resolved = ensureColorSpace(space === 'hex' ? 'srgb' : space)
+  if (!resolved || !resolved.coords) return []
+  return Object.entries(resolved.coords as Record<string, ColorCoord>)
+}
+
+export function getColorSpaceChannelKey(coordId: string) {
+  return coordId.replace(/[^a-z0-9]/gi, '').toUpperCase()
+}
+
+export function getColorSpaceRange(coord: ColorCoord): [number, number] {
+  const range = coord.refRange ?? coord.range ?? [0, 100]
+  const min = Number(range[0])
+  const max = Number(range[1])
+
+  if (!Number.isFinite(min) || !Number.isFinite(max) || min === max) {
+    return [0, 100]
+  }
+
+  return [min, max]
+}
 
 export function parseCoords(x: number, min = 0, max = 100) {
   return Math.max(min, Math.min(max, x))
@@ -79,7 +158,9 @@ export function alphaToString(alpha: string | number) {
 }
 
 export function isRGBLike(space: string) {
-  return [
+  if (space === 'srgb' || space === 'hex') return false
+
+  if ([
     'srgb-linear',
     'display-p3',
     'rec2020',
@@ -88,7 +169,10 @@ export function isRGBLike(space: string) {
     'xyz',
     'xyz-d50',
     'xyz-d65'
-  ].includes(space)
+  ].includes(space)) return true
+
+  const coords = getColorSpaceCoords(space)
+  return coords.length === 3 && coords.every(([id]) => ['r', 'g', 'b'].includes(id))
 }
 
 export function rgbColor(space: string, r: string | number, g: string | number, b: string | number, a: string | number) {

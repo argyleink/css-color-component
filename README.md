@@ -110,8 +110,18 @@ picker.addEventListener('change', (event) => {
 
 - `value`
 - `colorspace`
+- `color-spaces`
 - `theme` (`auto`, `light`, `dark`)
 - `no-alpha`
+
+Use `color-spaces` to limit the dropdown to a space-delimited list and choose the default editing space from the first entry:
+
+```html
+<color-input
+  value="color(display-p3 0.3 0.7 0.95)"
+  color-spaces="oklch oklab hex"
+></color-input>
+```
 
 ### Properties
 

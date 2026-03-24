@@ -1,7 +1,11 @@
-import { getColor, OKLCH, parse, to, toGamut } from 'colorjs.io/fn'
+import { getColor, OKLCH, parse, serialize, to, toGamut } from 'colorjs.io/fn'
 import type { ColorSpace } from '../color'
 import {
   alphaToString,
+  ensureColorSpace,
+  getColorSpaceChannelKey,
+  getColorSpaceCoords,
+  getColorSpaceRange,
   getColorJSSpaceID,
   isRGBLike,
   rgbColor,
@@ -29,7 +33,7 @@ const noLeadZero = (v: any) => String(v).replace(/^(-?)0\./, '$1.')
  * gencolor('hsl', { H: '120', S: '100', L: '50', ALP: '50' })
  * // → 'hsl(120 100% 50% / 50%)'
  */
-export function gencolor(space: ColorSpace, ch: ChannelRecord): string {
+export function gencolor(space: ColorSpace | string, ch: ChannelRecord): string {
   const L = (ch.L ?? 50) as any
   const A = (ch.A ?? 0) as any
   const B = (ch.B ?? 0) as any
@@ -82,6 +86,26 @@ export function gencolor(space: ColorSpace, ch: ChannelRecord): string {
     }
     default:
       if (isRGBLike(space)) return rgbColor(space, R, G, B, ALP)
+
+      const coords = getColorSpaceCoords(space)
+      if (coords.length) {
+        try {
+          ensureColorSpace(space)
+          const values = coords.map(([coordId, coord]) => {
+            const key = getColorSpaceChannelKey(coordId)
+            const value = Number(ch[key] ?? 0)
+            const [min, max] = getColorSpaceRange(coord)
+            return Math.max(min, Math.min(max, value))
+          })
+
+          return serialize(getColor({
+            spaceId: getColorJSSpaceID(space),
+            coords: values,
+            alpha: Number(ALP) / 100,
+          } as any), { precision: 12 })
+        } catch { }
+      }
+
       return 'oklch(75% 75% 180)' // fallback
   }
 }
@@ -102,12 +126,13 @@ export function gencolor(space: ColorSpace, ch: ChannelRecord): string {
  * parseIntoChannels('hsl', '#ff0000')
  * // → { space: 'hsl', ch: { H: '0', S: '100', L: '50', ALP: '100' } }
  */
-export function parseIntoChannels(space: ColorSpace, colorStr: string): { space: ColorSpace; ch: ChannelRecord } {
+export function parseIntoChannels(space: ColorSpace | string, colorStr: string): { space: ColorSpace | string; ch: ChannelRecord } {
   // getColor() converts input to compatible type with to() result
   let c = getColor(parse(colorStr))
   // Hex is internally sRGB
   const actualSpace = space === 'hex' ? 'srgb' : space
   // Convert to target space if different
+  ensureColorSpace(actualSpace)
   const targetId = getColorJSSpaceID(actualSpace)
   if (c.space.id !== targetId) {
     c = to(c, targetId)
@@ -174,6 +199,13 @@ export function parseIntoChannels(space: ColorSpace, colorStr: string): { space:
     ch.R = toFixed((r ?? 0) * 100)
     ch.G = toFixed((g ?? 0) * 100)
     ch.B = toFixed((b ?? 0) * 100)
+    ch.ALP = toFixed(alpha * 100)
+  } else {
+    const coords = getColorSpaceCoords(s)
+    coords.forEach(([coordId, _coord], index) => {
+      const key = getColorSpaceChannelKey(coordId)
+      ch[key] = toFixed(c.coords[index] ?? 0, 4)
+    })
     ch.ALP = toFixed(alpha * 100)
   }
 

@@ -58,6 +58,21 @@ The `colorspace` attribute controls which editing space the UI uses.
 
 When this changes, the component converts the current color into the requested space and rebuilds the controls to match.
 
+### color-spaces
+
+The `color-spaces` attribute limits which spaces appear in the select dropdown. Provide a space-delimited list of Color.js/CSS color space names.
+
+```html
+<color-input
+  value="color(display-p3 0.3 0.7 0.95)"
+  color-spaces="oklch oklab hex"
+></color-input>
+```
+
+- The first listed space becomes the default editing space.
+- If a manually entered color parses into a space that is not in the list, the component converts it into the first listed space.
+- The default dropdown remains unchanged when `color-spaces` is omitted.
+
 ### theme
 
 The `theme` attribute controls the visual appearance:
