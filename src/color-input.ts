@@ -64,7 +64,7 @@ if (typeof sheet.replaceSync === 'function') {
 }
 
 export class ColorInput extends HTMLElement {
-  static get observedAttributes() { return ['value', 'colorspace', 'theme', 'no-alpha', 'initial-colorspace', 'aria-label'] }
+  static get observedAttributes() { return ['value', 'colorspace', 'theme', 'no-alpha', 'no-gamut-boundaries', 'initial-colorspace', 'aria-label'] }
 
   // Form-associated custom element (HTML § 4.13.7): takes part in <form>
   // submission, FormData, reset, disabled <fieldset>s, and <label for>.
@@ -84,6 +84,7 @@ export class ColorInput extends HTMLElement {
   #anchor: Signal<HTMLElement | null> = signal(null)
   #error = signal<string | null>(null)
   #noAlpha = signal(false)
+  #showGamutBoundaries = signal(true)
 
   #contrast = computed(() => contrastColor(this.#value.value))
   #gamut = computed(() => detectGamut(this.#value.value))
@@ -95,6 +96,7 @@ export class ColorInput extends HTMLElement {
   #controlsUpdate: ((ch: ChannelRecord) => void) | null = null
   #areaPickerEffectCleanup: ReturnType<typeof effect> | null = null
   #formValueEffectCleanup: ReturnType<typeof effect> | null = null
+  #areaPickerGamutBoundariesEffectCleanup: ReturnType<typeof effect> | null = null
   #areaPicker?: AreaPicker
   #programmaticUpdate = false
 
@@ -174,6 +176,13 @@ export class ColorInput extends HTMLElement {
     this.#noAlpha.value = !!v
     if (v) this.setAttribute('no-alpha', '')
     else this.removeAttribute('no-alpha')
+  }
+
+  get showGamutBoundaries() { return this.#showGamutBoundaries.value }
+  set showGamutBoundaries(v: boolean) {
+    this.#showGamutBoundaries.value = !!v
+    if (v) this.removeAttribute('no-gamut-boundaries')
+    else this.setAttribute('no-gamut-boundaries', '')
   }
 
   get gamut() { return this.#gamut.value }
@@ -420,6 +429,9 @@ export class ColorInput extends HTMLElement {
         const v = this.#value.value
         const space = this.#space.value
         this.#areaPicker?.setValue(v, space)
+      })
+      this.#areaPickerGamutBoundariesEffectCleanup = effect(() => {
+        this.#areaPicker?.setShowGamutBoundaries(this.#showGamutBoundaries.value)
       })
     }
 
@@ -746,6 +758,7 @@ export class ColorInput extends HTMLElement {
     this.#formValueEffectCleanup?.()
     this.#labelObserver?.disconnect()
     this.#observedLabels = []
+    this.#areaPickerGamutBoundariesEffectCleanup?.()
     this.#areaPicker?.unmount()
     this.#editingField = null
     this.#editStart = null
@@ -781,6 +794,9 @@ export class ColorInput extends HTMLElement {
       if (this.#controls) this.#renderControls()
     }
     if (name === 'aria-label') this.#syncAccessibleName()
+    if (name === 'no-gamut-boundaries') {
+      this.#showGamutBoundaries.value = value === null
+    }
   }
 
   #emitChange() {
