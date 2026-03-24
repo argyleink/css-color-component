@@ -12,6 +12,24 @@
   --sl-color-text-accent: var(--sl-color-accent-high);
 }
 
+/* Hero inline picker */
+.hero-picker {
+  display: grid;
+  place-items: start;
+}
+
+.hero-picker::part(panel) {
+  display: block;
+  position: static;
+  opacity: 1;
+}
+
+/* Menu button override */
+starlight-menu-button > button {
+  min-width: unset;
+  min-height: unset;
+}
+
 /* Typography */
 :is(h1, h2, h3, h4, h5, h6) {
   scroll-margin-top: 6rem;
