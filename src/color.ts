@@ -6,6 +6,25 @@ export type StandardSpace = 'srgb' | 'hex' | 'hsl' | 'hwb' | 'lab' | 'lch' | 'ok
 export type WideRGB = 'srgb-linear' | 'display-p3' | 'rec2020' | 'a98-rgb' | 'prophoto' | 'xyz' | 'xyz-d50' | 'xyz-d65'
 export type ColorSpace = StandardSpace | WideRGB
 
+export const DEFAULT_COLOR_SPACES: string[] = [
+  'hex',
+  'srgb',
+  'srgb-linear',
+  'hsl',
+  'hwb',
+  'display-p3',
+  'a98-rgb',
+  'lab',
+  'lch',
+  'oklch',
+  'oklab',
+  'rec2020',
+  'prophoto',
+  'xyz',
+  'xyz-d50',
+  'xyz-d65'
+]
+
 colorjs.ColorSpace.register(colorjs.sRGB);
 colorjs.ColorSpace.register(colorjs.sRGB_Linear);
 colorjs.ColorSpace.register(colorjs.HSL);
@@ -21,6 +40,10 @@ colorjs.ColorSpace.register(colorjs.REC_2020);
 colorjs.ColorSpace.register(colorjs.XYZ_D65);
 colorjs.ColorSpace.register(colorjs.XYZ_D50);
 colorjs.ColorSpace.register(colorjs.Okhsv);
+
+export function isValidColorSpace(space: string): space is ColorSpace {
+  return DEFAULT_COLOR_SPACES.includes(space as ColorSpace)
+}
 
 export function parseCoords(x: number, min = 0, max = 100) {
   return Math.max(min, Math.min(max, x))
@@ -79,6 +102,8 @@ export function alphaToString(alpha: string | number) {
 }
 
 export function isRGBLike(space: string) {
+  if (space === 'srgb' || space === 'hex') return false
+
   return [
     'srgb-linear',
     'display-p3',

@@ -1,11 +1,14 @@
 import { signal, computed, effect, Signal } from '@preact/signals-core'
 import { parse, serialize, to, toGamut, contrast as contrastFn } from 'colorjs.io/fn'
 import {
+  DEFAULT_COLOR_SPACES,
   contrastColor,
   detectGamut,
   getColorJSSpaceID,
+  isValidColorSpace,
   isRGBLike,
   reverseColorJSSpaceID,
+  type Gamut,
   type Theme,
   type ColorSpace
 } from './color'
@@ -28,12 +31,17 @@ import { createTemplate } from './utils/template'
 import styles from './styles/index.css?inline'
 
 export type { Theme, ColorSpace }
-export interface ChangeDetail { value: string; colorspace: ColorSpace; gamut: string }
+export interface ChangeDetail { value: string; colorspace: ColorSpace; gamut: Gamut }
 
 const supportsAnchor = CSS.supports?.('anchor-name: --a') ?? false
 
 const DEFAULT_VALUE = 'oklch(75% 75% 180)'
 const DEFAULT_SPACE: ColorSpace = 'oklch'
+const SPACE_GROUPS = [
+  { label: 'Standard', spaces: ['hex', 'srgb', 'srgb-linear', 'hsl', 'hwb'] },
+  { label: 'HDR', spaces: ['display-p3', 'a98-rgb'] },
+  { label: 'Ultra HDR', spaces: ['lab', 'lch', 'oklch', 'oklab', 'rec2020', 'prophoto', 'xyz', 'xyz-d50', 'xyz-d65'] }
+]
 
 // Create shared stylesheet for all component instances
 const sheet = new CSSStyleSheet()
@@ -43,7 +51,7 @@ if (typeof sheet.replaceSync === 'function') {
 }
 
 export class ColorInput extends HTMLElement {
-  static get observedAttributes() { return ['value', 'colorspace', 'theme', 'no-alpha'] }
+  static get observedAttributes() { return ['value', 'colorspace', 'color-spaces', 'theme', 'no-alpha'] }
 
   // ──────────────────────────────────────────────────────────────────────────────
   // State: Reactive signals (Preact Signals Core)
@@ -55,6 +63,7 @@ export class ColorInput extends HTMLElement {
   #anchor: Signal<HTMLElement | null> = signal(null)
   #error = signal<string | null>(null)
   #noAlpha = signal(false)
+  #allowedSpaces = [...DEFAULT_COLOR_SPACES]
 
   #contrast = computed(() => contrastColor(this.#value.value))
   #gamut = computed(() => detectGamut(this.#value.value))
@@ -71,39 +80,24 @@ export class ColorInput extends HTMLElement {
   set value(v: string) {
     if (typeof v !== 'string' || !v) return
     try {
-      const parsed = parse(v)
-      const sid = reverseColorJSSpaceID(parsed.spaceId)
-      const isHex = typeof v === 'string' && v.trim().startsWith('#')
-      this.#space.value = isHex ? 'hex' : (sid === 'rgb' ? 'srgb' : (sid as ColorSpace))
-      this.#value.value = v
-      this.#programmaticUpdate = true
-      this.setAttribute('value', v)
-      this.setAttribute('colorspace', this.#space.value)
-      this.#programmaticUpdate = false
-      this.#emitChange()
+      this.#applyValue(v)
     } catch { }
   }
 
   get colorspace() { return this.#space.value }
   set colorspace(s: ColorSpace | string) {
-    const next = (s as ColorSpace) || DEFAULT_SPACE
-    this.#space.value = next
-    this.#programmaticUpdate = true
-    this.setAttribute('colorspace', next)
-    try {
-      const current = parse(this.#value.value)
-      const targetSpace = next === 'hex' ? 'srgb' : next
-      const converted = toGamut(to(current, getColorJSSpaceID(targetSpace)))
-      const tempStr = serialize(converted, { precision: 12 })
-      const parsed = parseIntoChannels(next, tempStr)
-      const newValue = gencolor(next, parsed.ch)
-      this.#value.value = newValue
-      this.setAttribute('value', newValue)
-      this.#emitChange()
-    } catch { }
-    this.#programmaticUpdate = false
-    // Re-render controls for new colorspace
-    if (this.#controls) this.#renderControls()
+    this.#applyColorspace(s)
+  }
+
+  get colorSpaces() { return [...this.#allowedSpaces] }
+  set colorSpaces(spaces: string[] | string) {
+    const next = this.#parseColorSpacesAttribute(Array.isArray(spaces) ? spaces.join(' ') : spaces)
+    this.#allowedSpaces = next
+    this.#withProgrammaticUpdate(() => {
+      this.setAttribute('color-spaces', next.join(' '))
+    })
+    this.#renderSpaceOptions()
+    this.#syncAllowedSpace()
   }
 
   get theme() { return this.#theme.value }
@@ -135,6 +129,142 @@ export class ColorInput extends HTMLElement {
   setAnchor(el: HTMLElement | null) { this.#anchor.value = el }
   set setColor(v: string) { this.value = v }
   set setAnchorElement(el: HTMLElement | null) { this.setAnchor(el) }
+
+  #defaultAllowedSpace() {
+    return this.#allowedSpaces[0] ?? DEFAULT_SPACE
+  }
+
+  #withProgrammaticUpdate(fn: () => void) {
+    this.#programmaticUpdate = true
+    try {
+      fn()
+    } finally {
+      this.#programmaticUpdate = false
+    }
+  }
+
+  #parseColorSpacesAttribute(value: string | null) {
+    const tokens = (value ?? '')
+      .split(/\s+/)
+      .map(space => space.trim().toLowerCase())
+      .filter(Boolean)
+
+    const valid = tokens.filter((space, index) => {
+      if (tokens.indexOf(space) !== index) return false
+      return isValidColorSpace(space)
+    })
+
+    return valid.length ? valid : [...DEFAULT_COLOR_SPACES]
+  }
+
+  #detectValueSpace(value: string) {
+    const parsed = parse(value)
+    const sid = reverseColorJSSpaceID(parsed.spaceId)
+    const isHex = typeof value === 'string' && value.trim().startsWith('#')
+    const next = isHex ? 'hex' : (sid === 'rgb' ? 'srgb' : sid)
+    return isValidColorSpace(next) ? next : DEFAULT_SPACE
+  }
+
+  #convertValueToSpace(value: string, space: ColorSpace) {
+    const current = parse(value)
+    const targetSpace = space === 'hex' ? 'srgb' : space
+    const converted = toGamut(to(current, getColorJSSpaceID(targetSpace)))
+    const tempStr = serialize(converted, { precision: 12 })
+    const parsed = parseIntoChannels(space, tempStr)
+    return gencolor(space, parsed.ch)
+  }
+
+  #applyValue(value: string, emit = true) {
+    const detectedSpace = this.#detectValueSpace(value)
+    const nextSpace = this.#allowedSpaces.includes(detectedSpace)
+      ? detectedSpace
+      : this.#defaultAllowedSpace()
+    const nextValue = nextSpace === detectedSpace
+      ? value
+      : this.#convertValueToSpace(value, nextSpace)
+
+    this.#space.value = nextSpace
+    this.#value.value = nextValue
+    this.#withProgrammaticUpdate(() => {
+      this.setAttribute('value', nextValue)
+      this.setAttribute('colorspace', nextSpace)
+    })
+    if (this.#spaceSelect) this.#spaceSelect.value = nextSpace
+    if (emit) this.#emitChange()
+    if (this.#controls) this.#renderControls()
+  }
+
+  #applyColorspace(space: ColorSpace | string, emit = true, reflect = true) {
+    const requested = typeof space === 'string' ? space.trim().toLowerCase() : String(space)
+    const next = isValidColorSpace(requested) && this.#allowedSpaces.includes(requested)
+      ? requested
+      : this.#defaultAllowedSpace()
+
+    this.#space.value = next
+    try {
+      this.#withProgrammaticUpdate(() => {
+        if (reflect) this.setAttribute('colorspace', next)
+        const newValue = this.#convertValueToSpace(this.#value.value, next)
+        this.#value.value = newValue
+        if (reflect) this.setAttribute('value', newValue)
+      })
+    } catch { }
+    if (emit) this.#emitChange()
+    if (this.#spaceSelect) this.#spaceSelect.value = next
+    if (this.#controls) this.#renderControls()
+  }
+
+  #colorSpaceLabel(space: string) {
+    return space === 'srgb' ? 'rgb' : space
+  }
+
+  #renderSpaceOptions() {
+    if (!this.#spaceSelect) return
+
+    const useDefaultGrouping =
+      this.#allowedSpaces.length === DEFAULT_COLOR_SPACES.length &&
+      this.#allowedSpaces.every((space, index) => space === DEFAULT_COLOR_SPACES[index])
+
+    const fragment = document.createDocumentFragment()
+
+    const appendOption = (parent: ParentNode, space: string) => {
+      const option = document.createElement('option')
+      option.value = space
+      option.textContent = this.#colorSpaceLabel(space)
+      parent.appendChild(option)
+    }
+
+    if (!useDefaultGrouping) {
+      this.#allowedSpaces.forEach(space => appendOption(fragment, space))
+      this.#spaceSelect.replaceChildren(fragment)
+      return
+    }
+
+    const allowed = new Set(this.#allowedSpaces)
+    SPACE_GROUPS.forEach(({ label, spaces }) => {
+      const group = document.createElement('optgroup')
+      group.label = label
+      spaces
+        .filter(space => allowed.has(space))
+        .forEach(space => appendOption(group, space))
+
+      if (group.childElementCount > 0) {
+        fragment.appendChild(group)
+      }
+    })
+
+    this.#spaceSelect.replaceChildren(fragment)
+  }
+
+  #syncAllowedSpace() {
+    const next = this.#allowedSpaces.includes(this.#space.value)
+      ? this.#space.value
+      : this.#defaultAllowedSpace()
+    if (this.#spaceSelect) this.#spaceSelect.value = next
+    if (next !== this.#space.value || this.#detectValueSpace(this.#value.value) !== next) {
+      this.#applyColorspace(next, false)
+    }
+  }
 
   // ──────────────────────────────────────────────────────────────────────────────
   // DOM references
@@ -201,8 +331,7 @@ export class ColorInput extends HTMLElement {
       // Sync area picker when color changes
       this.#areaPickerEffectCleanup = effect(() => {
         const v = this.#value.value
-        const space = this.#space.value
-        this.#areaPicker?.setValue(v, space)
+        this.#areaPicker?.setValue(v, this.#space.value)
       })
     }
 
@@ -257,31 +386,8 @@ export class ColorInput extends HTMLElement {
       })
     }
 
-    // Init space options
-    this.#spaceSelect.innerHTML = `
-      <optgroup label="Standard">
-        <option value="hex">hex</option>
-        <option value="srgb">rgb</option>
-        <option value="srgb-linear">srgb-linear</option>
-        <option value="hsl">hsl</option>
-        <option value="hwb">hwb</option>
-      </optgroup>
-      <optgroup label="HDR">
-        <option value="display-p3">display-p3</option>
-        <option value="a98-rgb">a98-rgb</option>
-      </optgroup>
-      <optgroup label="Ultra HDR">
-        <option value="lab">lab</option>
-        <option value="lch">lch</option>
-        <option value="oklch">oklch</option>
-        <option value="oklab">oklab</option>
-        <option value="rec2020">rec2020</option>
-        <option value="prophoto">prophoto</option>
-        <option value="xyz">xyz</option>
-        <option value="xyz-d50">xyz-d50</option>
-        <option value="xyz-d65">xyz-d65</option>
-      </optgroup>
-    `
+    this.#allowedSpaces = this.#parseColorSpacesAttribute(this.getAttribute('color-spaces'))
+    this.#renderSpaceOptions()
 
     if (btn) btn.addEventListener('click', () => this.show(btn))
 
@@ -328,7 +434,7 @@ export class ColorInput extends HTMLElement {
     })
 
     this.#spaceSelect.addEventListener('change', () => {
-      this.colorspace = this.#spaceSelect!.value as ColorSpace
+      this.colorspace = this.#spaceSelect!.value
       this.#renderControls()
     })
 
@@ -391,10 +497,10 @@ export class ColorInput extends HTMLElement {
     if (!this.hasAttribute('colorspace')) {
       // If we have a value attribute, the colorspace was already detected in attributeChangedCallback
       // So we should sync the attribute with the detected internal space value
-      this.setAttribute('colorspace', this.#space.value)
+      this.setAttribute('colorspace', this.#defaultAllowedSpace())
     }
 
-    this.#spaceSelect.value = this.#space.value
+    this.#syncAllowedSpace()
 
     // Normalize value on load so chroma (and other channels) are in consistent form
     // (e.g. percentage notation), matching what gencolor produces after any change
@@ -421,17 +527,16 @@ export class ColorInput extends HTMLElement {
 
     if (name === 'value' && typeof value === 'string') {
       try {
-        const parsed = parse(value)
-        const sid = reverseColorJSSpaceID(parsed.spaceId)
-        const isHex = typeof value === 'string' && value.trim().startsWith('#')
-        this.#value.value = value
-        this.#space.value = isHex ? 'hex' : (sid === 'rgb' ? 'srgb' : (sid as ColorSpace))
-        if (this.#spaceSelect) this.#spaceSelect.value = this.#space.value
+        this.#applyValue(value, false)
       } catch { }
     }
     if (name === 'colorspace' && value) {
-      this.#space.value = value as ColorSpace
-      if (this.#spaceSelect) this.#spaceSelect.value = value
+      this.#applyColorspace(value, false, false)
+    }
+    if (name === 'color-spaces') {
+      this.#allowedSpaces = this.#parseColorSpacesAttribute(value)
+      this.#renderSpaceOptions()
+      this.#syncAllowedSpace()
     }
     if (name === 'theme') {
       this.#theme.value = (value as Theme) || 'auto'
@@ -454,21 +559,10 @@ export class ColorInput extends HTMLElement {
     }
 
     try {
-      const parsed = parse(inputValue)
-      const sid = reverseColorJSSpaceID(parsed.spaceId)
-      const isHex = typeof inputValue === 'string' && inputValue.trim().startsWith('#')
-
       // Clear error on success
       this.#error.value = null
-
-      // Update value and colorspace
-      this.#space.value = isHex ? 'hex' : (sid === 'rgb' ? 'srgb' : (sid as ColorSpace))
-      this.#value.value = inputValue
-      this.setAttribute('value', inputValue)
-      this.setAttribute('colorspace', this.#space.value)
-      if (this.#spaceSelect) this.#spaceSelect.value = this.#space.value
-      this.#emitChange()
-    } catch (error) {
+      this.#applyValue(inputValue)
+    } catch {
       this.#error.value = 'Invalid color format'
     }
   }
