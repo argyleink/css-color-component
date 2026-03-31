@@ -43,7 +43,7 @@ if (typeof sheet.replaceSync === 'function') {
 }
 
 export class ColorInput extends HTMLElement {
-  static get observedAttributes() { return ['value', 'colorspace', 'theme', 'no-alpha'] }
+  static get observedAttributes() { return ['value', 'colorspace', 'theme', 'no-alpha', 'no-gamut-boundaries'] }
 
   // ──────────────────────────────────────────────────────────────────────────────
   // State: Reactive signals (Preact Signals Core)
@@ -55,6 +55,7 @@ export class ColorInput extends HTMLElement {
   #anchor: Signal<HTMLElement | null> = signal(null)
   #error = signal<string | null>(null)
   #noAlpha = signal(false)
+  #showGamutBoundaries = signal(true)
 
   #contrast = computed(() => contrastColor(this.#value.value))
   #gamut = computed(() => detectGamut(this.#value.value))
@@ -64,6 +65,7 @@ export class ColorInput extends HTMLElement {
   #errorEffectCleanup: ReturnType<typeof effect> | null = null
   #controlsEffectCleanup: ReturnType<typeof effect> | null = null
   #areaPickerEffectCleanup: ReturnType<typeof effect> | null = null
+  #areaPickerGamutBoundariesEffectCleanup: ReturnType<typeof effect> | null = null
   #areaPicker?: AreaPicker
   #programmaticUpdate = false
 
@@ -119,6 +121,13 @@ export class ColorInput extends HTMLElement {
     this.#noAlpha.value = !!v
     if (v) this.setAttribute('no-alpha', '')
     else this.removeAttribute('no-alpha')
+  }
+
+  get showGamutBoundaries() { return this.#showGamutBoundaries.value }
+  set showGamutBoundaries(v: boolean) {
+    this.#showGamutBoundaries.value = !!v
+    if (v) this.removeAttribute('no-gamut-boundaries')
+    else this.setAttribute('no-gamut-boundaries', '')
   }
 
   get gamut() { return this.#gamut.value }
@@ -203,6 +212,9 @@ export class ColorInput extends HTMLElement {
         const v = this.#value.value
         const space = this.#space.value
         this.#areaPicker?.setValue(v, space)
+      })
+      this.#areaPickerGamutBoundariesEffectCleanup = effect(() => {
+        this.#areaPicker?.setShowGamutBoundaries(this.#showGamutBoundaries.value)
       })
     }
 
@@ -411,6 +423,7 @@ export class ColorInput extends HTMLElement {
     this.#previewEffectCleanup?.()
     this.#errorEffectCleanup?.()
     this.#areaPickerEffectCleanup?.()
+    this.#areaPickerGamutBoundariesEffectCleanup?.()
     this.#areaPicker?.unmount()
   }
 
@@ -439,6 +452,9 @@ export class ColorInput extends HTMLElement {
     if (name === 'no-alpha') {
       this.#noAlpha.value = value !== null
       if (this.#controls) this.#renderControls()
+    }
+    if (name === 'no-gamut-boundaries') {
+      this.#showGamutBoundaries.value = value === null
     }
   }
 
