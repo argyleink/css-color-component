@@ -2,6 +2,7 @@ import { signal, computed, effect, Signal } from '@preact/signals-core'
 import { parse, serialize, to, toGamut, contrast as contrastFn } from 'colorjs.io/fn'
 import {
   contrastColor,
+  COLOR_SPACES,
   detectGamut,
   getColorJSSpaceID,
   isRGBLike,
@@ -34,6 +35,8 @@ const supportsAnchor = CSS.supports?.('anchor-name: --a') ?? false
 
 const DEFAULT_VALUE = 'oklch(75% 75% 180)'
 const DEFAULT_SPACE: ColorSpace = 'oklch'
+const asColorSpace = (value: string | null): ColorSpace | null =>
+  COLOR_SPACES.includes(value as ColorSpace) ? value as ColorSpace : null
 
 // Create shared stylesheet for all component instances
 const sheet = new CSSStyleSheet()
@@ -43,7 +46,7 @@ if (typeof sheet.replaceSync === 'function') {
 }
 
 export class ColorInput extends HTMLElement {
-  static get observedAttributes() { return ['value', 'colorspace', 'theme', 'no-alpha'] }
+  static get observedAttributes() { return ['value', 'colorspace', 'theme', 'no-alpha', 'initial-colorspace'] }
 
   // ──────────────────────────────────────────────────────────────────────────────
   // State: Reactive signals (Preact Signals Core)
@@ -123,6 +126,12 @@ export class ColorInput extends HTMLElement {
 
   get gamut() { return this.#gamut.value }
   get contrastColor() { return this.#contrast.value }
+  get initialColorspace() { return asColorSpace(this.getAttribute('initial-colorspace')) }
+  set initialColorspace(s: ColorSpace | string | null) {
+    const next = asColorSpace(typeof s === 'string' ? s : null)
+    if (next) this.setAttribute('initial-colorspace', next)
+    else this.removeAttribute('initial-colorspace')
+  }
 
   show(anchor?: HTMLElement | null) {
     if (anchor) this.#anchor.value = anchor
@@ -388,6 +397,10 @@ export class ColorInput extends HTMLElement {
 
     // Defaults
     if (!this.hasAttribute('value')) this.setAttribute('value', DEFAULT_VALUE)
+    const resolvedInitialSpace = !this.hasAttribute('colorspace')
+      ? asColorSpace(this.getAttribute('initial-colorspace'))
+      : null
+    if (resolvedInitialSpace) this.#space.value = resolvedInitialSpace
     if (!this.hasAttribute('colorspace')) {
       // If we have a value attribute, the colorspace was already detected in attributeChangedCallback
       // So we should sync the attribute with the detected internal space value
@@ -398,10 +411,12 @@ export class ColorInput extends HTMLElement {
 
     // Normalize value on load so chroma (and other channels) are in consistent form
     // (e.g. percentage notation), matching what gencolor produces after any change
-    try {
-      const { ch } = parseIntoChannels(this.#space.value, this.#value.value)
-      this.#value.value = gencolor(this.#space.value, ch)
-    } catch {}
+    if (!resolvedInitialSpace) {
+      try {
+        const { ch } = parseIntoChannels(this.#space.value, this.#value.value)
+        this.#value.value = gencolor(this.#space.value, ch)
+      } catch {}
+    }
 
     this.#renderControls()
   }

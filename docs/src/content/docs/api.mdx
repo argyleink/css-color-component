@@ -58,6 +58,33 @@ The `colorspace` attribute controls which editing space the UI uses.
 
 When this changes, the component converts the current color into the requested space and rebuilds the controls to match.
 
+### initial-colorspace
+
+Use `initial-colorspace` when you want the picker to open in a specific editing space without rewriting the incoming `value` string on first render.
+
+```html
+<color-input value="#000" initial-colorspace="hsl"></color-input>
+```
+
+If `colorspace` is also present, `colorspace` wins.
+
+<Tabs>
+  <TabItem label="Hex value, HSL UI">
+    <ColorInputDemo
+      value="#3b82f6"
+      initialColorspace="hsl"
+      description="Start from a hex token but open the picker with HSL controls for hue and saturation editing."
+    />
+  </TabItem>
+  <TabItem label="Display P3 value, OKLCH UI">
+    <ColorInputDemo
+      value="color(display-p3 0.3 0.7 0.95)"
+      initialColorspace="oklch"
+      description="Keep the authored wide-gamut color string while presenting perceptual OKLCH controls on first open."
+    />
+  </TabItem>
+</Tabs>
+
 ### theme
 
 The `theme` attribute controls the visual appearance:
@@ -170,6 +197,13 @@ Supported values:
 - `xyz-d50`
 - `xyz-d65`
 
+**initialColorspace** - Preferred startup color space
+
+```js
+console.log(picker.initialColorspace); // null | "hsl" | "oklch" | ...
+picker.initialColorspace = "hsl";
+```
+
 **theme** - Visual theme
 
 ```js
@@ -200,7 +234,7 @@ console.log(picker.contrastColor); // "white" or "black"
 ```
 
 :::note
-`value`, `colorspace`, `theme`, and `noAlpha` reflect to attributes. `gamut` and `contrastColor` are derived read-only values.
+`value`, `colorspace`, `initialColorspace`, `theme`, and `noAlpha` reflect to attributes. `gamut` and `contrastColor` are derived read-only values.
 :::
 
 ## Methods
