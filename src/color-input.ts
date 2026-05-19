@@ -133,6 +133,10 @@ export class ColorInput extends HTMLElement {
     else this.removeAttribute('initial-colorspace')
   }
 
+  #isInlinePickerVisible() {
+    return this.#panel ? getComputedStyle(this.#panel).display !== 'none' : false
+  }
+
   show(anchor?: HTMLElement | null) {
     if (anchor) this.#anchor.value = anchor
     this.#panel?.showPopover?.();
@@ -292,7 +296,10 @@ export class ColorInput extends HTMLElement {
       </optgroup>
     `
 
-    if (btn) btn.addEventListener('click', () => this.show(btn))
+    if (btn) btn.addEventListener('click', () => {
+      if (this.#isInlinePickerVisible()) return
+      this.show(btn)
+    })
 
     // Text input validation
     if (this.#textInput) {

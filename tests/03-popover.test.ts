@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import './setup'
 import '../src/index'
 
@@ -19,5 +19,18 @@ describe('popover show/close and focus', () => {
     expect(panel.hasAttribute('hidden')).toBe(false)
     el.close()
     expect(panel.hasAttribute('hidden')).toBe(true)
+  })
+
+  it('does not try to show the popover when the panel is already displayed inline', () => {
+    const trigger = el.shadowRoot.querySelector('button.trigger') as HTMLButtonElement
+    const panel = el.shadowRoot.querySelector('.panel') as HTMLElement & { showPopover: () => void }
+    panel.removeAttribute('hidden')
+    panel.style.display = 'block'
+
+    const showSpy = vi.spyOn(panel, 'showPopover')
+
+    trigger.click()
+
+    expect(showSpy).not.toHaveBeenCalled()
   })
 })
