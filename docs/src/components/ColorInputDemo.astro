@@ -27,7 +27,7 @@ const validInitialColorspaces = new Set(COLOR_SPACES);
 const themeAttr = theme !== 'auto' ? ` theme="${theme}"` : '';
 const noAlphaAttr = noAlpha ? ` no-alpha` : '';
 const initialColorspaceAttr = initialColorspace ? ` initial-colorspace="${initialColorspace}"` : '';
-const initialReadout = colorspace ?? (initialColorspace && validInitialColorspaces.has(initialColorspace) ? initialColorspace : '—');
+const displayColorspace = colorspace ?? (initialColorspace && validInitialColorspaces.has(initialColorspace) ? initialColorspace : '—');
 const codeSnippet = `<color-input value="${value}"${initialColorspaceAttr}${themeAttr}${noAlphaAttr}></color-input>`;
 ---
 
@@ -42,7 +42,7 @@ const codeSnippet = `<color-input value="${value}"${initialColorspaceAttr}${them
     <dt>Value</dt>
     <dd data-readout="value">{value}</dd>
     <dt>Color Space</dt>
-    <dd data-readout="colorspace">{initialReadout}</dd>
+    <dd data-readout="colorspace">{displayColorspace}</dd>
     <dt>Gamut</dt>
     <dd data-readout="gamut">—</dd>
     <dt>Contrast Color</dt>
