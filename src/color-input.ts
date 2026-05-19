@@ -2,6 +2,7 @@ import { signal, computed, effect, Signal } from '@preact/signals-core'
 import { parse, serialize, to, toGamut, contrast as contrastFn } from 'colorjs.io/fn'
 import {
   contrastColor,
+  COLOR_SPACES,
   detectGamut,
   getColorJSSpaceID,
   isRGBLike,
@@ -34,11 +35,6 @@ const supportsAnchor = CSS.supports?.('anchor-name: --a') ?? false
 
 const DEFAULT_VALUE = 'oklch(75% 75% 180)'
 const DEFAULT_SPACE: ColorSpace = 'oklch'
-const COLOR_SPACES: ColorSpace[] = [
-  'hex', 'srgb', 'srgb-linear', 'hsl', 'hwb',
-  'display-p3', 'a98-rgb', 'lab', 'lch', 'oklch', 'oklab',
-  'rec2020', 'prophoto', 'xyz', 'xyz-d50', 'xyz-d65'
-]
 const asColorSpace = (value: string | null): ColorSpace | null =>
   COLOR_SPACES.includes(value as ColorSpace) ? value as ColorSpace : null
 
@@ -401,10 +397,10 @@ export class ColorInput extends HTMLElement {
 
     // Defaults
     if (!this.hasAttribute('value')) this.setAttribute('value', DEFAULT_VALUE)
-    const initialColorspace = !this.hasAttribute('colorspace')
+    const resolvedInitialSpace = !this.hasAttribute('colorspace')
       ? asColorSpace(this.getAttribute('initial-colorspace'))
       : null
-    if (initialColorspace) this.#space.value = initialColorspace
+    if (resolvedInitialSpace) this.#space.value = resolvedInitialSpace
     if (!this.hasAttribute('colorspace')) {
       // If we have a value attribute, the colorspace was already detected in attributeChangedCallback
       // So we should sync the attribute with the detected internal space value
@@ -415,7 +411,7 @@ export class ColorInput extends HTMLElement {
 
     // Normalize value on load so chroma (and other channels) are in consistent form
     // (e.g. percentage notation), matching what gencolor produces after any change
-    if (!initialColorspace) {
+    if (!resolvedInitialSpace) {
       try {
         const { ch } = parseIntoChannels(this.#space.value, this.#value.value)
         this.#value.value = gencolor(this.#space.value, ch)

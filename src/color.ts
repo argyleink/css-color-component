@@ -5,6 +5,12 @@ export type Theme = 'auto' | 'light' | 'dark'
 export type StandardSpace = 'srgb' | 'hex' | 'hsl' | 'hwb' | 'lab' | 'lch' | 'oklab' | 'oklch'
 export type WideRGB = 'srgb-linear' | 'display-p3' | 'rec2020' | 'a98-rgb' | 'prophoto' | 'xyz' | 'xyz-d50' | 'xyz-d65'
 export type ColorSpace = StandardSpace | WideRGB
+export const COLOR_SPACES: ColorSpace[] = [
+  'hex', 'srgb', 'srgb-linear', 'hsl', 'hwb',
+  'lab', 'lch', 'oklab', 'oklch',
+  'display-p3', 'a98-rgb', 'rec2020', 'prophoto',
+  'xyz', 'xyz-d50', 'xyz-d65'
+]
 
 colorjs.ColorSpace.register(colorjs.sRGB);
 colorjs.ColorSpace.register(colorjs.sRGB_Linear);
