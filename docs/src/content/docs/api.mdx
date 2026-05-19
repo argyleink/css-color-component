@@ -58,6 +58,16 @@ The `colorspace` attribute controls which editing space the UI uses.
 
 When this changes, the component converts the current color into the requested space and rebuilds the controls to match.
 
+### initial-colorspace
+
+Use `initial-colorspace` when you want the picker to open in a specific editing space without rewriting the incoming `value` string on first render.
+
+```html
+<color-input value="#000" initial-colorspace="hsl"></color-input>
+```
+
+If `colorspace` is also present, `colorspace` wins.
+
 ### theme
 
 The `theme` attribute controls the visual appearance:
@@ -170,6 +180,13 @@ Supported values:
 - `xyz-d50`
 - `xyz-d65`
 
+**initialColorspace** - Preferred startup color space
+
+```js
+console.log(picker.initialColorspace); // null | "hsl" | "oklch" | ...
+picker.initialColorspace = "hsl";
+```
+
 **theme** - Visual theme
 
 ```js
@@ -200,7 +217,7 @@ console.log(picker.contrastColor); // "white" or "black"
 ```
 
 :::note
-`value`, `colorspace`, `theme`, and `noAlpha` reflect to attributes. `gamut` and `contrastColor` are derived read-only values.
+`value`, `colorspace`, `initialColorspace`, `theme`, and `noAlpha` reflect to attributes. `gamut` and `contrastColor` are derived read-only values.
 :::
 
 ## Methods
