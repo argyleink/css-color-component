@@ -1,5 +1,6 @@
 ---
 import { Code } from '@astrojs/starlight/components';
+import { COLOR_SPACES } from '../../../src/color';
 
 interface Props {
   value?: string;
@@ -22,16 +23,11 @@ const {
 } = Astro.props;
 
 const demoId = `demo-${Math.random().toString(36).substr(2, 9)}`;
-const validInitialColorspaces = new Set([
-  'hex', 'srgb', 'srgb-linear', 'hsl', 'hwb',
-  'lab', 'lch', 'oklab', 'oklch',
-  'display-p3', 'a98-rgb', 'rec2020', 'prophoto',
-  'xyz', 'xyz-d50', 'xyz-d65'
-]);
+const validInitialColorspaces = new Set(COLOR_SPACES);
 const themeAttr = theme !== 'auto' ? ` theme="${theme}"` : '';
 const noAlphaAttr = noAlpha ? ` no-alpha` : '';
 const initialColorspaceAttr = initialColorspace ? ` initial-colorspace="${initialColorspace}"` : '';
-const initialReadout = colorspace ?? (validInitialColorspaces.has(initialColorspace) ? initialColorspace : '—');
+const initialReadout = colorspace ?? (initialColorspace && validInitialColorspaces.has(initialColorspace) ? initialColorspace : '—');
 const codeSnippet = `<color-input value="${value}"${initialColorspaceAttr}${themeAttr}${noAlphaAttr}></color-input>`;
 ---
 
