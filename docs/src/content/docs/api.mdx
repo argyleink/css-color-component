@@ -68,6 +68,23 @@ Use `initial-colorspace` when you want the picker to open in a specific editing 
 
 If `colorspace` is also present, `colorspace` wins.
 
+<Tabs>
+  <TabItem label="Hex value, HSL UI">
+    <ColorInputDemo
+      value="#3b82f6"
+      initialColorspace="hsl"
+      description="Start from a hex token but open the picker with HSL controls for hue and saturation editing."
+    />
+  </TabItem>
+  <TabItem label="Display P3 value, OKLCH UI">
+    <ColorInputDemo
+      value="color(display-p3 0.3 0.7 0.95)"
+      initialColorspace="oklch"
+      description="Keep the authored wide-gamut color string while presenting perceptual OKLCH controls on first open."
+    />
+  </TabItem>
+</Tabs>
+
 ### theme
 
 The `theme` attribute controls the visual appearance:
