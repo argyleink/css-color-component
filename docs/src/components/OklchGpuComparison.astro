@@ -52,15 +52,16 @@
   <p class="gpu-cmp-note" data-readout="env">—</p>
   <pre class="gpu-cmp-bench" data-readout="bench" hidden></pre>
   <figcaption>
-    Arm C renders the library's <code>'cl'</code> plane (lightness→x, chroma→y) in
-    absolute coordinates; Arms A &amp; B render this component's slice
-    (chroma→x stretched to the P3 boundary, lightness→y). Orientation and
-    stretch differences are expected — see the report below.
+    All three now render the same slice: chroma→x stretched to the P3 boundary,
+    lightness→y. Arm C uses <code>@colordx/gpu</code> 0.5.0 with
+    <code>transpose</code> for the orientation and <code>math.maxChromaLUT()</code>
+    for the stretch — so it should track Arm B (both GPU) closely. Any residual
+    difference is the library's parity-tested math vs. the hand-written shader.
   </figcaption>
 </figure>
 
 <script>
-  import { createChartRenderer } from '@colordx/gpu'
+  import { createChartRenderer, math } from '@colordx/gpu'
   import CpuWorker from './cpu-oklch.worker.ts?worker'
 
   // ── shared OKLCH math (colordx constants; no color lib) ───────────────────
@@ -284,17 +285,33 @@ void main(){
       stat('b-res').textContent = `${canvasB.width}×${canvasB.height}`
       bFps.tick()
     }
+    // Build the library paint options for our slice: transpose so chroma→x /
+    // lightness→y (matches A & B), and a per-row chroma stretch LUT to P3
+    // (math.maxChromaLUT — the same binary search the CPU arm runs). The LUT is
+    // rebuilt only on hue change and counted in the timed region, like A & B.
+    let lutHueC = NaN, lutC: Float32Array | null = null
+    function paintOptsC(hue: number) {
+      if (hue !== lutHueC) {
+        lutC = (math as any).maxChromaLUT({ model: 'oklch', hue, gamut: 'p3' })
+        lutHueC = hue
+      }
+      return {
+        plane: 'cl' as const, value: hue, xMax: 1, yMax: 0.4,
+        transpose: true, chromaLUT: lutC!,
+        gamuts: [
+          { space: 'p3' as const, fill: true },
+          { space: 'srgb' as const, border: [1, 1, 1, 0.7] as [number, number, number, number] },
+        ],
+        borderWidth: 1.5 * DPR, p3Output: SUPPORTS_P3,
+      }
+    }
     function paintC(hue: number) {
       if (!armC) return
       size(canvasC)
       const t = performance.now()
-      armC.paint({
-        plane: 'cl', value: hue, xMax: 1, yMax: 0.4,
-        showP3: true, showRec2020: true,
-        borderP3: [1, 1, 1, 0.7], borderRec2020: [1, 1, 1, 0.4],
-        borderWidth: 1.5 * DPR, p3Output: SUPPORTS_P3,
-      })
-      stat('c-ms').textContent = `${(performance.now() - t).toFixed(2)} ms issue`
+      armC.paint(paintOptsC(hue))
+      armC.gl.finish() // 0.5.0 exposes gl, so C can be timed like B
+      stat('c-ms').textContent = `${(performance.now() - t).toFixed(2)} ms`
       stat('c-res').textContent = `${canvasC.width}×${canvasC.height}`
       cFps.tick()
     }
@@ -366,14 +383,14 @@ void main(){
         const hue = (i * 9) % 360
         let t = performance.now(); armB?.paint(hue); armB?.finish(); bTimes.push(performance.now() - t)
         t = performance.now()
-        armC?.paint({ plane: 'cl', value: hue, xMax: 1, yMax: 0.4, showP3: true, showRec2020: true, borderP3: [1,1,1,0.7], borderRec2020: [1,1,1,0.4], borderWidth: 1.5 * DPR, p3Output: SUPPORTS_P3 })
+        if (armC) { armC.paint(paintOptsC(hue)); armC.gl.finish() }
         cTimes.push(performance.now() - t)
       }
       benchRead.textContent =
         `benchmark · median of ${N} renders @ ${canvasB.width}×${canvasB.height} (DPR ${DPR})\n` +
         `A current (cpu compute, ¼-res ${Math.round(canvasA.width/4)}×${Math.round(canvasA.height/4)}): ${median(aTimes).toFixed(2)} ms\n` +
         `B custom shader (paint + GPU finish):              ${median(bTimes).toFixed(2)} ms\n` +
-        `C @colordx/gpu (paint issue, GPU async):           ${median(cTimes).toFixed(3)} ms`
+        `C @colordx/gpu 0.5.0 (LUT + paint + GPU finish):   ${median(cTimes).toFixed(2)} ms`
     })
 
     envRead.textContent =

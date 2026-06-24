@@ -15,7 +15,7 @@
   "dependencies": {
     "@astrojs/mdx": "^4.3.8",
     "@astrojs/starlight": "^0.36.1",
-    "@colordx/gpu": "^0.2.1",
+    "@colordx/gpu": "^0.5.0",
     "@preact/signals-core": "^1.6.0",
     "astro": "^5.6.1",
     "colorjs.io": "^0.6.1",

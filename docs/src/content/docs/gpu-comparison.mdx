@@ -13,6 +13,15 @@ OKLCH hue slice three independent ways so we can compare them. Nothing here
 changes the component's behavior.
 :::
 
+:::note[Updated for @colordx/gpu 0.5.0]
+After the first round, the library's maintainer shipped **0.5.0** closing every
+Arm C gap surfaced here ([colordx-gpu#8](https://github.com/dkryaklin/colordx-gpu/issues/8)):
+`transpose` + `renderer.gl`, `model: 'oklab' | 'lab'`, a98/prophoto gamuts, and a
+per-row chroma stretch via `paint({ chromaLUT })` built by `math.maxChromaLUT()`.
+Arm C below is now wired with all of it, so **all three arms render the same
+slice** — the comparison and recommendation are updated accordingly.
+:::
+
 The area picker is the most expensive thing this component draws. Today it is
 computed **per pixel on the CPU** with colorjs.io, in a Web Worker, at **quarter
 backing resolution**, then upscaled with `drawImage()`; gamut boundaries are
@@ -46,18 +55,19 @@ cost of the visible upscale blur and a re-render on every hue drag.
 
 ## The three approaches
 
-| | A — current | B — custom WebGL2 shader | C — `@colordx/gpu` |
+| | A — current | B — custom WebGL2 shader | C — `@colordx/gpu` 0.5.0 |
 |---|---|---|---|
 | Where the per-pixel math runs | CPU (colorjs.io) in a worker | GPU fragment shader | GPU fragment shader |
 | Resolution | ¼ backing, upscaled (blurry) | full backing, crisp | full backing, crisp |
 | Gamut boundary | sampled polyline (~100 pts + bisection) | analytic contour in-shader | analytic contour in-shader |
-| Per-frame allocation | 250k–1M short-lived objects | none | none |
-| Color spaces | all (okhsv/oklch/hsl/oklab/lab/hwb) | only what you write GLSL for | OKLCH + CIE LCH only |
-| Slice orientation | chroma→x, lightness→y | chroma→x, lightness→y | lightness→x, chroma→y (`'cl'`) |
-| Chroma stretch-to-gamut | yes (per-row LUT) | yes (per-row LUT) | no (absolute coords) |
-| Gamut boundaries drawn | sRGB/P3/Rec2020/ProPhoto/A98 | whatever you code (sRGB here) | sRGB↔P3 and P3↔Rec2020 |
-| New dependency | none (already shipped) | none (hand-written GLSL) | `@colordx/gpu` (~small) |
-| Maintenance | owned, but slow by design | **you own a parallel GLSL impl** | upstream owns it; less control |
+| Per-frame allocation | 250k–1M short-lived objects | none | none (one small LUT/hue) |
+| Color spaces | all (okhsv/oklch/hsl/oklab/lab/hwb) | only what you write GLSL for | oklch/oklab/lch/lab (wide-gamut planes) |
+| Slice orientation | chroma→x, lightness→y | chroma→x, lightness→y | chroma→x, lightness→y (`transpose`) |
+| Chroma stretch-to-gamut | yes (per-row LUT) | yes (per-row LUT) | yes (`math.maxChromaLUT`) |
+| Gamut boundaries drawn | sRGB/P3/Rec2020/ProPhoto/A98 | whatever you code (sRGB here) | any layer: sRGB/P3/A98/Rec2020/ProPhoto |
+| New dependency | none (already shipped) | none (hand-written GLSL) | `@colordx/gpu` |
+| Parity guarantee | n/a (it *is* colorjs.io) | **you own the drift test** | inherits the lib's parity suite |
+| Maintenance | owned, but slow by design | **you own a parallel GLSL impl** | upstream owns the shader + matrices |
 
 ## What the prototype shows
 
@@ -67,30 +77,36 @@ cost of the visible upscale blur and a re-render on every hue drag.
 - **The CPU arm's cost is real but modest per frame** thanks to the quarter-res
   trick; its true tax is GC pressure and the round-trip latency during a drag,
   which shows up as the lower, jittery throughput number under auto-sweep.
-- **A custom shader (B) can reproduce our slice exactly** — same chroma→x /
-  lightness→y orientation and the same per-row chroma stretch (computed once as a
-  128-entry LUT, ~2k conversions per hue change, vs ~250k per frame today).
-- **The library (C) is the least code but the least flexible:** it renders its
-  own plane conventions in absolute coordinates, covers only OKLCH/CIE LCH, and
-  draws only sRGB/P3/Rec2020 boundaries. Adopting it for *all* of our spaces
-  (okhsv, hsl, oklab, lab, hwb) and gamuts (a98rgb, prophoto) is not possible
-  today — it would be an OKLCH/LCH-only fast path alongside the existing CPU one.
+- **B and C now produce the same slice.** With 0.5.0's `transpose` and
+  `math.maxChromaLUT()`, Arm C matches the hand-written shader's orientation and
+  per-row chroma stretch; on screen they track each other, and the benchmark
+  times them the same way (both `gl.finish()` via the now-exposed `renderer.gl`).
+- **The library covers the wide-gamut planes we care about** — oklch/oklab/lch/lab
+  across srgb/p3/a98/rec2020/prophoto, each gamut an independent fill/border
+  layer. The only spaces it doesn't do are the sRGB-cylindrical family
+  (hsl, hwb, okhsv) — which are cheap and sRGB-only, so leaving them on the CPU
+  path is the right call, not a gap.
+- **The real difference between B and C is ownership.** B is zero-dependency but
+  you maintain the GLSL and a colorjs-parity test forever; C is a dependency but
+  inherits the library's parity suite against `@colordx/core`.
 
 ## Tradeoffs / recommendation
 
-1. **The technique is clearly worth adopting for the OKLCH/OKLab/LCH slices.**
+1. **The technique is clearly worth adopting for the OKLCH/OKLab/LCH/Lab slices.**
    Full-res, no GC hitches, exact boundaries.
-2. **Prefer the custom shader (B) over the library (C) for integration**, because
-   it matches our slice orientation and stretch UX and adds no dependency — at the
-   cost of owning a GLSL implementation that must be parity-tested against
-   colorjs.io (the article's "one constants module → both impls + parity test"
-   discipline applies).
-3. **Keep colorjs.io as the CPU path** for the spaces a shader doesn't cover and
-   as the WebGL2-unavailable fallback. At ~213 ns/color the CPU wins per-call
-   work (parsing, the selected-color readout) where the GPU's fixed latency loses.
-4. **`@colordx/gpu` is the fastest way to validate the idea** (this page uses it
-   live) and a reasonable choice if we ever expose an OKLCH-only "chart" mode, but
-   it is not a drop-in replacement for the multi-space area picker.
+2. **With 0.5.0, `@colordx/gpu` (C) becomes the better integration choice over a
+   hand-written shader (B)** for those wide-gamut planes. It now matches our
+   orientation and stretch, covers the spaces and gamuts we use, and — the
+   deciding factor — lets us inherit its parity suite instead of owning GLSL plus
+   a colorjs-drift test. B stays valuable as a zero-dependency reference and a
+   sanity check, but it's no longer the obvious pick.
+3. **Keep colorjs.io as the CPU path** for the sRGB-cylindrical spaces a shader
+   doesn't cover (hsl/hwb/okhsv) and as the WebGL2-unavailable fallback. Per-call
+   work (parsing, the selected-color readout) is where the GPU's fixed latency
+   loses, so the CPU path earns its keep regardless.
+4. **Shape of an integration:** an OKLCH/OKLab/LCH/Lab GPU fast path in front of
+   the existing CPU painter, chosen per canvas (a canvas can't switch between
+   WebGL and `2d`), with the DOM overlay for the hover/selection marker unchanged.
 
 ### Caveats observed
 
@@ -98,7 +114,8 @@ cost of the visible upscale blur and a re-render on every hue drag.
   classification still correct) — the env line under the demo reports support.
 - A canvas that has handed out a WebGL context can't also give a `2d` context, so
   the GPU-vs-CPU choice must be made per canvas before first paint.
-- Arm C's "issue" time excludes GPU completion (the library doesn't expose its
-  context for a `finish()`); Arm B's number includes a `gl.finish()`, so B's ms
-  looks larger than C's despite doing the same class of work. Compare the
-  **throughput** counters for an end-to-end read.
+- Both GPU arms are now timed with a `gl.finish()` (Arm C via the exposed
+  `renderer.gl`), so their benchmark numbers are directly comparable; the
+  **throughput** counters remain the best end-to-end read.
+- `@colordx/gpu@0.5.0` ships `math.maxChromaLUT()` but it's missing from the
+  published `math.d.ts`, so this prototype calls it through a small cast.
