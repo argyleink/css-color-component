@@ -1,0 +1,423 @@
+---
+// OKLCH hue-slice rendered three ways, side by side, for the
+// "colordx-gpu" exploration (https://dkryaklin.com/blog/colordx-gpu):
+//   A — current: colorjs.io in a worker, quarter-res, upscaled, polyline border
+//   B — custom WebGL2 fragment shader (this component's conventions)
+//   C — @colordx/gpu createChartRenderer (the library, as-is)
+// Shared hue control + auto-sweep stress test + a benchmark button.
+---
+
+<figure class="gpu-cmp">
+  <div class="gpu-cmp-controls">
+    <label>
+      hue <span data-readout="hue">0</span>°
+      <input type="range" min="0" max="360" step="0.1" value="0" data-control="hue" />
+    </label>
+    <button type="button" data-control="sweep">▶ auto-sweep</button>
+    <button type="button" data-control="bench">benchmark (40×)</button>
+  </div>
+
+  <div class="gpu-cmp-grid">
+    <div class="gpu-cmp-cell">
+      <h4>A · current <small>colorjs + worker, ¼-res</small></h4>
+      <canvas data-arm="a" class="gpu-cmp-canvas"></canvas>
+      <dl class="gpu-cmp-stats">
+        <div><dt>backing</dt><dd data-stat="a-res">—</dd></div>
+        <div><dt>update</dt><dd data-stat="a-ms">—</dd></div>
+        <div><dt>throughput</dt><dd data-stat="a-fps">—</dd></div>
+      </dl>
+    </div>
+
+    <div class="gpu-cmp-cell">
+      <h4>B · custom shader <small>WebGL2, full-res</small></h4>
+      <canvas data-arm="b" class="gpu-cmp-canvas"></canvas>
+      <dl class="gpu-cmp-stats">
+        <div><dt>backing</dt><dd data-stat="b-res">—</dd></div>
+        <div><dt>update</dt><dd data-stat="b-ms">—</dd></div>
+        <div><dt>throughput</dt><dd data-stat="b-fps">—</dd></div>
+      </dl>
+    </div>
+
+    <div class="gpu-cmp-cell">
+      <h4>C · @colordx/gpu <small>library, full-res</small></h4>
+      <canvas data-arm="c" class="gpu-cmp-canvas"></canvas>
+      <dl class="gpu-cmp-stats">
+        <div><dt>backing</dt><dd data-stat="c-res">—</dd></div>
+        <div><dt>update</dt><dd data-stat="c-ms">—</dd></div>
+        <div><dt>throughput</dt><dd data-stat="c-fps">—</dd></div>
+      </dl>
+    </div>
+  </div>
+
+  <p class="gpu-cmp-note" data-readout="env">—</p>
+  <pre class="gpu-cmp-bench" data-readout="bench" hidden></pre>
+  <figcaption>
+    Arm C renders the library's <code>'cl'</code> plane (lightness→x, chroma→y) in
+    absolute coordinates; Arms A &amp; B render this component's slice
+    (chroma→x stretched to the P3 boundary, lightness→y). Orientation and
+    stretch differences are expected — see the report below.
+  </figcaption>
+</figure>
+
+<script>
+  import { createChartRenderer } from '@colordx/gpu'
+  import CpuWorker from './cpu-oklch.worker.ts?worker'
+
+  // ── shared OKLCH math (colordx constants; no color lib) ───────────────────
+  // OKLCH → linear sRGB, used by Arm B's stretch LUT (kept lib-free on purpose)
+  function oklchToLinearSrgb(L: number, C: number, hDeg: number): [number, number, number] {
+    const h = (hDeg * Math.PI) / 180
+    const a = C * Math.cos(h)
+    const b = C * Math.sin(h)
+    const l_ = L + 0.3963377774 * a + 0.2158037573 * b
+    const m_ = L - 0.1055613458 * a - 0.0638541728 * b
+    const s_ = L - 0.0894841775 * a - 1.291485548 * b
+    const l3 = l_ ** 3, m3 = m_ ** 3, s3 = s_ ** 3
+    return [
+      4.0767416613 * l3 - 3.3077115904 * m3 + 0.2309699287 * s3,
+      -1.2684380041 * l3 + 2.6097574007 * m3 - 0.3413193963 * s3,
+      -0.0041960865 * l3 - 0.7034186145 * m3 + 1.7076147009 * s3,
+    ]
+  }
+  function inP3(L: number, C: number, h: number): boolean {
+    const [r, g, b] = oklchToLinearSrgb(L, C, h)
+    // linear sRGB → linear P3 (SRGB_TO_P3, row-major)
+    const pr = 0.8224619687 * r + 0.1775380313 * g
+    const pg = 0.0331941989 * r + 0.9668058011 * g
+    const pb = 0.0170826307 * r + 0.0723974407 * g + 0.9105199286 * b
+    const e = 1e-4
+    return pr >= -e && pr <= 1 + e && pg >= -e && pg <= 1 + e && pb >= -e && pb <= 1 + e
+  }
+  function chromaLUT(hue: number, size = 128): Float32Array {
+    const lut = new Float32Array(size)
+    for (let i = 0; i < size; i++) {
+      const L = i / (size - 1)
+      if (!inP3(L, 0, hue)) { lut[i] = 0; continue }
+      let lo = 0, hi = 0.5
+      for (let j = 0; j < 16; j++) {
+        const mid = (lo + hi) / 2
+        if (inP3(L, mid, hue)) lo = mid; else hi = mid
+      }
+      lut[i] = lo
+    }
+    return lut
+  }
+
+  // ── env / dpr ─────────────────────────────────────────────────────────────
+  const DPR = Math.min(window.devicePixelRatio || 1, 2)
+  function supportsP3Canvas(): boolean {
+    try {
+      const c = document.createElement('canvas')
+      const ctx = c.getContext('2d', { colorSpace: 'display-p3' } as any)
+      return (ctx as any)?.getContextAttributes?.()?.colorSpace === 'display-p3'
+    } catch { return false }
+  }
+  const SUPPORTS_P3 = supportsP3Canvas()
+
+  // ── Arm B: custom WebGL2 shader ────────────────────────────────────────────
+  const VERT = `#version 300 es
+void main(){ vec2 p = vec2(gl_VertexID==1?3.0:-1.0, gl_VertexID==2?3.0:-1.0); gl_Position = vec4(p,0.,1.); }`
+  const FRAG = `#version 300 es
+precision highp float;
+out vec4 frag;
+uniform vec2 u_res;
+uniform float u_hue;
+uniform float u_lut[128];
+uniform bool u_p3Out;
+uniform vec4 u_border;
+uniform float u_borderWidth;
+const float GAP = 1e-7;
+vec3 toLinearSrgb(float L,float C,float h){
+  float hr=radians(h); float a=C*cos(hr); float b=C*sin(hr);
+  float l_=L+0.3963377774*a+0.2158037573*b;
+  float m_=L-0.1055613458*a-0.0638541728*b;
+  float s_=L-0.0894841775*a-1.291485548*b;
+  float l3=l_*l_*l_, m3=m_*m_*m_, s3=s_*s_*s_;
+  return vec3(
+     4.0767416613*l3-3.3077115904*m3+0.2309699287*s3,
+    -1.2684380041*l3+2.6097574007*m3-0.3413193963*s3,
+    -0.0041960865*l3-0.7034186145*m3+1.7076147009*s3);
+}
+vec3 toLinearP3(vec3 c){
+  return vec3(
+    0.8224619687*c.r+0.1775380313*c.g,
+    0.0331941989*c.r+0.9668058011*c.g,
+    0.0170826307*c.r+0.0723974407*c.g+0.9105199286*c.b);
+}
+vec3 srgbEncode(vec3 c){ return mix(12.92*c, 1.055*pow(c,vec3(1.0/2.4))-0.055, step(0.0031308,c)); }
+float overflow(vec3 c){ vec3 d=max(c-1.0,-c); return max(d.r,max(d.g,d.b)); }
+float lut(float t){
+  float fi=clamp(t,0.0,1.0)*127.0; int lo=int(floor(fi)); int hi=min(lo+1,127);
+  return mix(u_lut[lo],u_lut[hi], fi-float(lo));
+}
+float contour(float field){
+  float px=max(length(vec2(dFdx(field),dFdy(field))),1e-12);
+  return step(abs(field)/px, 0.5*u_borderWidth);
+}
+void main(){
+  vec2 uv = gl_FragCoord.xy / u_res;   // x→0..1, y bottom-up = lightness 0..1
+  float L = uv.y;
+  float C = uv.x * lut(L);             // chroma stretched per row to P3 edge
+  vec3 lin = toLinearSrgb(L,C,u_hue);
+  vec3 linP3 = toLinearP3(lin);
+  bool inP = overflow(linP3) <= GAP;
+  vec4 col = vec4(0.0);
+  if(inP){
+    vec3 enc = u_p3Out ? srgbEncode(clamp(linP3,0.0,1.0)) : srgbEncode(clamp(lin,0.0,1.0));
+    enc = floor(enc*255.0+1e-3)/255.0;
+    col = vec4(enc,1.0);
+    float cov = contour(overflow(lin)); // sRGB boundary, analytic
+    float a = cov*u_border.a;
+    col = vec4(mix(col.rgb,u_border.rgb,a), max(col.a,a));
+  }
+  frag = vec4(col.rgb*col.a, col.a);
+}`
+
+  function makeArmB(canvas: HTMLCanvasElement) {
+    const gl = canvas.getContext('webgl2', {
+      alpha: true, antialias: false, depth: false, stencil: false, premultipliedAlpha: true,
+    })
+    if (!gl) return null
+    gl.disable(gl.DITHER)
+    const compile = (type: number, src: string) => {
+      const s = gl.createShader(type)!
+      gl.shaderSource(s, src); gl.compileShader(s)
+      if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s) || 'shader')
+      return s
+    }
+    const prog = gl.createProgram()!
+    gl.attachShader(prog, compile(gl.VERTEX_SHADER, VERT))
+    gl.attachShader(prog, compile(gl.FRAGMENT_SHADER, FRAG))
+    gl.linkProgram(prog)
+    if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(prog) || 'link')
+    gl.useProgram(prog)
+    const u = (n: string) => gl.getUniformLocation(prog, n)
+    const loc = {
+      res: u('u_res'), hue: u('u_hue'), lut: u('u_lut'), p3Out: u('u_p3Out'),
+      border: u('u_border'), borderWidth: u('u_borderWidth'),
+    }
+    let lastHue = NaN
+    return {
+      canvas,
+      paint(hue: number) {
+        if ('drawingBufferColorSpace' in gl) {
+          try { (gl as any).drawingBufferColorSpace = SUPPORTS_P3 ? 'display-p3' : 'srgb' } catch {}
+        }
+        if (hue !== lastHue) { gl.uniform1fv(loc.lut, chromaLUT(hue)); lastHue = hue }
+        gl.viewport(0, 0, canvas.width, canvas.height)
+        gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT)
+        gl.uniform2f(loc.res, canvas.width, canvas.height)
+        gl.uniform1f(loc.hue, hue)
+        gl.uniform1i(loc.p3Out, SUPPORTS_P3 ? 1 : 0)
+        gl.uniform4f(loc.border, 1, 1, 1, 0.7)
+        gl.uniform1f(loc.borderWidth, 1.5 * DPR)
+        gl.drawArrays(gl.TRIANGLES, 0, 3)
+      },
+      finish() { gl.finish() },
+    }
+  }
+
+  // ── wiring ──────────────────────────────────────────────────────────────────
+  function init(root: HTMLElement) {
+    const $ = <T extends Element>(s: string) => root.querySelector(s) as T
+    const canvasA = $('[data-arm="a"]') as HTMLCanvasElement
+    const canvasB = $('[data-arm="b"]') as HTMLCanvasElement
+    const canvasC = $('[data-arm="c"]') as HTMLCanvasElement
+    const hueInput = $('[data-control="hue"]') as HTMLInputElement
+    const hueRead = $('[data-readout="hue"]') as HTMLElement
+    const sweepBtn = $('[data-control="sweep"]') as HTMLButtonElement
+    const benchBtn = $('[data-control="bench"]') as HTMLButtonElement
+    const envRead = $('[data-readout="env"]') as HTMLElement
+    const benchRead = $('[data-readout="bench"]') as HTMLElement
+    const stat = (k: string) => $(`[data-stat="${k}"]`) as HTMLElement
+
+    // size canvases to their CSS box × DPR
+    function size(canvas: HTMLCanvasElement) {
+      const w = Math.round((canvas.clientWidth || 280) * DPR)
+      const h = Math.round((canvas.clientHeight || 180) * DPR)
+      if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h }
+      return { w, h }
+    }
+
+    // Arm A — colorjs worker, quarter-res, upscale + polyline (the current path)
+    const ctxA = canvasA.getContext('2d', { colorSpace: SUPPORTS_P3 ? 'display-p3' : 'srgb' } as any)!
+    const worker = new CpuWorker()
+    let aSeq = 0, aPending: number | null = null, aBusy = false, aSentAt = 0
+    let off: HTMLCanvasElement | null = null
+    worker.onmessage = (e: MessageEvent) => {
+      const r = e.data
+      const rtt = performance.now() - aSentAt
+      const px = new Uint8ClampedArray(r.pixels)
+      if (!off) off = document.createElement('canvas')
+      off.width = r.W; off.height = r.H
+      const oc = off.getContext('2d', { colorSpace: SUPPORTS_P3 ? 'display-p3' : 'srgb' } as any)!
+      oc.putImageData(new ImageData(px, r.W, r.H), 0, 0)
+      canvasA.width = r.backingW; canvasA.height = r.backingH
+      ctxA.imageSmoothingEnabled = true
+      ctxA.drawImage(off, 0, 0, r.backingW, r.backingH)
+      ctxA.strokeStyle = 'rgba(255,255,255,0.7)'
+      ctxA.lineWidth = 1.5 * DPR
+      ctxA.beginPath()
+      r.boundary.forEach((p: any, i: number) => (i ? ctxA.lineTo(p.x, p.y) : ctxA.moveTo(p.x, p.y)))
+      ctxA.stroke()
+      stat('a-res').textContent = `${r.backingW}×${r.backingH}`
+      stat('a-ms').textContent = `${r.ms.toFixed(1)} ms cpu · ${rtt.toFixed(1)} ms rtt`
+      aFps.tick()
+      aBusy = false
+      if (aPending != null) { const h = aPending; aPending = null; sendA(h) }
+    }
+    function sendA(hue: number) {
+      const { w, h } = size(canvasA)
+      if (aBusy) { aPending = hue; return }
+      aBusy = true; aSentAt = performance.now()
+      worker.postMessage({ id: ++aSeq, hue, cssW: w / DPR, cssH: h / DPR, dpr: DPR, supportsP3: SUPPORTS_P3 })
+    }
+
+    const armB = makeArmB(canvasB)
+    const armC = createChartRenderer(canvasC, { model: 'oklch' })
+
+    function paintB(hue: number) {
+      if (!armB) return
+      size(canvasB)
+      const t = performance.now(); armB.paint(hue); armB.finish()
+      stat('b-ms').textContent = `${(performance.now() - t).toFixed(2)} ms`
+      stat('b-res').textContent = `${canvasB.width}×${canvasB.height}`
+      bFps.tick()
+    }
+    function paintC(hue: number) {
+      if (!armC) return
+      size(canvasC)
+      const t = performance.now()
+      armC.paint({
+        plane: 'cl', value: hue, xMax: 1, yMax: 0.4,
+        showP3: true, showRec2020: true,
+        borderP3: [1, 1, 1, 0.7], borderRec2020: [1, 1, 1, 0.4],
+        borderWidth: 1.5 * DPR, p3Output: SUPPORTS_P3,
+      })
+      stat('c-ms').textContent = `${(performance.now() - t).toFixed(2)} ms issue`
+      stat('c-res').textContent = `${canvasC.width}×${canvasC.height}`
+      cFps.tick()
+    }
+
+    // rolling fps meters
+    function meter(el: HTMLElement) {
+      let n = 0, t0 = performance.now()
+      return {
+        tick() {
+          n++
+          const dt = performance.now() - t0
+          if (dt >= 500) { el.textContent = `${(n / (dt / 1000)).toFixed(0)} /s`; n = 0; t0 = performance.now() }
+        },
+        reset() { n = 0; t0 = performance.now(); el.textContent = '—' },
+      }
+    }
+    const aFps = meter(stat('a-fps')), bFps = meter(stat('b-fps')), cFps = meter(stat('c-fps'))
+
+    function renderAll(hue: number) { sendA(hue); paintB(hue); paintC(hue) }
+
+    // hue control
+    function setHue(hue: number) {
+      hueInput.value = String(hue)
+      hueRead.textContent = hue.toFixed(0)
+      renderAll(hue)
+    }
+    hueInput.addEventListener('input', () => setHue(parseFloat(hueInput.value)))
+
+    // auto-sweep
+    let sweeping = false, raf = 0
+    sweepBtn.addEventListener('click', () => {
+      sweeping = !sweeping
+      sweepBtn.textContent = sweeping ? '⏸ stop' : '▶ auto-sweep'
+      ;[aFps, bFps, cFps].forEach((m) => m.reset())
+      if (sweeping) {
+        const loop = () => {
+          if (!sweeping) return
+          let h = parseFloat(hueInput.value) + 1.5
+          if (h > 360) h -= 360
+          setHue(h)
+          raf = requestAnimationFrame(loop)
+        }
+        raf = requestAnimationFrame(loop)
+      } else cancelAnimationFrame(raf)
+    })
+
+    // benchmark — median ms over N renders at the current resolution
+    benchBtn.addEventListener('click', async () => {
+      const N = 40
+      benchRead.hidden = false
+      benchRead.textContent = 'running…'
+      const median = (xs: number[]) => xs.sort((a, b) => a - b)[Math.floor(xs.length / 2)]
+
+      // Arm A: worker compute ms (round-trip), serialized
+      const aTimes: number[] = []
+      for (let i = 0; i < N; i++) {
+        const hue = (i * 9) % 360
+        const ms = await new Promise<number>((res) => {
+          const onmsg = (e: MessageEvent) => { worker.removeEventListener('message', onmsg); res(e.data.ms) }
+          worker.addEventListener('message', onmsg)
+          const { w, h } = size(canvasA)
+          worker.postMessage({ id: -1, hue, cssW: w / DPR, cssH: h / DPR, dpr: DPR, supportsP3: SUPPORTS_P3 })
+        })
+        aTimes.push(ms)
+      }
+      // Arms B & C: paint + (B) GPU finish
+      const bTimes: number[] = [], cTimes: number[] = []
+      for (let i = 0; i < N; i++) {
+        const hue = (i * 9) % 360
+        let t = performance.now(); armB?.paint(hue); armB?.finish(); bTimes.push(performance.now() - t)
+        t = performance.now()
+        armC?.paint({ plane: 'cl', value: hue, xMax: 1, yMax: 0.4, showP3: true, showRec2020: true, borderP3: [1,1,1,0.7], borderRec2020: [1,1,1,0.4], borderWidth: 1.5 * DPR, p3Output: SUPPORTS_P3 })
+        cTimes.push(performance.now() - t)
+      }
+      benchRead.textContent =
+        `benchmark · median of ${N} renders @ ${canvasB.width}×${canvasB.height} (DPR ${DPR})\n` +
+        `A current (cpu compute, ¼-res ${Math.round(canvasA.width/4)}×${Math.round(canvasA.height/4)}): ${median(aTimes).toFixed(2)} ms\n` +
+        `B custom shader (paint + GPU finish):              ${median(bTimes).toFixed(2)} ms\n` +
+        `C @colordx/gpu (paint issue, GPU async):           ${median(cTimes).toFixed(3)} ms`
+    })
+
+    envRead.textContent =
+      `device-pixel-ratio ${DPR} · display-p3 canvas ${SUPPORTS_P3 ? 'yes' : 'no'} · ` +
+      `WebGL2 ${armB ? 'yes' : 'no'} · @colordx/gpu ${armC ? 'ready' : 'unavailable'}`
+
+    // defer first paint until layout has given the canvases a real size
+    requestAnimationFrame(() => setHue(0))
+  }
+
+  function boot() {
+    document.querySelectorAll<HTMLElement>('.gpu-cmp').forEach((el) => {
+      if ((el as any)._booted) return
+      ;(el as any)._booted = true
+      init(el)
+    })
+  }
+  document.addEventListener('DOMContentLoaded', boot)
+  document.addEventListener('astro:page-load', boot)
+</script>
+
+<style>
+  .gpu-cmp { margin: 1.5rem 0; }
+  .gpu-cmp-controls { display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center; margin-bottom: 1rem; }
+  .gpu-cmp-controls label { display: flex; align-items: center; gap: 0.4rem; font-size: 0.85rem; }
+  .gpu-cmp-controls input[type='range'] { width: 180px; }
+  .gpu-cmp-controls button {
+    font: inherit; font-size: 0.8rem; padding: 0.3rem 0.7rem; cursor: pointer;
+    border: 1px solid var(--sl-color-gray-4); border-radius: 6px; background: var(--sl-color-gray-6);
+  }
+  .gpu-cmp-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
+  @media (max-width: 860px) { .gpu-cmp-grid { grid-template-columns: 1fr; } }
+  .gpu-cmp-cell h4 { margin: 0 0 0.4rem; font-size: 0.85rem; display: flex; justify-content: space-between; align-items: baseline; gap: 0.5rem; }
+  .gpu-cmp-cell h4 small { font-weight: 400; color: var(--sl-color-gray-3); font-size: 0.7rem; }
+  .gpu-cmp-canvas {
+    width: 100%; aspect-ratio: 16 / 10; display: block; border-radius: 8px;
+    background: repeating-conic-gradient(#808080 0% 25%, #999 0% 50%) 50% / 16px 16px;
+    border: 1px solid var(--sl-color-gray-5);
+  }
+  .gpu-cmp-stats { display: flex; gap: 0.9rem; margin: 0.5rem 0 0; font-size: 0.72rem; }
+  .gpu-cmp-stats div { display: flex; flex-direction: column; }
+  .gpu-cmp-stats dt { color: var(--sl-color-gray-3); }
+  .gpu-cmp-stats dd { margin: 0; font-variant-numeric: tabular-nums; }
+  .gpu-cmp-note { font-size: 0.72rem; color: var(--sl-color-gray-3); margin: 0.9rem 0 0; }
+  .gpu-cmp-bench { font-size: 0.72rem; padding: 0.7rem; border-radius: 6px; background: var(--sl-color-gray-6); white-space: pre; overflow-x: auto; }
+  .gpu-cmp figcaption { font-size: 0.72rem; color: var(--sl-color-gray-3); margin-top: 0.6rem; line-height: 1.5; }
+</style>
