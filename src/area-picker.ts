@@ -3,6 +3,7 @@ import { ColorConstructor, inGamut, serialize, to } from "colorjs.io/fn";
 import { getColorJSSpaceID, isRGBLike, type ColorSpace } from "./color";
 import { gencolor, parseIntoChannels } from "./utils/color-conversion";
 import AreaPickerWorker from './area-picker.worker.ts?worker&inline';
+import { GpuAreaRenderer, gpuAreaSupported, gpuSupportsSpace } from "./area-picker-gpu";
 
 type AreaConfig = {
   fixedIndex: number;
@@ -616,6 +617,8 @@ export class AreaPicker {
   #lastRenderedId = 0;
   #workerBusy = false;
   #pendingWorkerMsg: any = null;
+  #gpu: GpuAreaRenderer | null = null;
+  #gpuTried = false;
 
   constructor(
     element: null | HTMLElement,
@@ -948,7 +951,41 @@ export class AreaPicker {
                 ? getColorJSSpaceID(this.#space.value === 'hex' ? 'srgb' : this.#space.value)
                 : '';
 
-              if (this.#worker) {
+              // Lazily spin up the GPU renderer the first time an OKLCH slice is
+              // actually requested — keeps the WebGL context budget for pickers
+              // that never show a GPU-eligible space.
+              const gpuEligible = gpuSupportsSpace(color.spaceId) && config.gamutBoundary === 'row-scan';
+              if (gpuEligible && !this.#gpu && !this.#gpuTried && gpuAreaSupported()) {
+                this.#gpuTried = true;
+                try {
+                  const gpu = new GpuAreaRenderer(element);
+                  if (gpu.ok) this.#gpu = gpu;
+                  else gpu.destroy();
+                } catch { this.#gpu = null; }
+              }
+              const useGpu = gpuEligible && !!this.#gpu;
+              if (useGpu) {
+                // GPU fast path (OKLCH slice): paint the stacked WebGL canvas and
+                // hide the 2d one. Reuse the same LUT for the thumb mapping.
+                const stretchGamut = getStretchGamut(userSpaceId);
+                const lut = this.#gpu!.buildStretchLUT(pendingHue ?? 0, stretchGamut);
+                this.#effectiveConfig.value = config;
+                this.#chromaLUT.value = Float64Array.from(lut);
+                this.#polarLUT.value = null;
+                canvas.hidden = true;
+                this.#gpu!.show();
+                this.#gpu!.paint({
+                  hue: pendingHue ?? 0,
+                  chromaLUT: lut,
+                  stretchGamut,
+                  supportsP3: supportsP3Canvas,
+                  dpr,
+                  cssW: element.clientWidth || 320,
+                  cssH: element.clientHeight || 200,
+                });
+              } else if (this.#worker) {
+                this.#gpu?.hide();
+                canvas.hidden = false;
                 // Worker path: only one message in-flight at a time
                 const msg = {
                   id: ++this.#renderSeqId,
@@ -967,6 +1004,8 @@ export class AreaPicker {
                   this.#worker.postMessage(msg);
                 }
               } else {
+                this.#gpu?.hide();
+                canvas.hidden = false;
                 // Synchronous fallback when worker is unavailable
                 let effCfg = config;
                 let chromaLUT: Float64Array | null = null;
@@ -1069,5 +1108,7 @@ export class AreaPicker {
     this.#controller.abort();
     this.#worker?.terminate();
     this.#worker = null;
+    this.#gpu?.destroy();
+    this.#gpu = null;
   }
 }
