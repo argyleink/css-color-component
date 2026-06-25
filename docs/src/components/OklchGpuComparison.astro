@@ -127,7 +127,6 @@ uniform float u_lut[128];
 uniform bool u_p3Out;
 uniform vec4 u_border;
 uniform float u_borderWidth;
-const float GAP = 1e-7;
 vec3 toLinearSrgb(float L,float C,float h){
   float hr=radians(h); float a=C*cos(hr); float b=C*sin(hr);
   float l_=L+0.3963377774*a+0.2158037573*b;
@@ -161,17 +160,16 @@ void main(){
   float C = uv.x * lut(L);             // chroma stretched per row to P3 edge
   vec3 lin = toLinearSrgb(L,C,u_hue);
   vec3 linP3 = toLinearP3(lin);
-  bool inP = overflow(linP3) <= GAP;
-  vec4 col = vec4(0.0);
-  if(inP){
-    vec3 enc = u_p3Out ? srgbEncode(clamp(linP3,0.0,1.0)) : srgbEncode(clamp(lin,0.0,1.0));
-    enc = floor(enc*255.0+1e-3)/255.0;
-    col = vec4(enc,1.0);
-    float cov = contour(overflow(lin)); // sRGB boundary, analytic
-    float a = cov*u_border.a;
-    col = vec4(mix(col.rgb,u_border.rgb,a), max(col.a,a));
-  }
-  frag = vec4(col.rgb*col.a, col.a);
+  // The stretched slice spans exactly to the P3 edge, so every column is in
+  // gamut by construction — fill solid (clamped) instead of dropping the rows
+  // where the JS LUT and the shader's gamut test disagree by a hair at low
+  // lightness (the transparent "wedge" along the bottom).
+  vec3 enc = u_p3Out ? srgbEncode(clamp(linP3,0.0,1.0)) : srgbEncode(clamp(lin,0.0,1.0));
+  enc = floor(enc*255.0+1e-3)/255.0;
+  vec4 col = vec4(enc,1.0);
+  float cov = contour(overflow(lin)); // sRGB boundary, analytic
+  col = vec4(mix(col.rgb,u_border.rgb,cov*u_border.a), 1.0);
+  frag = vec4(col.rgb, 1.0);
 }`
 
   function makeArmB(canvas: HTMLCanvasElement) {
@@ -292,7 +290,7 @@ void main(){
     let lutHueC = NaN, lutC: Float32Array | null = null
     function paintOptsC(hue: number) {
       if (hue !== lutHueC) {
-        lutC = (math as any).maxChromaLUT({ model: 'oklch', hue, gamut: 'p3' })
+        lutC = math.maxChromaLUT({ model: 'oklch', hue, gamut: 'p3' })
         lutHueC = hue
       }
       return {
@@ -390,7 +388,7 @@ void main(){
         `benchmark · median of ${N} renders @ ${canvasB.width}×${canvasB.height} (DPR ${DPR})\n` +
         `A current (cpu compute, ¼-res ${Math.round(canvasA.width/4)}×${Math.round(canvasA.height/4)}): ${median(aTimes).toFixed(2)} ms\n` +
         `B custom shader (paint + GPU finish):              ${median(bTimes).toFixed(2)} ms\n` +
-        `C @colordx/gpu 0.5.0 (LUT + paint + GPU finish):   ${median(cTimes).toFixed(2)} ms`
+        `C @colordx/gpu 0.5.2 (LUT + paint + GPU finish):   ${median(cTimes).toFixed(2)} ms`
     })
 
     envRead.textContent =

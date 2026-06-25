@@ -13,13 +13,16 @@ OKLCH hue slice three independent ways so we can compare them. Nothing here
 changes the component's behavior.
 :::
 
-:::note[Updated for @colordx/gpu 0.5.0]
+:::note[Updated for @colordx/gpu 0.5.2]
 After the first round, the library's maintainer shipped **0.5.0** closing every
 Arm C gap surfaced here ([colordx-gpu#8](https://github.com/dkryaklin/colordx-gpu/issues/8)):
 `transpose` + `renderer.gl`, `model: 'oklab' | 'lab'`, a98/prophoto gamuts, and a
 per-row chroma stretch via `paint({ chromaLUT })` built by `math.maxChromaLUT()`.
-Arm C below is now wired with all of it, so **all three arms render the same
-slice** — the comparison and recommendation are updated accordingly.
+Then **0.5.1/0.5.2** fixed the boundary line under stretch — an anti-aliased
+coverage ramp so the contour no longer breaks into dashes near gamut cusps, and a
+per-row analytic position for the stretched border so the doubled line is gone —
+plus the `math.d.ts` types. Arm C below is wired with all of it, so **all three
+arms render the same slice** — comparison and recommendation updated accordingly.
 :::
 
 The area picker is the most expensive thing this component draws. Today it is
@@ -55,7 +58,7 @@ cost of the visible upscale blur and a re-render on every hue drag.
 
 ## The three approaches
 
-| | A — current | B — custom WebGL2 shader | C — `@colordx/gpu` 0.5.0 |
+| | A — current | B — custom WebGL2 shader | C — `@colordx/gpu` 0.5.2 |
 |---|---|---|---|
 | Where the per-pixel math runs | CPU (colorjs.io) in a worker | GPU fragment shader | GPU fragment shader |
 | Resolution | ¼ backing, upscaled (blurry) | full backing, crisp | full backing, crisp |
@@ -117,5 +120,7 @@ cost of the visible upscale blur and a re-render on every hue drag.
 - Both GPU arms are now timed with a `gl.finish()` (Arm C via the exposed
   `renderer.gl`), so their benchmark numbers are directly comparable; the
   **throughput** counters remain the best end-to-end read.
-- `@colordx/gpu@0.5.0` ships `math.maxChromaLUT()` but it's missing from the
-  published `math.d.ts`, so this prototype calls it through a small cast.
+- Arm B's stretch uses the same fill-solid trick as the library: the slice spans
+  exactly to the P3 edge, so it fills every column rather than dropping the
+  low-lightness rows where the LUT and the shader's gamut test disagree by a hair
+  (the earlier transparent "wedge" at the bottom).
