@@ -53,7 +53,7 @@
   <pre class="gpu-cmp-bench" data-readout="bench" hidden></pre>
   <figcaption>
     All three now render the same slice: chroma→x stretched to the P3 boundary,
-    lightness→y. Arm C uses <code>@colordx/gpu</code> 0.5.0 with
+    lightness→y. Arm C uses <code>@colordx/gpu</code> 0.6.0 with
     <code>transpose</code> for the orientation and <code>math.maxChromaLUT()</code>
     for the stretch — so it should track Arm B (both GPU) closely. Any residual
     difference is the library's parity-tested math vs. the hand-written shader.
@@ -388,7 +388,7 @@ void main(){
         `benchmark · median of ${N} renders @ ${canvasB.width}×${canvasB.height} (DPR ${DPR})\n` +
         `A current (cpu compute, ¼-res ${Math.round(canvasA.width/4)}×${Math.round(canvasA.height/4)}): ${median(aTimes).toFixed(2)} ms\n` +
         `B custom shader (paint + GPU finish):              ${median(bTimes).toFixed(2)} ms\n` +
-        `C @colordx/gpu 0.5.2 (LUT + paint + GPU finish):   ${median(cTimes).toFixed(2)} ms`
+        `C @colordx/gpu 0.6.0 (LUT + paint + GPU finish):   ${median(cTimes).toFixed(2)} ms`
     })
 
     envRead.textContent =
