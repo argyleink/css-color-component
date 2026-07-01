@@ -1,4 +1,4 @@
-import { signal, computed, effect, Signal } from '@preact/signals-core'
+import { signal, computed, effect, batch, Signal } from '@preact/signals-core'
 import { parse, serialize, to, toGamut, contrast as contrastFn } from 'colorjs.io/fn'
 import {
   contrastColor,
@@ -12,7 +12,7 @@ import {
 } from './color'
 import { AreaPicker } from './area-picker'
 import { formatChannel } from './utils/channel-formatting'
-import { gencolor, parseIntoChannels } from './utils/color-conversion'
+import { gencolor, parseIntoChannels, type ChannelRecord } from './utils/color-conversion'
 import {
   computeCandidates,
   findFirstFitOrMaxArea,
@@ -66,6 +66,7 @@ export class ColorInput extends HTMLElement {
   #colorSchemeEffectCleanup: ReturnType<typeof effect> | null = null
   #errorEffectCleanup: ReturnType<typeof effect> | null = null
   #controlsEffectCleanup: ReturnType<typeof effect> | null = null
+  #controlsUpdate: ((ch: ChannelRecord) => void) | null = null
   #areaPickerEffectCleanup: ReturnType<typeof effect> | null = null
   #areaPicker?: AreaPicker
   #programmaticUpdate = false
@@ -208,7 +209,7 @@ export class ColorInput extends HTMLElement {
         this.setAttribute('value', color)
         this.#programmaticUpdate = false
         this.#emitChange()
-        this.#renderControls()
+        this.#updateControls()
       })
 
       // Sync area picker when color changes
@@ -344,8 +345,8 @@ export class ColorInput extends HTMLElement {
     })
 
     this.#spaceSelect.addEventListener('change', () => {
+      // the colorspace setter re-renders controls itself
       this.colorspace = this.#spaceSelect!.value as ColorSpace
-      this.#renderControls()
     })
 
     // Reactive effects
@@ -677,6 +678,7 @@ export class ColorInput extends HTMLElement {
     if (!this.#controls) return
     const current = parseIntoChannels(space, this.#value.value)
     const ch = current.ch
+    const updaters: Array<(ch: ChannelRecord) => void> = []
 
     const channelSignals: Record<string, ReturnType<typeof signal<string>>> = {}
     Object.keys(ch).forEach(key => {
@@ -840,6 +842,23 @@ export class ColorInput extends HTMLElement {
               pendingApply = null
             }
           })
+        }
+      })
+
+      // Sync this control from an externally-changed value (area picker drags)
+      // without rebuilding the DOM
+      updaters.push((newCh) => {
+        const raw = newCh[key]
+        if (raw === undefined) return
+        ch[key] = raw
+        if (channelSignals[key]) channelSignals[key].value = String(raw)
+        range.value = String(raw)
+        if (isLabAB) {
+          const n = Number(raw)
+          if (signSup) signSup.textContent = n < 0 ? '−' : '+'
+          num.value = stripLeadingZeros(String(Math.abs(n)))
+        } else {
+          num.value = String(raw)
         }
       })
 
@@ -1014,6 +1033,23 @@ export class ColorInput extends HTMLElement {
         }
       })
     }
+
+    this.#controlsUpdate = (newCh) => {
+      batch(() => updaters.forEach((update) => update(newCh)))
+    }
+  }
+
+  // Sync existing control inputs from the current value without rebuilding the
+  // DOM — called on every area-picker change, including per-move during drags
+  #updateControls() {
+    if (!this.#controlsUpdate) {
+      this.#renderControls()
+      return
+    }
+    try {
+      const { ch } = parseIntoChannels(this.#space.value, this.#value.value)
+      this.#controlsUpdate(ch)
+    } catch { }
   }
 }
 

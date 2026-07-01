@@ -630,6 +630,9 @@ export class AreaPicker {
     // Initialize worker for off-thread gradient computation
     try {
       this.#worker = new AreaPickerWorker();
+      // Scratch canvas reused across frames to avoid per-frame allocation
+      let offscreen: HTMLCanvasElement | null = null;
+      let offCtx: CanvasRenderingContext2D | null = null;
       this.#worker.onmessage = (e: MessageEvent) => {
         const result = e.data;
         if (result.id < this.#lastRenderedId) return; // discard stale
@@ -642,17 +645,30 @@ export class AreaPicker {
 
         // Paint pixel data to canvas
         const canvasColorSpace = supportsP3Canvas ? "display-p3" : "srgb";
-        const offscreen = document.createElement("canvas");
-        offscreen.width = result.W;
-        offscreen.height = result.H;
-        const offCtx = offscreen.getContext("2d", { colorSpace: canvasColorSpace });
+        if (!offscreen) {
+          offscreen = document.createElement("canvas");
+          offscreen.width = result.W;
+          offscreen.height = result.H;
+          offCtx = offscreen.getContext("2d", { colorSpace: canvasColorSpace });
+        } else if (offscreen.width !== result.W || offscreen.height !== result.H) {
+          offscreen.width = result.W;
+          offscreen.height = result.H;
+        }
         if (!offCtx) return;
-        const img = offCtx.createImageData(result.W, result.H);
-        img.data.set(new Uint8ClampedArray(result.pixels));
+        // View over the transferred buffer — no copy; tag it so putImageData
+        // writes raw values instead of color-converting
+        const img = new ImageData(
+          new Uint8ClampedArray(result.pixels),
+          result.W,
+          result.H,
+          supportsP3Canvas ? { colorSpace: "display-p3" } : undefined
+        );
         offCtx.putImageData(img, 0, 0);
 
-        canvas.width = result.backingW;
-        canvas.height = result.backingH;
+        // Setting width/height reallocates the backing store; skip when unchanged
+        // (drawImage below covers the full canvas, so no explicit clear is needed)
+        if (canvas.width !== result.backingW) canvas.width = result.backingW;
+        if (canvas.height !== result.backingH) canvas.height = result.backingH;
         const ctx = canvas.getContext("2d", { colorSpace: canvasColorSpace });
         if (!ctx) return;
         ctx.imageSmoothingEnabled = true;
