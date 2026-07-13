@@ -228,7 +228,7 @@ button {
   box-shadow: 0 0px 1px 1px rgba(0,0,0,.25), inset 0 1px 2px rgba(0,0,0,.15);
 }
 
-/* Preview area: visual swatch + colorspace selector + current value output + gamut badge */
+/* Preview area: visual swatch + colorspace selector + current value field + gamut badge */
 .preview {
   position: relative;
   min-inline-size: 35ch;
@@ -340,7 +340,7 @@ button {
 }
 
 /* Gamut badge: displays detected color gamut (srgb/p3/rec2020/xyz) */
-/* Info output: shows the current CSS color string */
+/* Info input: edits the current CSS color string */
 .space {
   font-size: 0.8125rem;
   letter-spacing: 0.01em;
@@ -356,6 +356,30 @@ button {
   display: block;
   color: var(--contrast);
   background: transparent;
+
+  /* Editable: an input sitting directly on the live color swatch */
+  appearance: none;
+  border: none;
+  margin: 0;
+  padding: 0;
+  inline-size: 100%;
+  caret-color: var(--contrast);
+  border-radius: 2px;
+  outline-offset: 4px;
+
+  &::selection {
+    background: color-mix(in oklab, var(--contrast), transparent 75%);
+  }
+
+  &:focus-visible {
+    outline: 2px solid color-mix(in oklab, var(--contrast), transparent 50%);
+  }
+
+  /* Invalid affordance is the outline: text-decoration does not render
+     inside inputs in Blink. Invalid state only exists while editing. */
+  &[aria-invalid="true"] {
+    outline: 2px solid color-mix(in oklab, red, var(--contrast) 25%);
+  }
 }
 
 /* color() syntax spaces produce longer strings — scale font fluidly */

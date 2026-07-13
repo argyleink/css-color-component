@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { gencolor, parseIntoChannels } from '../../src/utils/color-conversion'
+import { gencolor, parseIntoChannels, preprocessColorInput } from '../../src/utils/color-conversion'
 import type { ColorSpace } from '../../src/color'
 
 describe('color-conversion', () => {
@@ -159,6 +159,21 @@ describe('color-conversion', () => {
         expect(gencolor('hsl', {})).toBe('hsl(0 0% 50%)')
         expect(gencolor('srgb', {})).toBe('rgb(0% 0% 0%)')
       })
+    })
+  })
+
+  describe('preprocessColorInput', () => {
+    it('should trim whitespace and invisible characters', () => {
+      expect(preprocessColorInput(' \u200B#ff6600\uFEFF ')).toBe('#ff6600')
+    })
+
+    it('should strip CSS declaration wrappers', () => {
+      expect(preprocessColorInput('background-color: rgb(255 0 0);')).toBe('rgb(255 0 0)')
+    })
+
+    it('should add a hash to bare hex colors', () => {
+      expect(preprocessColorInput('ff6600')).toBe('#ff6600')
+      expect(preprocessColorInput('f60')).toBe('#f60')
     })
   })
 
