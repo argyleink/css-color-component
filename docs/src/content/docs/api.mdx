@@ -44,6 +44,15 @@ Accepted inputs include common CSS formats such as:
 - `rgb()` / `hsl()` / `hwb()`
 - `lab()` / `lch()` / `oklab()` / `oklch()`
 - `color(display-p3 ...)`, `color(rec2020 ...)`, `color(prophoto-rgb ...)`, and similar `color(...)` forms
+- CSS named colors such as `rebeccapurple`
+
+### Inferring the editing space
+
+Without an explicit `colorspace` or `initial-colorspace`, the editing space is inferred from the string's notation, since the notation you wrote is the one you probably want to keep editing in. `#3b82f6` opens in `hex`, `hsl(240 80% 60%)` in `hsl`, `color(display-p3 ...)` in `display-p3`.
+
+Named colors are the exception. `rebeccapurple` expresses no format preference, so it opens in `oklch` rather than `srgb`, which puts the wide-gamut controls in front of you by default.
+
+A parseable color whose space has no controls in the picker also falls back to `oklch`.
 
 ### colorspace
 
@@ -119,17 +128,31 @@ The `no-alpha` attribute hides the alpha channel control from the color picker. 
 Use `no-alpha` when you want to enforce fully opaque colors or prevent users from adjusting transparency in your application.
 :::
 
-## Inline Text Input
+## Editing the color string
 
-Every `<color-input>` now includes an inline text field for editing the current color string. It accepts anything the CSS Color Level 4 parser understands and keeps the sliders, preview, and computed properties in sync as you type.
+There are two editable text fields for the color string: the inline field next to the trigger, and the field in the picker's preview footer. Both accept anything the CSS Color Level 4 parser understands and keep the sliders, area picker, preview, and computed properties in sync as you type.
 
-- Validation runs on every keystroke. When parsing fails the host gains a `data-error` attribute, the textbox sets `aria-invalid="true"`, and the inline error message becomes visible.
+- Validation runs on every keystroke, and a valid value commits immediately. The sliders rebuild when the entered syntax implies a different `colorspace`.
+- Leaving a field reverts any uncommitted text — an unparseable entry, or one that normalized to a different string — back to the current `value`.
+- Pasted text is normalized before parsing: surrounding whitespace and zero-width characters are dropped, a wrapping CSS declaration is unwrapped (`color: red;` → `red`), and bare hex digits gain a leading `#` (`ff6600` → `#ff6600`).
+
+### Inline field
+
+- When parsing fails the host gains a `data-error` attribute, the textbox sets `aria-invalid="true"`, and the inline error message becomes visible.
 - Restyle the field with `::part(input)` and target invalid states with `[data-error]`.
-- A successful parse can also update the active `colorspace` if the entered syntax implies a different space.
 
 ```html
 <color-input value="#9333ea"></color-input>
 ```
+
+### Preview footer field
+
+The value shown over the color swatch is editable too, which makes it a one-click paste target while the picker is open.
+
+- Focusing it selects the whole value, so a paste replaces it and a manual copy needs no dragging.
+- Invalid entries mark the field `aria-invalid="true"` and draw an outline in the swatch's contrast color. They don't set the host-level `data-error` state.
+- <kbd>Enter</kbd> commits and leaves the field. <kbd>Escape</kbd> abandons the edit — including any color already committed live — and keeps the picker open; a second <kbd>Escape</kbd> closes it.
+- Restyle it with `::part(output)`.
 
 ## Copy to Clipboard
 
@@ -404,7 +427,7 @@ The `<color-input>` element exposes several CSS parts for styling with the `::pa
 - `input` - Inline text field for direct color entry
 - `error` - Text with color parsing error message
 - `panel` - Popover container
-- `output` - CSS color string display
+- `output` - Editable CSS color string in the preview footer
 - `gamut` - Gamut badge (srgb/p3/rec2020/xyz)
 - `controls` - Container for channel sliders and inputs
 - `area` - Container for area picker
@@ -417,3 +440,7 @@ The preview area also exposes two useful pieces of information:
 - contrast ratios against white and black
 
 These are especially useful when the picker is part of a design tool, theming UI, or token editor.
+
+## Screen reader announcements
+
+While the picker is open, the color string is mirrored into a polite live region so changes made through the sliders, area picker, or eye dropper are announced. Only the settled value is announced — a slider drag doesn't produce an announcement per frame — and typing into either text field is skipped, since the field already echoes what you entered.

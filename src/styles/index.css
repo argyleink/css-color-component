@@ -351,8 +351,7 @@ button {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
   font-variant: tabular-nums;
   letter-spacing: -0.01em;
-  line-height: 1.1;
-  text-box: cap alphabetic;
+  line-height: 1.5;
   display: block;
   color: var(--contrast);
   background: transparent;
@@ -365,20 +364,20 @@ button {
   inline-size: 100%;
   caret-color: var(--contrast);
   border-radius: 2px;
-  outline-offset: 4px;
+  outline: none;
 
   &::selection {
     background: color-mix(in oklab, var(--contrast), transparent 75%);
   }
 
-  &:focus-visible {
-    outline: 2px solid color-mix(in oklab, var(--contrast), transparent 50%);
+  &:is(:focus-visible, :hover) {
+    box-shadow: 0 1px 0 color-mix(in oklab, var(--contrast), transparent 50%);
   }
 
-  /* Invalid affordance is the outline: text-decoration does not render
+  /* Invalid affordance is the underline: text-decoration does not render
      inside inputs in Blink. Invalid state only exists while editing. */
   &[aria-invalid="true"] {
-    outline: 2px solid color-mix(in oklab, red, var(--contrast) 25%);
+    box-shadow: 0 1px 0 color-mix(in oklab, red, var(--contrast) 25%);
   }
 }
 
