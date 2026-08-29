@@ -35,6 +35,8 @@ const supportsAnchor = CSS.supports?.('anchor-name: --a') ?? false
 
 const DEFAULT_VALUE = 'oklch(75% 75% 180)'
 const DEFAULT_SPACE: ColorSpace = 'oklch'
+// How long the color must hold still before it's announced to screen readers
+const ANNOUNCE_DELAY = 600
 const asColorSpace = (value: string | null): ColorSpace | null =>
   COLOR_SPACES.includes(value as ColorSpace) ? value as ColorSpace : null
 
@@ -79,7 +81,9 @@ export class ColorInput extends HTMLElement {
     if (v.startsWith('#')) return 'hex'
     if (/^[a-z]+$/i.test(v)) return DEFAULT_SPACE
     const sid = reverseColorJSSpaceID(parsedSpaceId)
-    return sid === 'rgb' ? 'srgb' : (sid as ColorSpace)
+    // colorjs parses spaces we don't offer as an editing space (e.g. okhsv);
+    // they have no controls to render, so fall back rather than blank the panel
+    return asColorSpace(sid === 'rgb' ? 'srgb' : sid) ?? DEFAULT_SPACE
   }
 
   get value() { return this.#value.value }
@@ -175,6 +179,13 @@ export class ColorInput extends HTMLElement {
   // While an editable color-string field has focus, reactive effects must not
   // rewrite its text out from under the user's caret (re-sync happens on blur)
   #editingField: HTMLInputElement | null = null
+  // The color as it stood when the footer field took focus, so Escape can undo
+  // the whole edit — commits are live, so the text alone isn't enough to revert
+  #editStart: { value: string; space: ColorSpace } | null = null
+  #valueLiveRegion?: HTMLElement
+  #announceTimeout: number | null = null
+  // Suppresses the announcement of the value the component loads with
+  #announceReady = false
 
   constructor() {
     super()
@@ -208,6 +219,7 @@ export class ColorInput extends HTMLElement {
     this.#controls = this.#root.querySelector('.controls') as HTMLElement
     this.#spaceSelect = this.#root.querySelector('.space') as HTMLSelectElement
     this.#infoInput = this.#root.querySelector('input.info') as HTMLInputElement
+    this.#valueLiveRegion = this.#root.querySelector('.value-live-region') as HTMLElement
     this.#chip = this.#root.querySelector('.chip') as HTMLElement
     this.#textInput = this.#root.querySelector('.text-input') as HTMLInputElement
     this.#errorMessage = this.#root.querySelector('.error-message') as HTMLElement
@@ -341,19 +353,28 @@ export class ColorInput extends HTMLElement {
       // Safari collapses the focus-handler selection on the click's mouseup
       // clearing the text selection, so suppress that first mouseup event.
       let focusingClick = false
-      this.#infoInput.addEventListener('pointerdown', () => {
+      let downX = 0
+      let downY = 0
+      this.#infoInput.addEventListener('pointerdown', (ev: PointerEvent) => {
         focusingClick = this.#editingField !== this.#infoInput
+        downX = ev.clientX
+        downY = ev.clientY
       })
       this.#infoInput.addEventListener('mouseup', (ev) => {
-        if (focusingClick) ev.preventDefault()
+        // Only a stationary click; a drag means the user selected a range by
+        // hand, and suppressing that mouseup would snap it back to select-all
+        const dragged = Math.abs(ev.clientX - downX) > 3 || Math.abs(ev.clientY - downY) > 3
+        if (focusingClick && !dragged) ev.preventDefault()
         focusingClick = false
       })
       this.#infoInput.addEventListener('focus', () => {
         this.#editingField = this.#infoInput!
+        this.#editStart = { value: this.#value.value, space: this.#space.value }
         this.#infoInput!.select()
       })
       this.#infoInput.addEventListener('blur', () => {
         this.#editingField = null
+        this.#editStart = null
         this.#infoInput!.value = this.#value.value
         setInvalid(false)
       })
@@ -365,11 +386,17 @@ export class ColorInput extends HTMLElement {
         if (ev.key === 'Enter') {
           ev.preventDefault()
           info.blur()
-        } else if (ev.key === 'Escape' && info.value !== this.#value.value) {
-          // First Escape reverts an in-progress edit and keeps the popover
-          // open; with the field clean, Escape falls through and closes it
+        } else if (ev.key === 'Escape') {
+          // First Escape abandons the edit — including any color already
+          // committed live — and keeps the popover open; with nothing left to
+          // undo, Escape falls through and closes it
+          const start = this.#editStart
+          const colorChanged = !!start && (this.#value.value !== start.value || this.#space.value !== start.space)
+          const textDirty = info.value !== (start ? start.value : this.#value.value)
+          if (!colorChanged && !textDirty) return
           ev.preventDefault()
           ev.stopPropagation()
+          if (colorChanged) this.#restoreColor(start!.value, start!.space)
           info.value = this.#value.value
           setInvalid(false)
           info.select()
@@ -422,6 +449,7 @@ export class ColorInput extends HTMLElement {
       if (this.#textInput && this.#editingField !== this.#textInput && this.#textInput.value !== v) {
         this.#textInput.value = v
       }
+      this.#announceValue(v)
       this.style.setProperty('--contrast', contrast)
       this.style.setProperty('--counter', contrast === 'white' ? 'black' : 'white')
       const gamutEl = this.#root.querySelector('.gamut') as HTMLElement
@@ -490,6 +518,7 @@ export class ColorInput extends HTMLElement {
     }
 
     this.#renderControls()
+    this.#announceReady = true
   }
 
   disconnectedCallback() {
@@ -498,6 +527,13 @@ export class ColorInput extends HTMLElement {
     this.#errorEffectCleanup?.()
     this.#areaPickerEffectCleanup?.()
     this.#areaPicker?.unmount()
+    this.#editingField = null
+    this.#editStart = null
+    this.#announceReady = false
+    if (this.#announceTimeout !== null) {
+      clearTimeout(this.#announceTimeout)
+      this.#announceTimeout = null
+    }
   }
 
   attributeChangedCallback(name: string, _old: string | null, value: string | null) {
@@ -531,6 +567,21 @@ export class ColorInput extends HTMLElement {
     this.dispatchEvent(new CustomEvent<ChangeDetail>('change', { detail, bubbles: true }))
   }
 
+  // The footer field used to be an <output>, whose implicit role="status"
+  // announced the color to screen readers. An <input> doesn't, so mirror the
+  // value into a live region — but only once it settles, since announcing
+  // every frame of a slider or area drag is unusable. Typing is skipped
+  // entirely; the field already echoes what the user entered.
+  #announceValue(v: string) {
+    if (!this.#valueLiveRegion || !this.#announceReady) return
+    if (this.#announceTimeout !== null) clearTimeout(this.#announceTimeout)
+    this.#announceTimeout = window.setTimeout(() => {
+      this.#announceTimeout = null
+      if (this.#editingField) return
+      if (this.#valueLiveRegion) this.#valueLiveRegion.textContent = v
+    }, ANNOUNCE_DELAY)
+  }
+
   #validateAndSetColor(rawValue: string): boolean {
     const inputValue = preprocessColorInput(rawValue ?? '')
     if (!inputValue) return false
@@ -555,6 +606,23 @@ export class ColorInput extends HTMLElement {
     } catch {
       return false
     }
+  }
+
+  // Put back an exact value/space pair without re-detecting the space, so an
+  // abandoned edit lands back where it started even when the space came from
+  // `initial-colorspace` rather than the value string
+  #restoreColor(value: string, space: ColorSpace) {
+    const spaceChanged = space !== this.#space.value
+    this.#space.value = space
+    this.#value.value = value
+    this.#programmaticUpdate = true
+    this.setAttribute('value', value)
+    this.setAttribute('colorspace', space)
+    this.#programmaticUpdate = false
+    if (this.#spaceSelect) this.#spaceSelect.value = space
+    this.#emitChange()
+    if (spaceChanged) this.#renderControls()
+    else this.#updateControls()
   }
 
   // ──────────────────────────────────────────────────────────────────────────────

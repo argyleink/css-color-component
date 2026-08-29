@@ -83,8 +83,24 @@ describe('template', () => {
       const info = template.content.querySelector('input.info')
       expect(info).not.toBeNull()
       expect(info?.getAttribute('part')).toBe('output')
-      expect(info?.getAttribute('aria-label')).toBe('Color value')
       expect(info?.getAttribute('spellcheck')).toBe('false')
+    })
+
+    it('should name the two color value fields distinctly', () => {
+      const template = createTemplate()
+      const text = template.content.querySelector('input.text-input')
+      const info = template.content.querySelector('input.info')
+      expect(text?.getAttribute('aria-label')).toBe('Color value')
+      expect(info?.getAttribute('aria-label')).toBe('Picker color value')
+      expect(info?.getAttribute('aria-label')).not.toBe(text?.getAttribute('aria-label'))
+    })
+
+    it('should include a live region for the color value', () => {
+      const template = createTemplate()
+      const region = template.content.querySelector('.value-live-region')
+      expect(region).not.toBeNull()
+      expect(region?.getAttribute('role')).toBe('status')
+      expect(region?.classList.contains('visually-hidden')).toBe(true)
     })
 
     it('should include gamut badge', () => {
