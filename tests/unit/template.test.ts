@@ -78,11 +78,13 @@ describe('template', () => {
       expect(select?.getAttribute('title')).toBe('Colorspace')
     })
 
-    it('should include output element', () => {
+    it('should include editable info input', () => {
       const template = createTemplate()
-      const output = template.content.querySelector('output.info')
-      expect(output).not.toBeNull()
-      expect(output?.getAttribute('part')).toBe('output')
+      const info = template.content.querySelector('input.info')
+      expect(info).not.toBeNull()
+      expect(info?.getAttribute('part')).toBe('output')
+      expect(info?.getAttribute('aria-label')).toBe('Color value')
+      expect(info?.getAttribute('spellcheck')).toBe('false')
     })
 
     it('should include gamut badge', () => {

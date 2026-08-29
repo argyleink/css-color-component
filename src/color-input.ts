@@ -12,7 +12,7 @@ import {
 } from './color'
 import { AreaPicker } from './area-picker'
 import { formatChannel } from './utils/channel-formatting'
-import { gencolor, parseIntoChannels, type ChannelRecord } from './utils/color-conversion'
+import { gencolor, parseIntoChannels, preprocessColorInput, type ChannelRecord } from './utils/color-conversion'
 import {
   computeCandidates,
   findFirstFitOrMaxArea,
@@ -71,14 +71,23 @@ export class ColorInput extends HTMLElement {
   #areaPicker?: AreaPicker
   #programmaticUpdate = false
 
+  // Infer the working colorspace from a color string. Hex and functional
+  // notations express a format preference; named colors (`rebeccapurple`)
+  // don't, so they default to oklch rather than srgb.
+  #detectSpace(value: string, parsedSpaceId: string): ColorSpace {
+    const v = value.trim()
+    if (v.startsWith('#')) return 'hex'
+    if (/^[a-z]+$/i.test(v)) return DEFAULT_SPACE
+    const sid = reverseColorJSSpaceID(parsedSpaceId)
+    return sid === 'rgb' ? 'srgb' : (sid as ColorSpace)
+  }
+
   get value() { return this.#value.value }
   set value(v: string) {
     if (typeof v !== 'string' || !v) return
     try {
       const parsed = parse(v)
-      const sid = reverseColorJSSpaceID(parsed.spaceId)
-      const isHex = typeof v === 'string' && v.trim().startsWith('#')
-      this.#space.value = isHex ? 'hex' : (sid === 'rgb' ? 'srgb' : (sid as ColorSpace))
+      this.#space.value = this.#detectSpace(v, parsed.spaceId)
       this.#value.value = v
       this.#programmaticUpdate = true
       this.setAttribute('value', v)
@@ -157,12 +166,15 @@ export class ColorInput extends HTMLElement {
   #panel?: HTMLElement & { showPopover?: () => void; hidePopover?: () => void }
   #controls?: HTMLElement
   #spaceSelect?: HTMLSelectElement
-  #output?: HTMLOutputElement
+  #infoInput?: HTMLInputElement
   #chip?: HTMLElement
   #internalTrigger?: HTMLButtonElement
   #textInput?: HTMLInputElement
   #errorMessage?: HTMLElement
   #lastInvoker: HTMLElement | null = null
+  // While an editable color-string field has focus, reactive effects must not
+  // rewrite its text out from under the user's caret (re-sync happens on blur)
+  #editingField: HTMLInputElement | null = null
 
   constructor() {
     super()
@@ -195,7 +207,7 @@ export class ColorInput extends HTMLElement {
     this.#panel = this.#root.querySelector('.panel') as any
     this.#controls = this.#root.querySelector('.controls') as HTMLElement
     this.#spaceSelect = this.#root.querySelector('.space') as HTMLSelectElement
-    this.#output = this.#root.querySelector('output.info') as HTMLOutputElement
+    this.#infoInput = this.#root.querySelector('input.info') as HTMLInputElement
     this.#chip = this.#root.querySelector('.chip') as HTMLElement
     this.#textInput = this.#root.querySelector('.text-input') as HTMLInputElement
     this.#errorMessage = this.#root.querySelector('.error-message') as HTMLElement
@@ -306,13 +318,62 @@ export class ColorInput extends HTMLElement {
     if (this.#textInput) {
       this.#textInput.value = this.#value.value
 
-      this.#textInput.addEventListener('input', (e) => {
-        const inputValue = (e.target as HTMLInputElement).value
-        this.#validateAndSetColor(inputValue)
+      this.#textInput.addEventListener('focus', () => { this.#editingField = this.#textInput! })
+      this.#textInput.addEventListener('blur', () => {
+        this.#editingField = null
+        // Revert any uncommitted (invalid or unnormalized) text
+        this.#textInput!.value = this.#value.value
+        this.#error.value = null
       })
+      this.#textInput.addEventListener('input', () => {
+        const ok = this.#validateAndSetColor(this.#textInput!.value)
+        this.#error.value = ok ? null : 'Invalid color format'
+      })
+    }
 
-      this.#textInput.addEventListener('paste', (e) => {
-        // Allow default paste, then validate via input event
+    // Editable color string in the panel footer: paste/type any CSS color
+    if (this.#infoInput) {
+      this.#infoInput.value = this.#value.value
+      const setInvalid = (invalid: boolean) => this.#infoInput!.setAttribute('aria-invalid', String(invalid))
+
+      // First click selects the whole value (one-click paste target and copy
+      // source); once focused, further clicks place the caret normally.
+      // Safari collapses the focus-handler selection on the click's mouseup
+      // clearing the text selection, so suppress that first mouseup event.
+      let focusingClick = false
+      this.#infoInput.addEventListener('pointerdown', () => {
+        focusingClick = this.#editingField !== this.#infoInput
+      })
+      this.#infoInput.addEventListener('mouseup', (ev) => {
+        if (focusingClick) ev.preventDefault()
+        focusingClick = false
+      })
+      this.#infoInput.addEventListener('focus', () => {
+        this.#editingField = this.#infoInput!
+        this.#infoInput!.select()
+      })
+      this.#infoInput.addEventListener('blur', () => {
+        this.#editingField = null
+        this.#infoInput!.value = this.#value.value
+        setInvalid(false)
+      })
+      this.#infoInput.addEventListener('input', () => {
+        setInvalid(!this.#validateAndSetColor(this.#infoInput!.value))
+      })
+      this.#infoInput.addEventListener('keydown', (ev: KeyboardEvent) => {
+        const info = this.#infoInput!
+        if (ev.key === 'Enter') {
+          ev.preventDefault()
+          info.blur()
+        } else if (ev.key === 'Escape' && info.value !== this.#value.value) {
+          // First Escape reverts an in-progress edit and keeps the popover
+          // open; with the field clean, Escape falls through and closes it
+          ev.preventDefault()
+          ev.stopPropagation()
+          info.value = this.#value.value
+          setInvalid(false)
+          info.select()
+        }
       })
     }
 
@@ -354,9 +415,11 @@ export class ColorInput extends HTMLElement {
       const v = this.#value.value
       const gamut = this.#gamut.value
       const contrast = this.#contrast.value
-      if (this.#output) this.#output.value = v
+      if (this.#infoInput && this.#editingField !== this.#infoInput && this.#infoInput.value !== v) {
+        this.#infoInput.value = v
+      }
       if (this.#chip) this.#chip.style.setProperty('--value', v)
-      if (this.#textInput && this.#textInput.value !== v) {
+      if (this.#textInput && this.#editingField !== this.#textInput && this.#textInput.value !== v) {
         this.#textInput.value = v
       }
       this.style.setProperty('--contrast', contrast)
@@ -445,10 +508,8 @@ export class ColorInput extends HTMLElement {
     if (name === 'value' && typeof value === 'string') {
       try {
         const parsed = parse(value)
-        const sid = reverseColorJSSpaceID(parsed.spaceId)
-        const isHex = typeof value === 'string' && value.trim().startsWith('#')
         this.#value.value = value
-        this.#space.value = isHex ? 'hex' : (sid === 'rgb' ? 'srgb' : (sid as ColorSpace))
+        this.#space.value = this.#detectSpace(value, parsed.spaceId)
         if (this.#spaceSelect) this.#spaceSelect.value = this.#space.value
       } catch { }
     }
@@ -470,29 +531,29 @@ export class ColorInput extends HTMLElement {
     this.dispatchEvent(new CustomEvent<ChangeDetail>('change', { detail, bubbles: true }))
   }
 
-  #validateAndSetColor(inputValue: string) {
-    if (!inputValue || !inputValue.trim()) {
-      this.#error.value = 'Invalid color format'
-      return
-    }
+  #validateAndSetColor(rawValue: string): boolean {
+    const inputValue = preprocessColorInput(rawValue ?? '')
+    if (!inputValue) return false
 
     try {
       const parsed = parse(inputValue)
-      const sid = reverseColorJSSpaceID(parsed.spaceId)
-      const isHex = typeof inputValue === 'string' && inputValue.trim().startsWith('#')
-
-      // Clear error on success
-      this.#error.value = null
+      const nextSpace = this.#detectSpace(inputValue, parsed.spaceId)
+      const spaceChanged = nextSpace !== this.#space.value
 
       // Update value and colorspace
-      this.#space.value = isHex ? 'hex' : (sid === 'rgb' ? 'srgb' : (sid as ColorSpace))
+      this.#space.value = nextSpace
       this.#value.value = inputValue
       this.setAttribute('value', inputValue)
-      this.setAttribute('colorspace', this.#space.value)
-      if (this.#spaceSelect) this.#spaceSelect.value = this.#space.value
+      this.setAttribute('colorspace', nextSpace)
+      if (this.#spaceSelect) this.#spaceSelect.value = nextSpace
       this.#emitChange()
-    } catch (error) {
-      this.#error.value = 'Invalid color format'
+
+      // Keep sliders and numeric inputs in step with the committed string
+      if (spaceChanged) this.#renderControls()
+      else this.#updateControls()
+      return true
+    } catch {
+      return false
     }
   }
 

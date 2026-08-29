@@ -12,9 +12,9 @@ describe('copy to clipboard behavior', () => {
   let el: any
   beforeEach(() => { el = makeEl(); el.show() })
 
-  it('output contains the current color string', async () => {
+  it('info field contains the current color string', async () => {
     el.value = 'hsl(200 100% 50%)'
-    const out = el.shadowRoot.querySelector('output.info') as HTMLOutputElement
+    const out = el.shadowRoot.querySelector('input.info') as HTMLInputElement
     expect(out.value).toContain('hsl(')
   })
 })

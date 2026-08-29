@@ -87,6 +87,35 @@ export function gencolor(space: ColorSpace, ch: ChannelRecord): string {
 }
 
 /**
+ * Normalize user-entered or pasted color text before parsing.
+ * Tolerates common clipboard artifacts: surrounding whitespace,
+ * zero-width characters, a full CSS declaration
+ * (`color: oklch(70% 0.1 220);`), a trailing semicolon, and bare hex
+ * digits without a leading `#`.
+ *
+ * @param raw - The raw text as typed or pasted
+ * @returns Cleaned string ready for colorjs.io `parse()`
+ *
+ * @example
+ * preprocessColorInput('  background-color: rgb(255 0 0);  ')
+ * // → 'rgb(255 0 0)'
+ *
+ * @example
+ * preprocessColorInput('ff6600')
+ * // → '#ff6600'
+ */
+export function preprocessColorInput(raw: string): string {
+  let s = raw.replace(/[\u200B-\u200D\u2060\uFEFF]/g, '').trim()
+  // Strip a CSS property prefix so pasting a whole declaration works
+  s = s.replace(/^[\w-]+\s*:\s*/, '')
+  // Strip a trailing semicolon
+  s = s.replace(/\s*;+$/, '')
+  // Bare hex without a `#` (3/4/6/8 digits)
+  if (/^(?:[0-9a-f]{3,4}|[0-9a-f]{6}|[0-9a-f]{8})$/i.test(s)) s = `#${s}`
+  return s
+}
+
+/**
  * Parse a CSS color string into its component channels for a target color space.
  * Converts between spaces if necessary, normalizes channel ranges, and handles missing hue.
  *
