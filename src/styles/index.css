@@ -188,7 +188,8 @@ button {
   outline-offset: 0px;
 }
 
-.area-canvas {
+.area-canvas,
+.area-canvas-gl {
   position: absolute;
   inset: 0;
   width: 100%;

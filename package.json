@@ -60,6 +60,7 @@
     "release": "npm run build:prod && npm publish"
   },
   "dependencies": {
+    "@colordx/gpu": "^0.5.2",
     "@preact/signals-core": "^1.6.0",
     "colorjs.io": "^0.6.1"
   },
