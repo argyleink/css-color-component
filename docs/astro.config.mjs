@@ -23,7 +23,8 @@ export default defineConfig({
         { label: 'Home', slug: 'index' },
         { label: 'API Reference', slug: 'api' },
         { label: 'Styling', slug: 'styling' },
-        { label: 'Advanced', slug: 'advanced' }
+        { label: 'Advanced', slug: 'advanced' },
+        { label: 'GPU Comparison (prototype)', slug: 'gpu-comparison' }
       ]
     }),
     mdx()
@@ -47,7 +48,7 @@ export default defineConfig({
     },
     optimizeDeps: {
       // Include component dependencies so they're pre-bundled
-      include: ['@preact/signals-core', 'colorjs.io'],
+      include: ['@preact/signals-core', 'colorjs.io', '@colordx/gpu'],
       // Exclude the component itself so changes are picked up
       exclude: ['color-input']
     }
