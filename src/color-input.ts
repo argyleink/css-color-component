@@ -41,8 +41,8 @@ const asColorSpace = (value: string | null): ColorSpace | null =>
   COLOR_SPACES.includes(value as ColorSpace) ? value as ColorSpace : null
 
 // A wrapping <label> also holds the control itself (and maybe others), so
-// collect only its own text, skipping control subtrees
-const LABEL_SKIP = 'color-input, input, select, textarea, button, datalist, output'
+// collect only its own text, skipping control subtrees and hidden content
+const LABEL_SKIP = 'color-input, input, select, textarea, button, datalist, output, [hidden], [aria-hidden="true"], script, style'
 const labelText = (label: HTMLElement) => {
   const walker = document.createTreeWalker(label, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT, {
     acceptNode: (n) => n instanceof Element && n.matches(LABEL_SKIP) ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT
@@ -238,7 +238,8 @@ export class ColorInput extends HTMLElement {
       }
     } catch { }
     try {
-      space ??= this.#detectSpace(value, parse(value).spaceId)
+      const parsed = parse(value)
+      space ??= this.#detectSpace(value, parsed.spaceId)
     } catch { return }
     // Like native controls, a UA-initiated restore fires no change event
     this.#restoreColor(value, space, { silent: true })
@@ -254,23 +255,31 @@ export class ColorInput extends HTMLElement {
   // The focusable parts live in shadow DOM, so a <label> naming the host
   // doesn't reach them; carry its text (or the host's aria-label) inward
   #labelObserver: MutationObserver | null = null
+  #observedLabels: HTMLLabelElement[] = []
   #syncAccessibleName() {
+    if (!this.isConnected) return
     const trigger = this.#root.querySelector<HTMLButtonElement>('button.trigger')
     const text = this.#root.querySelector<HTMLInputElement>('.text-input')
     const labels = Array.from(this.labels)
-    // Follow edits to the label text
-    this.#labelObserver?.disconnect()
-    if (labels.length && typeof MutationObserver !== 'undefined') {
+    // Follow edits to the label text; only re-observe when the set changes
+    const sameLabels = labels.length === this.#observedLabels.length
+      && labels.every((l, i) => l === this.#observedLabels[i])
+    if (!sameLabels && typeof MutationObserver !== 'undefined') {
+      this.#labelObserver?.disconnect()
       this.#labelObserver ??= new MutationObserver(() => this.#syncAccessibleName())
       labels.forEach((l) => this.#labelObserver!.observe(l, { childList: true, characterData: true, subtree: true }))
+      this.#observedLabels = labels
     }
     const fromLabels = labels
       .map((label) => labelText(label).replace(/\s+/g, ' ').trim())
       .filter(Boolean)
       .join(' ')
     const name = this.getAttribute('aria-label')?.trim() || fromLabels
-    trigger?.setAttribute('aria-label', name ? `${name}, open color picker` : 'Open color picker')
-    text?.setAttribute('aria-label', name || 'Color value')
+    const set = (el: Element | null, label: string) => {
+      if (el && el.getAttribute('aria-label') !== label) el.setAttribute('aria-label', label)
+    }
+    set(trigger, name ? `${name}, open color picker` : 'Open color picker')
+    set(text, name || 'Color value')
   }
 
   #isInlinePickerVisible() {
@@ -358,6 +367,7 @@ export class ColorInput extends HTMLElement {
   }
 
   connectedCallback() {
+    this.#upgradeProperty('value')
     this.#upgradeProperty('name')
     this.#upgradeProperty('disabled')
     this.#upgradeProperty('defaultValue')
@@ -691,7 +701,7 @@ export class ColorInput extends HTMLElement {
 
   // A property set before the element upgraded (common with frameworks)
   // shadows the class accessor; re-run it through the setter
-  #upgradeProperty(prop: 'name' | 'disabled' | 'defaultValue') {
+  #upgradeProperty(prop: 'value' | 'name' | 'disabled' | 'defaultValue') {
     if (!Object.prototype.hasOwnProperty.call(this, prop)) return
     const v = (this as any)[prop]
     delete (this as any)[prop]
@@ -705,6 +715,7 @@ export class ColorInput extends HTMLElement {
     this.#areaPickerEffectCleanup?.()
     this.#formValueEffectCleanup?.()
     this.#labelObserver?.disconnect()
+    this.#observedLabels = []
     this.#areaPicker?.unmount()
     this.#editingField = null
     this.#editStart = null

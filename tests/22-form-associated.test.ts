@@ -169,6 +169,7 @@ describe('form-associated custom element', () => {
     expect(el.colorspace).toBe('oklch')
 
     el.formStateRestoreCallback('not a color', 'autocomplete')
+    el.formStateRestoreCallback(JSON.stringify({ value: 'junk', colorspace: 'hsl' }), 'restore')
     el.formStateRestoreCallback(null, 'restore')
     expect(el.value).toBe('oklch(60% 40% 200)')
   })
@@ -227,15 +228,35 @@ describe('form-associated custom element', () => {
     expect(shadow(el).querySelector('.text-input')!.getAttribute('aria-label')).toBe('Brand color')
   })
 
-  it('upgrades name/disabled set as properties before the element was defined', () => {
+  it('upgrades properties set before the element was defined', () => {
     const el = document.createElement('color-input') as any
-    // simulate a pre-upgrade own property shadowing the accessor
-    Object.defineProperty(el, 'disabled', { value: true, writable: true, configurable: true, enumerable: true })
-    Object.defineProperty(el, 'name', { value: 'brand', writable: true, configurable: true, enumerable: true })
+    // simulate pre-upgrade own properties shadowing the accessors
+    const own = (key: string, value: unknown) =>
+      Object.defineProperty(el, key, { value, writable: true, configurable: true, enumerable: true })
+    own('disabled', true)
+    own('name', 'brand')
+    own('value', 'oklch(60% 40% 200)')
+    own('defaultValue', 'hsl(10 80% 40%)')
     document.body.appendChild(el)
     expect(el.hasAttribute('disabled')).toBe(true)
     expect(el.getAttribute('name')).toBe('brand')
-    expect(Object.prototype.hasOwnProperty.call(el, 'disabled')).toBe(false)
+    expect(el.value).toBe('oklch(60% 40% 200)')
+    for (const key of ['disabled', 'name', 'value', 'defaultValue']) {
+      expect(Object.prototype.hasOwnProperty.call(el, key)).toBe(false)
+    }
+    el.formResetCallback()
+    expect(el.value).toBe('hsl(10 80% 40%)')
+  })
+
+  it('re-reads labels after connect, for a <label for> that comes later in the document', async () => {
+    const { el, internals } = mount()
+    const label = document.createElement('label')
+    label.innerHTML = 'Accent <span aria-hidden="true">*</span>'
+    document.body.append(label)
+    Object.defineProperty(internals, 'labels', { configurable: true, get: () => document.querySelectorAll('label') })
+    // the re-sync connectedCallback queued (no focus involved)
+    await Promise.resolve()
+    expect(shadow(el).querySelector('button.trigger')!.getAttribute('aria-label')).toBe('Accent, open color picker')
   })
 
   it('carries the host aria-label into the shadow controls', () => {
