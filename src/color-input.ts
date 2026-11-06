@@ -12,7 +12,7 @@ import {
 } from './color'
 import { AreaPicker } from './area-picker'
 import { formatChannel } from './utils/channel-formatting'
-import { gencolor, parseIntoChannels, preprocessColorInput, type ChannelRecord } from './utils/color-conversion'
+import { gencolor, parseIntoChannels, preprocessColorInput, displayChannels, type ChannelRecord } from './utils/color-conversion'
 import {
   computeCandidates,
   findFirstFitOrMaxArea,
@@ -70,6 +70,10 @@ export class ColorInput extends HTMLElement {
   // State: Reactive signals (Preact Signals Core)
   // ──────────────────────────────────────────────────────────────────────────────
   #value = signal<string>(DEFAULT_VALUE)
+  // The value a run of space switches started from. Only reused while the
+  // value is still the one the last switch produced (`shown`); any edit makes
+  // it stale
+  #switchOrigin: { value: string; space: ColorSpace; shown: string } | null = null
   #space = signal<ColorSpace>(DEFAULT_SPACE)
   #theme = signal<Theme>('auto')
   #open = signal(false)
@@ -121,16 +125,29 @@ export class ColorInput extends HTMLElement {
   get colorspace() { return this.#space.value }
   set colorspace(s: ColorSpace | string) {
     const next = (s as ColorSpace) || DEFAULT_SPACE
+    const prevSpace = this.#space.value
     this.#space.value = next
     this.#programmaticUpdate = true
     this.setAttribute('colorspace', next)
     try {
-      const current = parse(this.#value.value)
-      const targetSpace = next === 'hex' ? 'srgb' : next
-      const converted = toGamut(to(current, getColorJSSpaceID(targetSpace)))
-      const tempStr = serialize(converted, { precision: 12 })
-      const parsed = parseIntoChannels(next, tempStr)
-      const newValue = gencolor(next, parsed.ch)
+      // A space switch rounds to display precision (whole percents/degrees).
+      // Convert from the last value the user actually set, not the rounded
+      // one, so switching back and forth never drifts: #3b82f6 → oklch → hex
+      // is #3b82f6 again, and returning to the original space restores the
+      // original string
+      const prev = this.#value.value
+      const origin = this.#switchOrigin?.shown === prev ? this.#switchOrigin : { value: prev, space: prevSpace }
+      let newValue: string
+      if (next === origin.space) {
+        newValue = origin.value
+      } else {
+        const current = parse(origin.value)
+        const targetSpace = next === 'hex' ? 'srgb' : next
+        const converted = toGamut(to(current, getColorJSSpaceID(targetSpace)))
+        const tempStr = serialize(converted, { precision: 12 })
+        newValue = gencolor(next, displayChannels(next, tempStr).ch)
+      }
+      this.#switchOrigin = { value: origin.value, space: origin.space, shown: newValue }
       this.#value.value = newValue
       this.setAttribute('value', newValue)
       this.#emitChange()
@@ -417,7 +434,7 @@ export class ColorInput extends HTMLElement {
               const serialized = serialize(converted, {
                 format: space === "hex" ? "hex" : undefined,
               })
-              const color = gencolor(space, parseIntoChannels(space, serialized).ch)
+              const color = gencolor(space, displayChannels(space, serialized).ch)
               this.#value.value = color
               this.setAttribute('value', color)
               this.#emitChange()
@@ -667,8 +684,10 @@ export class ColorInput extends HTMLElement {
     this.#spaceSelect.value = this.#space.value
 
     // Normalize value on load so chroma (and other channels) are in consistent form
-    // (e.g. percentage notation), matching what gencolor produces after any change
-    if (!resolvedInitialSpace) {
+    // (e.g. percentage notation), matching what gencolor produces after any change.
+    // parseIntoChannels is lossless, so this never changes the color. Hex is
+    // already canonical and is left exactly as authored (no #3366aa → #36a)
+    if (!resolvedInitialSpace && this.#space.value !== 'hex') {
       try {
         const { ch } = parseIntoChannels(this.#space.value, this.#value.value)
         this.#value.value = gencolor(this.#space.value, ch)
@@ -1015,6 +1034,12 @@ export class ColorInput extends HTMLElement {
       const isLabAB = (key === 'A' || key === 'B') && (space === 'lab' || space === 'oklab')
       const isPercentage = !isLabAB && ['L', 'S', 'C', 'W', 'B', 'R', 'G', 'ALP'].includes(key)
       const isAngle = key === 'H'
+      // ch holds lossless channel values; the number field shows them at
+      // display precision (whole percents/degrees), clamped to the slider range
+      const shown = (v: string | number | undefined) => {
+        const n = Number(v ?? 0)
+        return formatChannel(space, key, wrapHue ? n : Math.max(min, Math.min(max, n)))
+      }
 
       const group = document.createElement('div')
       group.className = 'control'
@@ -1066,7 +1091,7 @@ export class ColorInput extends HTMLElement {
       num.max = isLabAB ? String(Math.max(Math.abs(min), Math.abs(max))) : String(max)
       num.step = String(step)
       num.classList.add(`ch-${key.toLowerCase()}`)
-      num.value = isLabAB ? String(Math.abs(Number(ch[key] ?? 0))) : String(ch[key] ?? 0)
+      num.value = isLabAB ? String(Math.abs(Number(shown(ch[key])))) : shown(ch[key])
 
       const numWrapper = document.createElement('div')
       numWrapper.className = 'num-wrapper'
@@ -1082,7 +1107,7 @@ export class ColorInput extends HTMLElement {
         const val = Number(ch[key] ?? 0)
         signSup.textContent = val < 0 ? '−' : '+'
         numWrapper.appendChild(signSup)
-        num.value = stripLeadingZeros(String(Math.abs(val)))
+        num.value = stripLeadingZeros(String(Math.abs(Number(shown(val)))))
       }
 
       const apply = () => {
@@ -1176,9 +1201,9 @@ export class ColorInput extends HTMLElement {
         if (isLabAB) {
           const n = Number(raw)
           if (signSup) signSup.textContent = n < 0 ? '−' : '+'
-          num.value = stripLeadingZeros(String(Math.abs(n)))
+          num.value = stripLeadingZeros(String(Math.abs(Number(shown(n)))))
         } else {
-          num.value = String(raw)
+          num.value = shown(raw)
         }
       })
 
