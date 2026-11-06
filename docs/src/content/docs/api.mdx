@@ -154,7 +154,7 @@ Disables the trigger and inline field, keeps the picker from opening, and leaves
 - **Labels**: `<label for="id">` and wrapping `<label>` both work. Clicking the label opens the picker (or focuses an inline one), and the label text names the trigger button and inline field for screen readers. An `aria-label` on the host does the same.
 - **Reset**: a form reset restores the color and editing space the element was connected with, and fires `change`. Set `defaultValue` to choose a different reset target. (The `value` attribute can't double as the default the way it does on `<input>`, because the component reflects every edit into it.)
 - **Disabled**: the element's own `disabled` attribute or an ancestor `<fieldset disabled>`.
-- **History**: back/forward navigation and autofill restore the color and editing space.
+- **History**: back/forward navigation and reloads restore the color and editing space, without firing `change`.
 
 ```html
 <form>

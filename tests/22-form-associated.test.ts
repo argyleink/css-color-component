@@ -77,7 +77,6 @@ describe('form-associated custom element', () => {
     expect(el.hasAttribute('disabled')).toBe(true)
     el.disabled = false
     expect(el.hasAttribute('disabled')).toBe(false)
-    expect(el.type).toBe('color-input')
   })
 
   it('formResetCallback restores the color and space it connected with', () => {
@@ -110,11 +109,13 @@ describe('form-associated custom element', () => {
     expect(el.colorspace).toBe('hsl')
   })
 
-  it('formDisabledCallback disables the inner controls and blocks opening', () => {
+  it('formDisabledCallback disables the inner controls and blocks opening', async () => {
     const { el } = mount()
+    await new Promise((r) => setTimeout(r)) // let the popover polyfill hide the panel
     const trigger = shadow(el).querySelector<HTMLButtonElement>('button.trigger')!
     const text = shadow(el).querySelector<HTMLInputElement>('.text-input')!
     const panel = shadow(el).querySelector<HTMLElement>('.panel')!
+    expect(panel.hasAttribute('hidden')).toBe(true)
 
     el.show()
     expect(panel.hasAttribute('hidden')).toBe(false)
@@ -136,11 +137,29 @@ describe('form-associated custom element', () => {
     expect(panel.hasAttribute('hidden')).toBe(false)
   })
 
-  it('formStateRestoreCallback restores saved state, including the editing space', () => {
-    const { el } = mount({ value: '#000' })
+  it('formStateRestoreCallback restores saved state, including the editing space, silently', () => {
+    const { el, last } = mount({ value: '#000' })
+    let changes = 0
+    el.addEventListener('change', () => changes++)
     el.formStateRestoreCallback(JSON.stringify({ value: '#123456', colorspace: 'hsl' }), 'restore')
     expect(el.value).toBe('#123456')
     expect(el.colorspace).toBe('hsl')
+    expect(last()?.value).toBe('#123456')
+    // Native controls fire no events when the UA restores them
+    expect(changes).toBe(0)
+    // ...and the reset target is still the authored color
+    el.formResetCallback()
+    expect(el.value).toBe('#000')
+  })
+
+  it('a restore that arrives before the first connect is applied after the reset target is captured', () => {
+    const el = document.createElement('color-input') as any
+    el.setAttribute('value', '#3366cc')
+    el.formStateRestoreCallback(JSON.stringify({ value: '#123456', colorspace: 'hex' }), 'restore')
+    document.body.appendChild(el)
+    expect(el.value).toBe('#123456')
+    el.formResetCallback()
+    expect(el.value).toBe('#36c')
   })
 
   it('formStateRestoreCallback accepts a bare color (autofill) and ignores junk', () => {
@@ -170,6 +189,14 @@ describe('form-associated custom element', () => {
     expect(seen.n).toBe(1)
   })
 
+  it('a trigger click opens exactly once (host listener ignores shadow clicks)', async () => {
+    const { el } = mount()
+    await new Promise((r) => setTimeout(r))
+    const seen = opens(el)
+    shadow(el).querySelector<HTMLButtonElement>('button.trigger')!.click()
+    expect(seen.n).toBe(1)
+  })
+
   it('clicks that start inside the shadow root are left to the inner controls', async () => {
     const { el } = mount()
     await new Promise((r) => setTimeout(r))
@@ -185,6 +212,30 @@ describe('form-associated custom element', () => {
     el.formDisabledCallback(true)
     el.click()
     expect(seen.n).toBe(0)
+  })
+
+  it('names the shadow controls from associated labels, skipping nested controls', () => {
+    const { el, internals } = mount()
+    const label = document.createElement('label')
+    label.append('  Brand\n color ', el, document.createElement('select'))
+    label.querySelector('select')!.append(new Option('Small'))
+    document.body.append(label)
+    // jsdom doesn't compute ElementInternals.labels; hand it the association
+    Object.defineProperty(internals, 'labels', { configurable: true, get: () => label.ownerDocument.querySelectorAll('label') })
+    el.dispatchEvent(new FocusEvent('focusin'))
+    expect(shadow(el).querySelector('button.trigger')!.getAttribute('aria-label')).toBe('Brand color, open color picker')
+    expect(shadow(el).querySelector('.text-input')!.getAttribute('aria-label')).toBe('Brand color')
+  })
+
+  it('upgrades name/disabled set as properties before the element was defined', () => {
+    const el = document.createElement('color-input') as any
+    // simulate a pre-upgrade own property shadowing the accessor
+    Object.defineProperty(el, 'disabled', { value: true, writable: true, configurable: true, enumerable: true })
+    Object.defineProperty(el, 'name', { value: 'brand', writable: true, configurable: true, enumerable: true })
+    document.body.appendChild(el)
+    expect(el.hasAttribute('disabled')).toBe(true)
+    expect(el.getAttribute('name')).toBe('brand')
+    expect(Object.prototype.hasOwnProperty.call(el, 'disabled')).toBe(false)
   })
 
   it('carries the host aria-label into the shadow controls', () => {
