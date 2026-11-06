@@ -48,7 +48,11 @@ if (typeof sheet.replaceSync === 'function') {
 }
 
 export class ColorInput extends HTMLElement {
-  static get observedAttributes() { return ['value', 'colorspace', 'theme', 'no-alpha', 'initial-colorspace'] }
+  static get observedAttributes() { return ['value', 'colorspace', 'theme', 'no-alpha', 'initial-colorspace', 'aria-label'] }
+
+  // Form-associated custom element (HTML § 4.13.7): takes part in <form>
+  // submission, FormData, reset, disabled <fieldset>s, and <label for>.
+  static formAssociated = true
 
   // ──────────────────────────────────────────────────────────────────────────────
   // State: Reactive signals (Preact Signals Core)
@@ -70,6 +74,7 @@ export class ColorInput extends HTMLElement {
   #controlsEffectCleanup: ReturnType<typeof effect> | null = null
   #controlsUpdate: ((ch: ChannelRecord) => void) | null = null
   #areaPickerEffectCleanup: ReturnType<typeof effect> | null = null
+  #formValueEffectCleanup: ReturnType<typeof effect> | null = null
   #areaPicker?: AreaPicker
   #programmaticUpdate = false
 
@@ -147,11 +152,105 @@ export class ColorInput extends HTMLElement {
     else this.removeAttribute('initial-colorspace')
   }
 
+  // ──────────────────────────────────────────────────────────────────────────────
+  // Form-associated API, mirroring <input>
+  // ──────────────────────────────────────────────────────────────────────────────
+  #internals: ElementInternals | null = null
+  // What a form reset restores: the color (and editing space) the element was
+  // first connected with. The `value` attribute can't serve as the default the
+  // way it does for <input>, because the component reflects every edit into it.
+  #defaultState: { value: string; space: ColorSpace } | null = null
+  #disabled = false
+
+  get form() { return this.#internals?.form ?? null }
+  get labels(): NodeListOf<HTMLLabelElement> {
+    return (this.#internals?.labels as NodeListOf<HTMLLabelElement> | undefined)
+      ?? document.querySelectorAll<HTMLLabelElement>(':not(*)')
+  }
+  get name() { return this.getAttribute('name') ?? '' }
+  set name(v: string) { this.setAttribute('name', v) }
+  get disabled() { return this.hasAttribute('disabled') }
+  set disabled(v: boolean) { this.toggleAttribute('disabled', !!v) }
+  get type() { return this.localName }
+  get defaultValue() { return this.#defaultState?.value ?? this.getAttribute('value') ?? DEFAULT_VALUE }
+  set defaultValue(v: string) {
+    if (typeof v !== 'string' || !v) return
+    try {
+      this.#defaultState = { value: v, space: this.#detectSpace(v, parse(v).spaceId) }
+    } catch { }
+  }
+  get validity() { return this.#internals?.validity }
+  get validationMessage() { return this.#internals?.validationMessage ?? '' }
+  get willValidate() { return this.#internals?.willValidate ?? false }
+  checkValidity() { return this.#internals?.checkValidity?.() ?? true }
+  reportValidity() { return this.#internals?.reportValidity?.() ?? true }
+
+  // Called by the browser when `disabled` toggles on this element or on an
+  // ancestor <fieldset>. Disabled controls are left out of form submission.
+  formDisabledCallback(disabled: boolean) {
+    this.#disabled = disabled
+    const trigger = this.#root.querySelector<HTMLButtonElement>('button.trigger')
+    const text = this.#root.querySelector<HTMLInputElement>('.text-input')
+    const panel = this.#root.querySelector<HTMLElement>('.panel')
+    if (trigger) trigger.disabled = disabled
+    if (text) text.disabled = disabled
+    // An inline picker's panel is always visible; inert takes its sliders,
+    // area picker and buttons out of the tab order and pointer handling
+    if (panel) panel.inert = disabled
+    if (disabled) this.close()
+  }
+
+  formResetCallback() {
+    const start = this.#defaultState
+    if (!start || (start.value === this.#value.value && start.space === this.#space.value)) return
+    this.#restoreColor(start.value, start.space)
+  }
+
+  // Session history (back/forward, reload) and autofill hand back either the
+  // state recorded by setFormValue() or a bare color string
+  formStateRestoreCallback(state: unknown) {
+    if (typeof state !== 'string') return
+    let value = state
+    let space: ColorSpace | null = null
+    try {
+      const saved = JSON.parse(state)
+      if (saved && typeof saved.value === 'string') {
+        value = saved.value
+        space = asColorSpace(saved.colorspace)
+      }
+    } catch { }
+    try {
+      space ??= this.#detectSpace(value, parse(value).spaceId)
+    } catch { return }
+    this.#restoreColor(value, space)
+  }
+
+  #syncFormValue() {
+    const value = this.#value.value
+    try {
+      this.#internals?.setFormValue?.(value, JSON.stringify({ value, colorspace: this.#space.value }))
+    } catch { }
+  }
+
+  // The focusable parts live in shadow DOM, so a <label> naming the host
+  // doesn't reach them; carry its text (or the host's aria-label) inward
+  #syncAccessibleName() {
+    const trigger = this.#root.querySelector<HTMLButtonElement>('button.trigger')
+    const text = this.#root.querySelector<HTMLInputElement>('.text-input')
+    const fromLabels = Array.from(this.labels, (l) => l.textContent?.replace(/\s+/g, ' ').trim() ?? '')
+      .filter(Boolean)
+      .join(' ')
+    const name = this.getAttribute('aria-label')?.trim() || fromLabels
+    trigger?.setAttribute('aria-label', name ? `${name}, open color picker` : 'Open color picker')
+    text?.setAttribute('aria-label', name || 'Color value')
+  }
+
   #isInlinePickerVisible() {
     return this.#panel ? getComputedStyle(this.#panel).display !== 'none' : false
   }
 
   show(anchor?: HTMLElement | null) {
+    if (this.#disabled) return
     if (anchor) this.#anchor.value = anchor
     this.#panel?.showPopover?.();
     this.#startReposition()
@@ -204,6 +303,24 @@ export class ColorInput extends HTMLElement {
     // Add template content
     const template = createTemplate()
     this.#root.appendChild(template.content.cloneNode(true))
+
+    try {
+      this.#internals = this.attachInternals()
+    } catch { }
+
+    // Activating an associated <label> clicks the host itself (clicks inside
+    // the shadow root keep their inner node as the original target, so they
+    // never match). Behave like <input type="color">: open the picker.
+    this.addEventListener('click', (ev) => {
+      if (ev.composedPath()[0] !== this || this.#disabled) return
+      if (this.#isInlinePickerVisible()) {
+        this.focus()
+        return
+      }
+      this.#internalTrigger?.focus({ preventScroll: true })
+      this.show(this.#internalTrigger)
+    })
+    this.addEventListener('focusin', () => this.#syncAccessibleName())
   }
 
   // Delegate focus to the text input (replaces delegatesFocus behavior
@@ -519,6 +636,14 @@ export class ColorInput extends HTMLElement {
 
     this.#renderControls()
     this.#announceReady = true
+
+    this.#defaultState ??= { value: this.#value.value, space: this.#space.value }
+    this.#formValueEffectCleanup = effect(() => {
+      this.#value.value
+      this.#space.value
+      this.#syncFormValue()
+    })
+    this.#syncAccessibleName()
   }
 
   disconnectedCallback() {
@@ -526,6 +651,7 @@ export class ColorInput extends HTMLElement {
     this.#previewEffectCleanup?.()
     this.#errorEffectCleanup?.()
     this.#areaPickerEffectCleanup?.()
+    this.#formValueEffectCleanup?.()
     this.#areaPicker?.unmount()
     this.#editingField = null
     this.#editStart = null
@@ -560,6 +686,7 @@ export class ColorInput extends HTMLElement {
       this.#noAlpha.value = value !== null
       if (this.#controls) this.#renderControls()
     }
+    if (name === 'aria-label') this.#syncAccessibleName()
   }
 
   #emitChange() {
