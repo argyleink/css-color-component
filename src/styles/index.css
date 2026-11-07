@@ -29,6 +29,13 @@
 }
 :host([hidden]) { display: none; }
 
+/* Disabled by its own attribute or by an ancestor <fieldset disabled> */
+:host(:disabled) {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+:host(:disabled) :is(button.trigger, .text-input) { cursor: inherit; }
+
 /* Trigger button: contains the color chip/swatch */
 button {
   border: 1px solid color-mix(in oklab, var(--canvas-text), var(--canvas) 80%);

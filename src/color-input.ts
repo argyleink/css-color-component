@@ -40,6 +40,18 @@ const ANNOUNCE_DELAY = 600
 const asColorSpace = (value: string | null): ColorSpace | null =>
   COLOR_SPACES.includes(value as ColorSpace) ? value as ColorSpace : null
 
+// A wrapping <label> also holds the control itself (and maybe others), so
+// collect only its own text, skipping control subtrees and hidden content
+const LABEL_SKIP = 'color-input, input, select, textarea, button, datalist, output, [hidden], [aria-hidden="true"], script, style'
+const labelText = (label: HTMLElement) => {
+  const walker = document.createTreeWalker(label, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT, {
+    acceptNode: (n) => n instanceof Element && n.matches(LABEL_SKIP) ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT
+  })
+  let text = ''
+  while (walker.nextNode()) if (walker.currentNode.nodeType === Node.TEXT_NODE) text += walker.currentNode.nodeValue
+  return text
+}
+
 // Create shared stylesheet for all component instances
 const sheet = new CSSStyleSheet()
 // Only call replaceSync if it exists (not available in jsdom)
@@ -48,7 +60,11 @@ if (typeof sheet.replaceSync === 'function') {
 }
 
 export class ColorInput extends HTMLElement {
-  static get observedAttributes() { return ['value', 'colorspace', 'theme', 'no-alpha', 'initial-colorspace'] }
+  static get observedAttributes() { return ['value', 'colorspace', 'theme', 'no-alpha', 'initial-colorspace', 'aria-label'] }
+
+  // Form-associated custom element (HTML § 4.13.7): takes part in <form>
+  // submission, FormData, reset, disabled <fieldset>s, and <label for>.
+  static formAssociated = true
 
   // ──────────────────────────────────────────────────────────────────────────────
   // State: Reactive signals (Preact Signals Core)
@@ -70,6 +86,7 @@ export class ColorInput extends HTMLElement {
   #controlsEffectCleanup: ReturnType<typeof effect> | null = null
   #controlsUpdate: ((ch: ChannelRecord) => void) | null = null
   #areaPickerEffectCleanup: ReturnType<typeof effect> | null = null
+  #formValueEffectCleanup: ReturnType<typeof effect> | null = null
   #areaPicker?: AreaPicker
   #programmaticUpdate = false
 
@@ -147,11 +164,130 @@ export class ColorInput extends HTMLElement {
     else this.removeAttribute('initial-colorspace')
   }
 
+  // ──────────────────────────────────────────────────────────────────────────────
+  // Form-associated API, mirroring <input>
+  // ──────────────────────────────────────────────────────────────────────────────
+  #internals: ElementInternals | null = null
+  // What a form reset restores: the color (and editing space) the element was
+  // first connected with. The `value` attribute can't serve as the default the
+  // way it does for <input>, because the component reflects every edit into it.
+  #defaultState: { value: string; space: ColorSpace } | null = null
+  #disabled = false
+  #pendingRestore: string | null = null
+
+  get form() { return this.#internals?.form ?? null }
+  get labels(): NodeListOf<HTMLLabelElement> {
+    return (this.#internals?.labels as NodeListOf<HTMLLabelElement> | undefined)
+      ?? document.querySelectorAll<HTMLLabelElement>(':not(*)')
+  }
+  get name() { return this.getAttribute('name') ?? '' }
+  set name(v: string) { this.setAttribute('name', v) }
+  get disabled() { return this.hasAttribute('disabled') }
+  set disabled(v: boolean) { this.toggleAttribute('disabled', !!v) }
+  get defaultValue() { return this.#defaultState?.value ?? this.getAttribute('value') ?? DEFAULT_VALUE }
+  set defaultValue(v: string) {
+    if (typeof v !== 'string' || !v) return
+    try {
+      this.#defaultState = { value: v, space: this.#detectSpace(v, parse(v).spaceId) }
+    } catch { }
+  }
+  get validity() { return this.#internals?.validity }
+  get validationMessage() { return this.#internals?.validationMessage ?? '' }
+  get willValidate() { return this.#internals?.willValidate ?? false }
+  checkValidity() { return this.#internals?.checkValidity?.() ?? true }
+  reportValidity() { return this.#internals?.reportValidity?.() ?? true }
+
+  // Called by the browser when `disabled` toggles on this element or on an
+  // ancestor <fieldset>. Disabled controls are left out of form submission.
+  formDisabledCallback(disabled: boolean) {
+    this.#disabled = disabled
+    const trigger = this.#root.querySelector<HTMLButtonElement>('button.trigger')
+    const text = this.#root.querySelector<HTMLInputElement>('.text-input')
+    const panel = this.#root.querySelector<HTMLElement>('.panel')
+    if (trigger) trigger.disabled = disabled
+    if (text) text.disabled = disabled
+    // An inline picker's panel is always visible; inert takes its sliders,
+    // area picker and buttons out of the tab order and pointer handling
+    if (panel) panel.inert = disabled
+    if (disabled) this.close()
+  }
+
+  formResetCallback() {
+    const start = this.#defaultState
+    if (!start || (start.value === this.#value.value && start.space === this.#space.value)) return
+    this.#restoreColor(start.value, start.space)
+  }
+
+  // Session history (back/forward, reload) and autofill hand back either the
+  // state recorded by setFormValue() or a bare color string
+  formStateRestoreCallback(state: unknown) {
+    if (typeof state !== 'string') return
+    // Chromium restores before the first connectedCallback; hold the state
+    // until the authored color has been captured as the reset target
+    if (!this.#defaultState) {
+      this.#pendingRestore = state
+      return
+    }
+    let value = state
+    let space: ColorSpace | null = null
+    try {
+      const saved = JSON.parse(state)
+      if (saved && typeof saved.value === 'string') {
+        value = saved.value
+        space = asColorSpace(saved.colorspace)
+      }
+    } catch { }
+    try {
+      const parsed = parse(value)
+      space ??= this.#detectSpace(value, parsed.spaceId)
+    } catch { return }
+    // Like native controls, a UA-initiated restore fires no change event
+    this.#restoreColor(value, space, { silent: true })
+  }
+
+  #syncFormValue() {
+    const value = this.#value.value
+    try {
+      this.#internals?.setFormValue?.(value, JSON.stringify({ value, colorspace: this.#space.value }))
+    } catch { }
+  }
+
+  // The focusable parts live in shadow DOM, so a <label> naming the host
+  // doesn't reach them; carry its text (or the host's aria-label) inward
+  #labelObserver: MutationObserver | null = null
+  #observedLabels: HTMLLabelElement[] = []
+  #syncAccessibleName() {
+    if (!this.isConnected) return
+    const trigger = this.#root.querySelector<HTMLButtonElement>('button.trigger')
+    const text = this.#root.querySelector<HTMLInputElement>('.text-input')
+    const labels = Array.from(this.labels)
+    // Follow edits to the label text; only re-observe when the set changes
+    const sameLabels = labels.length === this.#observedLabels.length
+      && labels.every((l, i) => l === this.#observedLabels[i])
+    if (!sameLabels && typeof MutationObserver !== 'undefined') {
+      this.#labelObserver?.disconnect()
+      this.#labelObserver ??= new MutationObserver(() => this.#syncAccessibleName())
+      labels.forEach((l) => this.#labelObserver!.observe(l, { childList: true, characterData: true, subtree: true }))
+      this.#observedLabels = labels
+    }
+    const fromLabels = labels
+      .map((label) => labelText(label).replace(/\s+/g, ' ').trim())
+      .filter(Boolean)
+      .join(' ')
+    const name = this.getAttribute('aria-label')?.trim() || fromLabels
+    const set = (el: Element | null, label: string) => {
+      if (el && el.getAttribute('aria-label') !== label) el.setAttribute('aria-label', label)
+    }
+    set(trigger, name ? `${name}, open color picker` : 'Open color picker')
+    set(text, name || 'Color value')
+  }
+
   #isInlinePickerVisible() {
     return this.#panel ? getComputedStyle(this.#panel).display !== 'none' : false
   }
 
   show(anchor?: HTMLElement | null) {
+    if (this.#disabled) return
     if (anchor) this.#anchor.value = anchor
     this.#panel?.showPopover?.();
     this.#startReposition()
@@ -204,6 +340,24 @@ export class ColorInput extends HTMLElement {
     // Add template content
     const template = createTemplate()
     this.#root.appendChild(template.content.cloneNode(true))
+
+    try {
+      this.#internals = this.attachInternals()
+    } catch { }
+
+    // Activating an associated <label> clicks the host itself (clicks inside
+    // the shadow root keep their inner node as the original target, so they
+    // never match). Behave like <input type="color">: open the picker.
+    this.addEventListener('click', (ev) => {
+      if (ev.composedPath()[0] !== this || this.#disabled) return
+      if (this.#isInlinePickerVisible()) {
+        this.focus()
+        return
+      }
+      this.#internalTrigger?.focus({ preventScroll: true })
+      this.show(this.#internalTrigger)
+    })
+    this.addEventListener('focusin', () => this.#syncAccessibleName())
   }
 
   // Delegate focus to the text input (replaces delegatesFocus behavior
@@ -213,6 +367,10 @@ export class ColorInput extends HTMLElement {
   }
 
   connectedCallback() {
+    this.#upgradeProperty('value')
+    this.#upgradeProperty('name')
+    this.#upgradeProperty('disabled')
+    this.#upgradeProperty('defaultValue')
     const btn = this.#root.querySelector<HTMLButtonElement>('button.trigger')
     this.#internalTrigger = btn ?? undefined
     this.#panel = this.#root.querySelector('.panel') as any
@@ -519,6 +677,35 @@ export class ColorInput extends HTMLElement {
 
     this.#renderControls()
     this.#announceReady = true
+
+    this.#defaultState ??= { value: this.#value.value, space: this.#space.value }
+    if (this.#pendingRestore !== null) {
+      const state = this.#pendingRestore
+      this.#pendingRestore = null
+      this.formStateRestoreCallback(state)
+    }
+    this.#formValueEffectCleanup = effect(() => {
+      this.#value.value
+      this.#space.value
+      this.#syncFormValue()
+    })
+    // A <label for> later in the document doesn't exist yet while the parser
+    // is still connecting this element, so look again once parsing is done
+    this.#syncAccessibleName()
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', () => this.#syncAccessibleName(), { once: true })
+    } else {
+      queueMicrotask(() => this.#syncAccessibleName())
+    }
+  }
+
+  // A property set before the element upgraded (common with frameworks)
+  // shadows the class accessor; re-run it through the setter
+  #upgradeProperty(prop: 'value' | 'name' | 'disabled' | 'defaultValue') {
+    if (!Object.prototype.hasOwnProperty.call(this, prop)) return
+    const v = (this as any)[prop]
+    delete (this as any)[prop]
+    ;(this as any)[prop] = v
   }
 
   disconnectedCallback() {
@@ -526,6 +713,9 @@ export class ColorInput extends HTMLElement {
     this.#previewEffectCleanup?.()
     this.#errorEffectCleanup?.()
     this.#areaPickerEffectCleanup?.()
+    this.#formValueEffectCleanup?.()
+    this.#labelObserver?.disconnect()
+    this.#observedLabels = []
     this.#areaPicker?.unmount()
     this.#editingField = null
     this.#editStart = null
@@ -560,6 +750,7 @@ export class ColorInput extends HTMLElement {
       this.#noAlpha.value = value !== null
       if (this.#controls) this.#renderControls()
     }
+    if (name === 'aria-label') this.#syncAccessibleName()
   }
 
   #emitChange() {
@@ -611,7 +802,7 @@ export class ColorInput extends HTMLElement {
   // Put back an exact value/space pair without re-detecting the space, so an
   // abandoned edit lands back where it started even when the space came from
   // `initial-colorspace` rather than the value string
-  #restoreColor(value: string, space: ColorSpace) {
+  #restoreColor(value: string, space: ColorSpace, { silent = false } = {}) {
     const spaceChanged = space !== this.#space.value
     this.#space.value = space
     this.#value.value = value
@@ -620,7 +811,7 @@ export class ColorInput extends HTMLElement {
     this.setAttribute('colorspace', space)
     this.#programmaticUpdate = false
     if (this.#spaceSelect) this.#spaceSelect.value = space
-    this.#emitChange()
+    if (!silent) this.#emitChange()
     if (spaceChanged) this.#renderControls()
     else this.#updateControls()
   }

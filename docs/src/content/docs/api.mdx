@@ -128,6 +128,57 @@ The `no-alpha` attribute hides the alpha channel control from the color picker. 
 Use `no-alpha` when you want to enforce fully opaque colors or prevent users from adjusting transparency in your application.
 :::
 
+### name
+
+The form field name. `<color-input>` is a [form-associated custom element](https://html.spec.whatwg.org/multipage/custom-elements.html#form-associated-custom-elements), so with a `name` its current `value` is submitted with the form and shows up in `FormData`, just like `<input>`.
+
+```html
+<form>
+  <color-input name="brand" value="#3b82f6"></color-input>
+</form>
+```
+
+### disabled
+
+Disables the trigger and inline field, keeps the picker from opening, and leaves the value out of form submission. Inline pickers become `inert`. An ancestor `<fieldset disabled>` has the same effect, and either way the host matches `:disabled`.
+
+```html
+<color-input name="brand" disabled></color-input>
+```
+
+## Forms and labels
+
+`<color-input>` participates in forms the way `<input type="color">` does:
+
+- **Submission and `FormData`**: a named element contributes its current `value`, kept in sync on every edit, drag, or paste.
+- **Labels**: `<label for="id">` and wrapping `<label>` both work. Clicking the label opens the picker (or focuses an inline one), and the label text names the trigger button and inline field for screen readers. An `aria-label` on the host does the same.
+- **Reset**: a form reset restores the color and editing space the element was connected with, and fires `change`. Set `defaultValue` to choose a different reset target. (The `value` attribute can't double as the default the way it does on `<input>`, because the component reflects every edit into it.)
+- **Disabled**: the element's own `disabled` attribute or an ancestor `<fieldset disabled>`.
+- **History**: back/forward navigation and reloads restore the color and editing space, without firing `change`.
+
+```html
+<form>
+  <label for="brand">Brand color</label>
+  <color-input id="brand" name="brand" value="#3b82f6"></color-input>
+
+  <label>
+    Accent
+    <color-input name="accent" value="oklch(70% 0.2 140)"></color-input>
+  </label>
+
+  <button type="reset">Reset</button>
+  <button>Save</button>
+</form>
+```
+
+```js
+const form = document.querySelector("form");
+const brand = document.querySelector("#brand");
+new FormData(form).get("brand") === brand.value; // true
+brand.form === form; // true
+brand.labels[0].textContent; // "Brand color"
+```
+
 ## Editing the color string
 
 There are two editable text fields for the color string: the inline field next to the trigger, and the field in the picker's preview footer. Both accept anything the CSS Color Level 4 parser understands and keep the sliders, area picker, preview, and computed properties in sync as you type.
@@ -234,6 +285,15 @@ console.log(picker.theme); // "auto"
 picker.theme = "dark"; // "auto", "light", or "dark"
 ```
 
+**name** / **disabled** - Reflect the `name` and `disabled` attributes
+
+**defaultValue** - The color a form reset restores (defaults to the value the element was connected with)
+
+```js
+picker.defaultValue = "oklch(70% 20% 240)";
+picker.form.reset(); // picker.value === "oklch(70% 20% 240)"
+```
+
 **noAlpha** - Controls alpha channel visibility
 
 ```js
@@ -256,8 +316,10 @@ console.log(picker.gamut); // "srgb" | "p3" | "rec2020" | "xyz"
 console.log(picker.contrastColor); // "white" or "black"
 ```
 
+**form** / **labels** / **validity** / **validationMessage** / **willValidate** - The standard form-control properties, backed by `ElementInternals`. `checkValidity()` and `reportValidity()` are available too.
+
 :::note
-`value`, `colorspace`, `initialColorspace`, `theme`, and `noAlpha` reflect to attributes. `gamut` and `contrastColor` are derived read-only values.
+`value`, `colorspace`, `initialColorspace`, `theme`, `noAlpha`, `name`, and `disabled` reflect to attributes. `gamut` and `contrastColor` are derived read-only values.
 :::
 
 ## Methods
