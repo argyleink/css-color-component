@@ -761,9 +761,9 @@ export class AreaPicker {
 
     // Only the primary button drags, like a native range input. A secondary
     // (right) or macOS ctrl+click opens the context menu instead, and on macOS
-    // that menu swallows the pointerup: a drag started there kept pointer
-    // capture, so the next click anywhere on the page re-picked the color and
-    // the panel could no longer light-dismiss or reopen (#63).
+    // that menu swallows the pointerup: a drag started there never ended, so
+    // body stayed inert and capture kept retargeting clicks here, re-picking
+    // the color while the panel could no longer dismiss or reopen (#63).
     const isMac = typeof navigator !== "undefined" && /Mac|iP(hone|od|ad)/.test(navigator.platform);
     let activePointerId: number | null = null;
     let activePointerType = "";
