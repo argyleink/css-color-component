@@ -766,14 +766,19 @@ export class AreaPicker {
     // the panel could no longer light-dismiss or reopen (#63).
     const isMac = typeof navigator !== "undefined" && /Mac|iP(hone|od|ad)/.test(navigator.platform);
     let activePointerId: number | null = null;
+    let activePointerType = "";
 
-    // End the active drag. Runs for pointerup, pointercancel and
-    // lostpointercapture (whichever arrives first); later calls are no-ops.
-    const endDrag = (event: PointerEvent) => {
-      if (event.pointerId !== activePointerId) return;
+    // End the active drag. Runs for pointerup, pointercancel,
+    // lostpointercapture and contextmenu (whichever arrives first); later
+    // calls are no-ops. Clearing #draggingColor matters beyond the thumb: the
+    // dragging effect below sets body.inert while a drag is live, so a drag
+    // that never ends freezes the whole page, trigger included.
+    const finishDrag = () => {
+      const pointerId = activePointerId;
+      if (pointerId === null) return;
       activePointerId = null;
-      if (element.hasPointerCapture?.(event.pointerId)) {
-        element.releasePointerCapture(event.pointerId);
+      if (element.hasPointerCapture?.(pointerId)) {
+        element.releasePointerCapture(pointerId);
       }
       // Emit final non-dragging change so sliders update
       const color = this.#draggingColor.value;
@@ -784,6 +789,9 @@ export class AreaPicker {
       pointerOffset = { x: 0, y: 0 };
       cachedRect = null;
     };
+    const endDrag = (event: PointerEvent) => {
+      if (event.pointerId === activePointerId) finishDrag();
+    };
 
     element.addEventListener(
       "pointerdown",
@@ -791,8 +799,14 @@ export class AreaPicker {
         if (event.button !== 0 || (isMac && event.ctrlKey)) return;
         // one pointer drives the thumb; ignore a second finger mid-drag
         if (activePointerId !== null) return;
+        try {
+          element.setPointerCapture(event.pointerId);
+        } catch {
+          // pointer isn't active (e.g. a synthetic event): no drag to track
+          return;
+        }
         activePointerId = event.pointerId;
-        element.setPointerCapture(event.pointerId);
+        activePointerType = event.pointerType;
         cachedRect = element.getBoundingClientRect();
 
         if (thumb && (event.target === thumb || thumb.contains(event.target as Node))) {
@@ -834,6 +848,11 @@ export class AreaPicker {
     element.addEventListener("pointerup", endDrag, dragEndOptions);
     element.addEventListener("pointercancel", endDrag, dragEndOptions);
     element.addEventListener("lostpointercapture", endDrag, dragEndOptions);
+    // A menu opened mid-drag (mouse only: a touch long-press also fires
+    // contextmenu, and press-and-hold then drag must keep working)
+    element.addEventListener("contextmenu", () => {
+      if (activePointerType === "mouse") finishDrag();
+    }, dragEndOptions);
 
     element.addEventListener(
       "keydown",
@@ -1047,6 +1066,9 @@ export class AreaPicker {
     });
 
     this.#controller.signal.addEventListener("abort", () => {
+      // removed mid-drag: lostpointercapture then fires at the document, not
+      // here, so end the drag ourselves to release body.inert
+      this.#draggingColor.value = null;
       cleanupDragging();
       cleanupColor();
       cleanupHue();
