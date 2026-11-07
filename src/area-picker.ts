@@ -759,9 +759,39 @@ export class AreaPicker {
       handleChange(this.#draggingColor.value, true);
     };
 
+    // Only the primary button drags, like a native range input. A secondary
+    // (right) or macOS ctrl+click opens the context menu instead, and on macOS
+    // that menu swallows the pointerup: a drag started there kept pointer
+    // capture, so the next click anywhere on the page re-picked the color and
+    // the panel could no longer light-dismiss or reopen (#63).
+    const isMac = typeof navigator !== "undefined" && /Mac|iP(hone|od|ad)/.test(navigator.platform);
+    let activePointerId: number | null = null;
+
+    // End the active drag. Runs for pointerup, pointercancel and
+    // lostpointercapture (whichever arrives first); later calls are no-ops.
+    const endDrag = (event: PointerEvent) => {
+      if (event.pointerId !== activePointerId) return;
+      activePointerId = null;
+      if (element.hasPointerCapture?.(event.pointerId)) {
+        element.releasePointerCapture(event.pointerId);
+      }
+      // Emit final non-dragging change so sliders update
+      const color = this.#draggingColor.value;
+      if (color) {
+        handleChange(color, false);
+      }
+      this.#draggingColor.value = null;
+      pointerOffset = { x: 0, y: 0 };
+      cachedRect = null;
+    };
+
     element.addEventListener(
       "pointerdown",
       (event) => {
+        if (event.button !== 0 || (isMac && event.ctrlKey)) return;
+        // one pointer drives the thumb; ignore a second finger mid-drag
+        if (activePointerId !== null) return;
+        activePointerId = event.pointerId;
         element.setPointerCapture(event.pointerId);
         cachedRect = element.getBoundingClientRect();
 
@@ -792,7 +822,7 @@ export class AreaPicker {
     element.addEventListener(
       "pointermove",
       (event) => {
-        if (this.#draggingColor.value) {
+        if (event.pointerId === activePointerId && this.#draggingColor.value) {
           event.preventDefault();
           handleMove(event);
         }
@@ -800,31 +830,10 @@ export class AreaPicker {
       { signal: this.#controller.signal }
     );
 
-    element.addEventListener(
-      "pointerup",
-      (event) => {
-        element.releasePointerCapture(event.pointerId);
-        // Emit final non-dragging change so sliders update
-        const color = this.#draggingColor.value;
-        if (color) {
-          handleChange(color, false);
-        }
-        this.#draggingColor.value = null;
-        pointerOffset = { x: 0, y: 0 };
-        cachedRect = null;
-      },
-      { signal: this.#controller.signal }
-    );
-
-    element.addEventListener(
-      "pointercancel",
-      () => {
-        this.#draggingColor.value = null;
-        pointerOffset = { x: 0, y: 0 };
-        cachedRect = null;
-      },
-      { signal: this.#controller.signal }
-    );
+    const dragEndOptions = { signal: this.#controller.signal };
+    element.addEventListener("pointerup", endDrag, dragEndOptions);
+    element.addEventListener("pointercancel", endDrag, dragEndOptions);
+    element.addEventListener("lostpointercapture", endDrag, dragEndOptions);
 
     element.addEventListener(
       "keydown",
