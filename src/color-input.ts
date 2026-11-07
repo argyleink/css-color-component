@@ -689,7 +689,8 @@ export class ColorInput extends HTMLElement {
 
     // Normalize value on load so chroma (and other channels) are in consistent form
     // (e.g. percentage notation), matching what gencolor produces after any change.
-    // parseIntoChannels is lossless, so this never changes the color. A
+    // parseIntoChannels is lossless, so this never changes an in-gamut color
+    // (srgb/hex still clip to the sRGB gamut, as before). A
     // lowercase hex that already holds the same bytes is left exactly as
     // authored (#3366aa stays #3366aa, not #36a); anything else in hex mode
     // (red, rgb(), #ABC, #rrggbbff) is still converted to canonical hex
