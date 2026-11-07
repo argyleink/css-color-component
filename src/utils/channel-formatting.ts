@@ -125,10 +125,10 @@ export function serializeChannel(space: ColorSpace | string, key: string, val: n
     const f = 10 ** d
     const rounded = Math.floor(val * f + 0.5) / f
     const ok = Math.abs(rounded - val) <= tolerance && formatChannel(space as ColorSpace, key, rounded) === display
-    if (ok || d === MAX_DECIMALS) {
-      // `+ 0` turns -0 into 0
-      return String(rounded + 0)
-    }
+    // `+ 0` turns -0 into 0
+    if (ok) return String(rounded + 0)
   }
-  return String(val)
+  // No short form passes (a value sitting on a display rounding boundary,
+  // e.g. -0.0049999): keep it exact rather than double-round
+  return String(val + 0)
 }

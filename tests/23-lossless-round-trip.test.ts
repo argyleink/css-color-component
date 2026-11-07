@@ -79,10 +79,13 @@ describe('hex round-trips losslessly (all 256 values per channel)', () => {
     expect(changed).toEqual([])
   })
 
-  it('#3b82f6 stays #3b82f6 (the reported case), and short/upper hex stays as authored', () => {
+  it('#3b82f6 stays #3b82f6 (the reported case), and lowercase short/long hex stays as authored', () => {
     expect(mount('#3b82f6').value).toBe('#3b82f6')
     expect(mount('#3366aa').value).toBe('#3366aa')
-    expect(mount('#3B82F6').value).toBe('#3B82F6')
+    expect(mount('#36a').value).toBe('#36a')
+    expect(mount('#3b82f680').value).toBe('#3b82f680')
+    // Uppercase is lowercased like <input type="color">; the bytes never move
+    expect(mount('#3B82F6').value).toBe('#3b82f6')
   })
 
   it('editing one channel leaves the other two byte-exact', () => {
@@ -266,5 +269,89 @@ describe('other serializations are lossless on load and idempotent', () => {
     alp.dispatchEvent(new Event('input'))
     await new Promise(res => requestAnimationFrame(() => res(null)))
     expect(el.value).toBe('oklch(62.8% 64.425% 29.23 / 50%)')
+  })
+})
+
+describe('review follow-ups', () => {
+  // Parsed markup, like <color-input value="red" colorspace="hex"> in a page
+  function mountIn(value: string, colorspace: string) {
+    const host = document.createElement('div')
+    host.innerHTML = `<color-input value="${value}" colorspace="${colorspace}"></color-input>`
+    const el = host.firstElementChild as any
+    document.body.appendChild(el)
+    mounted.push(el)
+    return el
+  }
+
+  it('hex mode still converts non-hex input to hex on load', () => {
+    expect(mountIn('red', 'hex').value).toBe('#f00')
+    expect(mountIn('rgb(59 130 246)', 'hex').value).toBe('#3b82f6')
+    expect(mountIn('#ABC', 'hex').value).toBe('#abc')
+    expect(mountIn('#3b82f6ff', 'hex').value).toBe('#3b82f6')
+  })
+
+  it('a converted hex-mode value is what a space switch returns to', () => {
+    const el = mountIn('red', 'hex')
+    el.colorspace = 'oklch'
+    el.colorspace = 'hex'
+    expect(el.value).toBe('#f00')
+  })
+
+  it('out-of-range wide-gamut/HDR channels show their real value in the number fields', () => {
+    const el = mount('color(display-p3 -0.1 0.5 1.2)') as any
+    el.show()
+    const nums = [...el.shadowRoot.querySelectorAll('input[type="number"]')].map((n: any) => n.value)
+    expect(nums).toEqual(['-10', '50', '120', '100'])
+    expect(el.value).toBe('color(display-p3 -10% 50% 120%)')
+  })
+
+  it('oklch chroma above 100% is kept in the value but shown clamped to the slider', () => {
+    const el = mount('oklch(70% 0.45 145)') as any
+    el.show()
+    const c = el.shadowRoot.querySelector('input[type="number"].ch-c') as HTMLInputElement
+    expect(c.value).toBe('100')
+    expect(el.value).toBe('oklch(70% 112.5% 145)')
+  })
+
+  it('a lab a/b value that displays as 0 gets a + sign, never −0', () => {
+    const el = mount('lab(50% -0.4 0.4)') as any
+    el.show()
+    const sups = [...el.shadowRoot.querySelectorAll('.num-wrapper sup')].map((s: any) => s.textContent).filter((t: string) => t !== '%')
+    expect(sups).toEqual(['+', '+'])
+  })
+
+  it('wide-gamut and HDR spaces load and round-trip losslessly', () => {
+    for (const v of [
+      'color(display-p3 0.2 0.5 0.95)',
+      'color(rec2020 0.1 0.6 0.3)',
+      'color(a98-rgb 0.123 0.456 0.789)',
+      'color(prophoto-rgb 0.3 0.4 0.5 / 0.25)',
+      'oklch(55.5% 0.123 250.5 / 40%)',
+      'oklab(0.62 -0.1234 0.0567)',
+      'lch(52.2% 72.2 50)',
+      'color(xyz-d65 0.2 0.3 0.4)',
+    ]) {
+      const out = mount(v).value
+      const space = parse(v).spaceId
+      const a = coords(v, space), b = coords(out, space)
+      a.forEach((x, i) => expect(Math.abs(x - b[i]), `${v} → ${out}`).toBeLessThan(150 / 65535))
+      // 16-bit per CSS Color 4 § 16 (lch C is stored as a % of 150, so its
+      // authored digits shift: 72.2 → 48.133% → 72.1995)
+      void 0
+      // and reloading the output is idempotent
+      expect(mount(out).value).toBe(out)
+    }
+  })
+})
+
+describe('serializeChannel edge cases', () => {
+  it('never double-rounds a value sitting on a display boundary', async () => {
+    const { serializeChannel, formatChannel } = await import('../src/utils/channel-formatting')
+    for (const v of [-0.0049999, 0.0049999, 96.4999999, -40.5, 0, -0]) {
+      const out = serializeChannel('oklab', 'A', v)
+      expect(formatChannel('oklab', 'A', Number(out)), `${v} → ${out}`).toBe(formatChannel('oklab', 'A', v))
+    }
+    expect(serializeChannel('srgb', 'R', -0)).toBe('0')
+    expect(serializeChannel('srgb', 'R', NaN)).toBe('0')
   })
 })
