@@ -11,7 +11,10 @@ import '../src/index'
 
 type Call = { value: unknown; state: unknown }
 const calls = new WeakMap<object, Call[]>()
-const proto = (globalThis as any).ElementInternals?.prototype
+// Reach the prototype through an instance: the ElementInternals global isn't
+// exposed on every Node version vitest's jsdom env runs under (Node 20 in CI)
+customElements.define('internals-probe', class extends HTMLElement {})
+const proto = Object.getPrototypeOf((document.createElement('internals-probe') as any).attachInternals())
 const original = proto?.setFormValue
 
 beforeAll(() => {
