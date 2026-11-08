@@ -7,7 +7,7 @@ import {
   rgbColor,
   reverseColorJSSpaceID
 } from '../color'
-import { toFixed } from './channel-formatting'
+import { formatChannel, serializeChannel } from './channel-formatting'
 
 export type ChannelRecord = Record<string, string | number>
 
@@ -116,22 +116,12 @@ export function preprocessColorInput(raw: string): string {
 }
 
 /**
- * Parse a CSS color string into its component channels for a target color space.
- * Converts between spaces if necessary, normalizes channel ranges, and handles missing hue.
- *
- * @param space - Target color space to parse into
- * @param colorStr - CSS color string to parse
- * @returns Object containing the parsed space and channel values
- *
- * @example
- * parseIntoChannels('oklch', 'red')
- * // → { space: 'oklch', ch: { L: '62', C: '57', H: '29', ALP: '100' } }
- *
- * @example
- * parseIntoChannels('hsl', '#ff0000')
- * // → { space: 'hsl', ch: { H: '0', S: '100', L: '50', ALP: '100' } }
+ * Read a CSS color's channels, in the units the controls use, as exact
+ * numbers: percentages for L/S/W/B/R/G/alpha, chroma as a percentage of the
+ * reference range, degrees for hue, raw numbers for lab/oklab a and b.
+ * Converts to `space` first (hex reads as srgb).
  */
-export function parseIntoChannels(space: ColorSpace, colorStr: string): { space: ColorSpace; ch: ChannelRecord } {
+function readChannels(space: ColorSpace, colorStr: string): { space: ColorSpace; ch: Record<string, number> } {
   // getColor() converts input to compatible type with to() result
   let c = getColor(parse(colorStr))
   // Hex is internally sRGB
@@ -144,67 +134,117 @@ export function parseIntoChannels(space: ColorSpace, colorStr: string): { space:
   const id = reverseColorJSSpaceID(c.space.id)
   const s = (id === 'rgb' ? 'srgb' : id) as ColorSpace
 
-  const ch: ChannelRecord = {}
+  const ch: Record<string, number> = {}
+  const n = (v: number | null | undefined) => (v == null || !Number.isFinite(v) ? 0 : v)
 
-  // fallback to non-transparent
-  const alpha = c.alpha ?? 1
   if (s === 'oklab') {
     const [l, a, b] = c.coords
-    ch.L = toFixed((l ?? 0) * 100)
-    ch.A = toFixed(a, 2)
-    ch.B = toFixed(b, 2)
-    ch.ALP = toFixed(alpha * 100)
+    ch.L = n(l) * 100
+    ch.A = n(a)
+    ch.B = n(b)
   } else if (s === 'oklch') {
-    const [minChroma, maxChroma] = OKLCH.coords.c.refRange ?? [0, 1]
+    const [minChroma, maxChroma] = OKLCH.coords.c.refRange ?? [0, 0.4]
     const [l, cc, h] = c.coords
-    const chromaPercentage = ((cc ?? 0 - minChroma) / (maxChroma - minChroma)) * 100
-    ch.L = toFixed((l ?? 0) * 100)
-    ch.C = toFixed(Math.min(100, chromaPercentage), 0) // Convert to 0-100%, clamp at 100%
-    ch.H = toFixed(h)
-    ch.ALP = toFixed(alpha * 100)
+    ch.L = n(l) * 100
+    // Chroma as a percentage of the reference range (0.4 = 100%). Not clamped
+    // here: oklch(… 0.45 …) is a valid color and must survive a load untouched
+    ch.C = ((n(cc) - minChroma) / (maxChroma - minChroma)) * 100
+    ch.H = n(h)
   } else if (s === 'lab') {
     const [l, a, b] = c.coords
-    ch.L = toFixed(l)
-    ch.A = toFixed(a)
-    ch.B = toFixed(b)
-    ch.ALP = toFixed(alpha * 100)
+    ch.L = n(l)
+    ch.A = n(a)
+    ch.B = n(b)
   } else if (s === 'lch') {
     const [l, cc, h] = c.coords
-    ch.L = toFixed(l)
-    ch.C = toFixed(Math.min(100, (cc ?? 0) / 1.5), 0) // Normalize 0-150 to 0-100%, clamp at 100%
-    ch.H = toFixed(h)
-    ch.ALP = toFixed(alpha * 100)
-  } else if (s === 'hsl') {
-    const h = c.coords[0]
-    const s2 = c.coords[1] ?? 0
-    const l = c.coords[2] ?? 0
-    ch.H = toFixed(h)
-    // colorjs.io returns 0-1 when parsing HSL strings, but 0-100 when converting from other spaces
-    ch.S = toFixed(s2 > 1 ? s2 : s2 * 100)
-    ch.L = toFixed(l > 1 ? l : l * 100)
-    ch.ALP = toFixed(alpha * 100)
-  } else if (s === 'hwb') {
-    const h = c.coords[0]
-    const w = c.coords[1] ?? 0
-    const b = c.coords[2] ?? 0
-    ch.H = toFixed(h)
-    // colorjs.io returns 0-1 when parsing HWB strings, but 0-100 when converting from other spaces
-    ch.W = toFixed(w > 1 ? w : w * 100)
-    ch.B = toFixed(b > 1 ? b : b * 100)
-    ch.ALP = toFixed(alpha * 100)
-  } else if (s === 'srgb' || s === 'hex') {
+    ch.L = n(l)
+    ch.C = n(cc) / 1.5 // 0-150 as 0-100%, not clamped (see oklch)
+    ch.H = n(h)
+  } else if (s === 'hsl' || s === 'hwb') {
+    // colorjs.io (0.5+) reports S/L and W/B on a 0-100 scale for parsed and
+    // converted colors alike. (The old "≤ 1 means 0-1" guess turned
+    // hsl(0 1% 50%) into hsl(0 100% 50%).)
+    const [h, x, y] = c.coords
+    ch.H = n(h)
+    if (s === 'hsl') {
+      ch.S = n(x)
+      ch.L = n(y)
+    } else {
+      ch.W = n(x)
+      ch.B = n(y)
+    }
+  } else if (s === 'srgb') {
     const [r, g, b] = toGamut(c, { space: 'srgb', method: 'clip' }).coords
-    ch.R = toFixed((r ?? 0) * 100)
-    ch.G = toFixed((g ?? 0) * 100)
-    ch.B = toFixed((b ?? 0) * 100)
-    ch.ALP = toFixed(alpha * 100)
+    ch.R = n(r) * 100
+    ch.G = n(g) * 100
+    ch.B = n(b) * 100
   } else if (isRGBLike(s)) {
     const [r, g, b] = c.coords
-    ch.R = toFixed((r ?? 0) * 100)
-    ch.G = toFixed((g ?? 0) * 100)
-    ch.B = toFixed((b ?? 0) * 100)
-    ch.ALP = toFixed(alpha * 100)
+    ch.R = n(r) * 100
+    ch.G = n(g) * 100
+    ch.B = n(b) * 100
   }
+  if (Object.keys(ch).length) ch.ALP = (c.alpha ?? 1) * 100
 
+  return { space: s, ch }
+}
+
+/** True when an sRGB percentage is an exact 8-bit value (it came from hex or rgb(0-255)) */
+const isByte = (pct: number) => {
+  const v = pct * 2.55
+  return Math.abs(v - Math.round(v)) < 1e-6
+}
+
+/**
+ * Parse a CSS color string into its component channels for a target color space.
+ * Converts between spaces if necessary, normalizes channel ranges, and handles missing hue.
+ *
+ * Channels are lossless: they keep the color's full precision (see
+ * serializeChannel()), so gencolor(space, parseIntoChannels(space, c).ch)
+ * is the same color as `c`. Round with displayChannels() for display.
+ *
+ * @param space - Target color space to parse into
+ * @param colorStr - CSS color string to parse
+ * @returns Object containing the parsed space and channel values
+ *
+ * @example
+ * parseIntoChannels('oklch', 'oklch(62.8% 0.2577 29.23)')
+ * // → { space: 'oklch', ch: { L: '62.8', C: '64.425', H: '29.23', ALP: '100' } }
+ *
+ * @example
+ * parseIntoChannels('hex', '#3b82f6')
+ * // → { space: 'srgb', ch: { R: '23.1', G: '51', B: '96.47', ALP: '100' } }
+ */
+export function parseIntoChannels(space: ColorSpace, colorStr: string): { space: ColorSpace; ch: ChannelRecord } {
+  const { space: s, ch: raw } = readChannels(space, colorStr)
+  const ch: ChannelRecord = {}
+  for (const [key, v] of Object.entries(raw)) {
+    // 8-bit sRGB values (hex, rgb(59 130 246)) are repeating decimals as
+    // percentages; serialize them at the 10-bit color(srgb) minimum, which
+    // keeps every byte exact in a decimal or two (96.47%, not 96.4706%)
+    const bits = s === 'srgb' && key !== 'ALP' && isByte(v) ? 10 : undefined
+    ch[key] = serializeChannel(s, key, v, bits)
+  }
+  return { space: s, ch }
+}
+
+/**
+ * Channels at display precision, for values the user creates by dragging,
+ * eyedropping or switching spaces: whole percents and degrees (see
+ * formatChannel()), with chroma clamped to the slider's 0-100% range.
+ *
+ * Rounds once, from the exact color, so there is no double rounding
+ * (96.47 → 96, never 96.47 → 96.5 → 97). Hex is left lossless: gencolor()
+ * quantizes it to 8 bits itself, and whole percents first would shift
+ * channels by one (#3b82f6 → #3b82f5).
+ */
+export function displayChannels(space: ColorSpace, colorStr: string): { space: ColorSpace; ch: ChannelRecord } {
+  if (space === 'hex') return parseIntoChannels(space, colorStr)
+  const { space: s, ch: raw } = readChannels(space, colorStr)
+  const ch: ChannelRecord = {}
+  for (const [key, v] of Object.entries(raw)) {
+    const clamped = (s === 'oklch' || s === 'lch') && key === 'C' ? Math.min(100, v) : v
+    ch[key] = formatChannel(s, key, clamped)
+  }
   return { space: s, ch }
 }

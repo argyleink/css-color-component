@@ -1,7 +1,7 @@
 import { computed, effect, signal } from "@preact/signals-core";
 import { ColorConstructor, inGamut, serialize, to } from "colorjs.io/fn";
 import { getColorJSSpaceID, isRGBLike, type ColorSpace } from "./color";
-import { gencolor, parseIntoChannels } from "./utils/color-conversion";
+import { gencolor, displayChannels } from "./utils/color-conversion";
 import AreaPickerWorker from './area-picker.worker.ts?worker&inline';
 
 type AreaConfig = {
@@ -712,8 +712,8 @@ export class AreaPicker {
         format: space === "hex" ? "hex" : undefined,
       })
       onChange(
-        // reformat color
-        gencolor(space, parseIntoChannels(space, serialized).ch),
+        // reformat color at display precision: a drag is a user edit
+        gencolor(space, displayChannels(space, serialized).ch),
         isDragging
       );
     };

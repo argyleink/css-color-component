@@ -162,7 +162,7 @@ describe('form-associated custom element', () => {
     document.body.appendChild(el)
     expect(el.value).toBe('#123456')
     el.formResetCallback()
-    expect(el.value).toBe('#36c')
+    expect(el.value).toBe('#3366cc')
   })
 
   it('formStateRestoreCallback accepts a bare color (autofill) and ignores junk', () => {

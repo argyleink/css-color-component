@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { gencolor, parseIntoChannels, preprocessColorInput } from '../../src/utils/color-conversion'
+import { gencolor, parseIntoChannels, preprocessColorInput, displayChannels } from '../../src/utils/color-conversion'
 import type { ColorSpace } from '../../src/color'
 
 describe('color-conversion', () => {
@@ -199,8 +199,9 @@ describe('color-conversion', () => {
         const result = parseIntoChannels('oklch', 'oklch(75% 0.5 180)')
         expect(result.space).toBe('oklch')
         expect(result.ch.L).toBe('75')
-        // Chroma is converted to 0-100 percentage
-        expect(Number(result.ch.C)).toBeLessThanOrEqual(100)
+        // Chroma is converted to a percentage of 0.4, without clamping so the
+        // authored color survives a re-serialize
+        expect(result.ch.C).toBe('125')
         expect(result.ch.H).toBe('180')
         expect(result.ch.ALP).toBe('100')
       })
@@ -210,10 +211,10 @@ describe('color-conversion', () => {
         expect(result.ch.H).toBe('0')
       })
 
-      it('should clamp chroma at 100%', () => {
-        // Create a highly saturated color that might exceed 100% when scaled
+      it('keeps chroma above 100% losslessly; displayChannels clamps it for edits', () => {
         const result = parseIntoChannels('oklch', 'oklch(75% 1.5 180)')
-        expect(Number(result.ch.C)).toBeLessThanOrEqual(100)
+        expect(result.ch.C).toBe('375')
+        expect(displayChannels('oklch', 'oklch(75% 1.5 180)').ch.C).toBe('100')
       })
     })
 
@@ -278,8 +279,10 @@ describe('color-conversion', () => {
         const result = parseIntoChannels('hex', '#ff7f00')
         expect(result.space).toBe('srgb')
         expect(result.ch.R).toBe('100')
-        expect(result.ch.G).toBe('50')
+        // 127/255 = 49.8%; whole-percent 50% would rebuild as 0x80
+        expect(result.ch.G).toBe('49.8')
         expect(result.ch.B).toBe('0')
+        expect(gencolor('hex', result.ch)).toBe('#ff7f00')
       })
 
       it('should apply gamut clipping for srgb/hex', () => {

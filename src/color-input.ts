@@ -12,7 +12,7 @@ import {
 } from './color'
 import { AreaPicker } from './area-picker'
 import { formatChannel } from './utils/channel-formatting'
-import { gencolor, parseIntoChannels, preprocessColorInput, type ChannelRecord } from './utils/color-conversion'
+import { gencolor, parseIntoChannels, preprocessColorInput, displayChannels, type ChannelRecord } from './utils/color-conversion'
 import {
   computeCandidates,
   findFirstFitOrMaxArea,
@@ -43,6 +43,10 @@ const asColorSpace = (value: string | null): ColorSpace | null =>
 // A wrapping <label> also holds the control itself (and maybe others), so
 // collect only its own text, skipping control subtrees and hidden content
 const LABEL_SKIP = 'color-input, input, select, textarea, button, datalist, output, [hidden], [aria-hidden="true"], script, style'
+/** #rgb / #rgba → #rrggbb / #rrggbbaa, so short and long hex compare equal */
+const expandHex = (hex: string) =>
+  hex.length === 4 || hex.length === 5 ? '#' + [...hex.slice(1)].map(c => c + c).join('') : hex
+
 const labelText = (label: HTMLElement) => {
   const walker = document.createTreeWalker(label, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT, {
     acceptNode: (n) => n instanceof Element && n.matches(LABEL_SKIP) ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT
@@ -70,6 +74,10 @@ export class ColorInput extends HTMLElement {
   // State: Reactive signals (Preact Signals Core)
   // ──────────────────────────────────────────────────────────────────────────────
   #value = signal<string>(DEFAULT_VALUE)
+  // The value a run of space switches started from. Only reused while the
+  // value is still the one the last switch produced (`shown`); any edit makes
+  // it stale
+  #switchOrigin: { value: string; space: ColorSpace; shown: string } | null = null
   #space = signal<ColorSpace>(DEFAULT_SPACE)
   #theme = signal<Theme>('auto')
   #open = signal(false)
@@ -121,16 +129,29 @@ export class ColorInput extends HTMLElement {
   get colorspace() { return this.#space.value }
   set colorspace(s: ColorSpace | string) {
     const next = (s as ColorSpace) || DEFAULT_SPACE
+    const prevSpace = this.#space.value
     this.#space.value = next
     this.#programmaticUpdate = true
     this.setAttribute('colorspace', next)
     try {
-      const current = parse(this.#value.value)
-      const targetSpace = next === 'hex' ? 'srgb' : next
-      const converted = toGamut(to(current, getColorJSSpaceID(targetSpace)))
-      const tempStr = serialize(converted, { precision: 12 })
-      const parsed = parseIntoChannels(next, tempStr)
-      const newValue = gencolor(next, parsed.ch)
+      // A space switch rounds to display precision (whole percents/degrees).
+      // Convert from the last value the user actually set, not the rounded
+      // one, so switching back and forth never drifts: #3b82f6 → oklch → hex
+      // is #3b82f6 again, and returning to the original space restores the
+      // original string
+      const prev = this.#value.value
+      const origin = this.#switchOrigin?.shown === prev ? this.#switchOrigin : { value: prev, space: prevSpace }
+      let newValue: string
+      if (next === origin.space) {
+        newValue = origin.value
+      } else {
+        const current = parse(origin.value)
+        const targetSpace = next === 'hex' ? 'srgb' : next
+        const converted = toGamut(to(current, getColorJSSpaceID(targetSpace)))
+        const tempStr = serialize(converted, { precision: 12 })
+        newValue = gencolor(next, displayChannels(next, tempStr).ch)
+      }
+      this.#switchOrigin = { value: origin.value, space: origin.space, shown: newValue }
       this.#value.value = newValue
       this.setAttribute('value', newValue)
       this.#emitChange()
@@ -417,7 +438,7 @@ export class ColorInput extends HTMLElement {
               const serialized = serialize(converted, {
                 format: space === "hex" ? "hex" : undefined,
               })
-              const color = gencolor(space, parseIntoChannels(space, serialized).ch)
+              const color = gencolor(space, displayChannels(space, serialized).ch)
               this.#value.value = color
               this.setAttribute('value', color)
               this.#emitChange()
@@ -667,11 +688,20 @@ export class ColorInput extends HTMLElement {
     this.#spaceSelect.value = this.#space.value
 
     // Normalize value on load so chroma (and other channels) are in consistent form
-    // (e.g. percentage notation), matching what gencolor produces after any change
+    // (e.g. percentage notation), matching what gencolor produces after any change.
+    // parseIntoChannels is lossless, so this never changes an in-gamut color
+    // (srgb/hex still clip to the sRGB gamut, as before). A
+    // lowercase hex that already holds the same bytes is left exactly as
+    // authored (#3366aa stays #3366aa, not #36a); anything else in hex mode
+    // (red, rgb(), #ABC, #rrggbbff) is still converted to canonical hex
     if (!resolvedInitialSpace) {
       try {
-        const { ch } = parseIntoChannels(this.#space.value, this.#value.value)
-        this.#value.value = gencolor(this.#space.value, ch)
+        const authored = this.#value.value
+        const { ch } = parseIntoChannels(this.#space.value, authored)
+        const normalized = gencolor(this.#space.value, ch)
+        const keep = this.#space.value === 'hex' && /^#(?:[0-9a-f]{3}){1,2}$|^#(?:[0-9a-f]{4}){1,2}$/.test(authored)
+          && expandHex(authored) === expandHex(normalized)
+        this.#value.value = keep ? authored : normalized
       } catch {}
     }
 
@@ -1015,6 +1045,15 @@ export class ColorInput extends HTMLElement {
       const isLabAB = (key === 'A' || key === 'B') && (space === 'lab' || space === 'oklab')
       const isPercentage = !isLabAB && ['L', 'S', 'C', 'W', 'B', 'R', 'G', 'ALP'].includes(key)
       const isAngle = key === 'H'
+      // ch holds lossless channel values; the number field shows them at
+      // display precision (whole percents/degrees). Only chroma is clamped (to
+      // the slider's 100%, as edits do): out-of-range wide-gamut/HDR channels
+      // like color(display-p3 -0.1 0.5 1.2) show their real value
+      const clampsDisplay = key === 'C' && (space === 'oklch' || space === 'lch')
+      const shown = (v: string | number | undefined) => {
+        const n = Number(v ?? 0)
+        return formatChannel(space, key, clampsDisplay ? Math.max(min, Math.min(max, n)) : n)
+      }
 
       const group = document.createElement('div')
       group.className = 'control'
@@ -1066,7 +1105,7 @@ export class ColorInput extends HTMLElement {
       num.max = isLabAB ? String(Math.max(Math.abs(min), Math.abs(max))) : String(max)
       num.step = String(step)
       num.classList.add(`ch-${key.toLowerCase()}`)
-      num.value = isLabAB ? String(Math.abs(Number(ch[key] ?? 0))) : String(ch[key] ?? 0)
+      num.value = isLabAB ? String(Math.abs(Number(shown(ch[key])))) : shown(ch[key])
 
       const numWrapper = document.createElement('div')
       numWrapper.className = 'num-wrapper'
@@ -1080,9 +1119,10 @@ export class ColorInput extends HTMLElement {
       if (isLabAB) {
         signSup = document.createElement('sup')
         const val = Number(ch[key] ?? 0)
-        signSup.textContent = val < 0 ? '−' : '+'
+        // Sign of the displayed number, so -0.4 shows +0, never −0
+        signSup.textContent = Number(shown(val)) < 0 ? '−' : '+'
         numWrapper.appendChild(signSup)
-        num.value = stripLeadingZeros(String(Math.abs(val)))
+        num.value = stripLeadingZeros(String(Math.abs(Number(shown(val)))))
       }
 
       const apply = () => {
@@ -1174,11 +1214,11 @@ export class ColorInput extends HTMLElement {
         if (channelSignals[key]) channelSignals[key].value = String(raw)
         range.value = String(raw)
         if (isLabAB) {
-          const n = Number(raw)
+          const n = Number(shown(raw))
           if (signSup) signSup.textContent = n < 0 ? '−' : '+'
           num.value = stripLeadingZeros(String(Math.abs(n)))
         } else {
-          num.value = String(raw)
+          num.value = shown(raw)
         }
       })
 
