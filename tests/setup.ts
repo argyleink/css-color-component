@@ -15,29 +15,35 @@ function installPopoverPolyfill() {
     Object.assign(ev, { newState, oldState: newState === 'open' ? 'closed' : 'open' })
     el.dispatchEvent(ev)
   }
+  // Open state lives here, not in [hidden]: an inline (in-flow) panel is
+  // visible without being an open popover, just like in a browser
+  const open = new WeakSet<Element>()
   Object.defineProperties(HTMLElement.prototype, {
     showPopover: {
       value: function () {
-        if (!this.hasAttribute('hidden')) return
+        if (open.has(this)) return
         fire(this, 'beforetoggle', 'open')
+        open.add(this)
         this.removeAttribute('hidden')
         fire(this, 'toggle', 'open')
       }
     },
     hidePopover: {
       value: function () {
-        if (this.hasAttribute('hidden')) return
+        if (!open.has(this)) return
         fire(this, 'beforetoggle', 'closed')
+        open.delete(this)
         this.setAttribute('hidden', '')
         fire(this, 'toggle', 'closed')
       }
     }
   })
 
-  // :popover-open, which jsdom's selector engine doesn't know
+  // :popover-open, which jsdom's selector engine doesn't know (exact
+  // selector only; compound selectors with it still throw)
   const nativeMatches = Element.prototype.matches
   Element.prototype.matches = function (selector: string) {
-    if (selector === ':popover-open') return this.hasAttribute('popover') && !this.hasAttribute('hidden')
+    if (selector === ':popover-open') return open.has(this)
     return nativeMatches.call(this, selector)
   }
 
@@ -51,8 +57,8 @@ function installPopoverPolyfill() {
     if (!id) return
     const target = (btn.getRootNode() as Document | ShadowRoot).getElementById(id) as any
     if (!target?.hasAttribute('popover')) return
-    if (target.hasAttribute('hidden')) target.showPopover()
-    else target.hidePopover()
+    if (open.has(target)) target.hidePopover()
+    else target.showPopover()
   })
   
   // Watch for elements with popover attribute and initialize them as hidden

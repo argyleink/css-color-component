@@ -33,6 +33,8 @@ describe('popover show/close and focus', () => {
     trigger.click()
 
     expect(showSpy).not.toHaveBeenCalled()
+    expect(trigger.hasAttribute('popovertarget')).toBe(false)
+    expect(panel.hasAttribute('hidden')).toBe(false)
   })
 })
 
@@ -121,6 +123,22 @@ describe('swatch is a declarative popover invoker', () => {
     el.close()
     expect(document.activeElement).toBe(opener)
     opener.remove()
+  })
+
+  it('returns focus to an opener inside another shadow root', async () => {
+    const el = makeEl()
+    const host = document.createElement('div')
+    document.body.appendChild(host)
+    const opener = document.createElement('button')
+    host.attachShadow({ mode: 'open' }).appendChild(opener)
+    await settle()
+    const { panel } = parts(el)
+    opener.focus()
+    el.show(opener)
+    ;(panel.querySelector('.area-picker') as HTMLElement).focus()
+    el.close()
+    expect(host.shadowRoot!.activeElement).toBe(opener)
+    host.remove()
   })
 
   it('falls back to the swatch when the opener is gone', async () => {

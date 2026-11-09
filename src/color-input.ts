@@ -335,7 +335,7 @@ export class ColorInput extends HTMLElement {
     // The opener may be gone, hidden or disabled by now; fall back to the swatch
     const landed = (el?: HTMLElement | null) => {
       el?.focus({ preventScroll: true })
-      return !!el && (document.activeElement === el || this.#root.activeElement === el)
+      return !!el && (el.getRootNode() as Document | ShadowRoot).activeElement === el
     }
     if (!landed(this.#returnFocus?.isConnected ? this.#returnFocus : null)) landed(this.#internalTrigger)
   }
