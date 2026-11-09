@@ -42,4 +42,12 @@ describe('gamut boundary toggle', () => {
     expect(el.showGamutBoundaries).toBe(false)
     expect(el.hasAttribute('no-gamut-boundaries')).toBe(true)
   })
+
+  it('honors no-gamut-boundaries when set in markup before connecting', () => {
+    const host = document.createElement('div')
+    host.innerHTML = '<color-input no-gamut-boundaries></color-input>'
+    document.body.appendChild(host)
+    const inline = host.firstElementChild as any
+    expect(inline.showGamutBoundaries).toBe(false)
+  })
 })
