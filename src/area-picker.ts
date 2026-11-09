@@ -978,7 +978,9 @@ export class AreaPicker {
       // solve this by relying on hue when dragging is started
       pendingHue = hue.value;
       const _space = this.#space.value; // track color space changes, not the full color
-      const showGamutBoundaries = this.#showGamutBoundaries.value;
+      // track the toggle so flipping it re-renders; the frame callback re-reads
+      // the current value, since a frame may already be pending with a stale one
+      this.#showGamutBoundaries.value;
 
       if (animationId === null) {
         animationId = requestAnimationFrame(() => {
@@ -990,6 +992,7 @@ export class AreaPicker {
                 return;
               }
               const dpr = window.devicePixelRatio || 1;
+              const showGamutBoundaries = this.#showGamutBoundaries.value;
               const userSpaceId = config.gamutBoundary
                 ? getColorJSSpaceID(this.#space.value === 'hex' ? 'srgb' : this.#space.value)
                 : '';
