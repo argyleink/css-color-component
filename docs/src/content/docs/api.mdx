@@ -160,6 +160,17 @@ Disables the trigger and inline field, keeps the picker from opening, and leaves
 <color-input name="brand" disabled></color-input>
 ```
 
+## Opening and closing
+
+The swatch is a native popover invoker (`popovertarget`) for the picker panel, so the browser handles the open/close mechanics:
+
+- Clicking the swatch toggles the panel, including in the middle of its open or close animation.
+- Clicking outside or pressing <kbd>Escape</kbd> closes it (light dismiss).
+- The swatch reports `aria-expanded`, and <kbd>Tab</kbd> from the swatch moves into the open panel.
+- Closing with focus inside the panel puts focus back on whatever opened it: the swatch, a label, or the element passed to `show()`.
+
+With `prefers-reduced-motion: reduce` the panel fades without zooming.
+
 ## Forms and labels
 
 `<color-input>` participates in forms the way `<input type="color">` does:

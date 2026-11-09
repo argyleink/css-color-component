@@ -10,19 +10,42 @@ function installPopoverPolyfill() {
   if (typeof (HTMLElement.prototype as any).showPopover === 'function') return
   
   // Polyfill popover methods
+  const fire = (el: HTMLElement, type: string, newState: 'open' | 'closed') => {
+    const ev = new Event(type, { bubbles: false })
+    Object.assign(ev, { newState, oldState: newState === 'open' ? 'closed' : 'open' })
+    el.dispatchEvent(ev)
+  }
   Object.defineProperties(HTMLElement.prototype, {
     showPopover: {
       value: function () {
+        if (!this.hasAttribute('hidden')) return
+        fire(this, 'beforetoggle', 'open')
         this.removeAttribute('hidden')
-        this.dispatchEvent(new Event('toggle', { bubbles: false }))
+        fire(this, 'toggle', 'open')
       }
     },
     hidePopover: {
       value: function () {
+        if (this.hasAttribute('hidden')) return
+        fire(this, 'beforetoggle', 'closed')
         this.setAttribute('hidden', '')
-        this.dispatchEvent(new Event('toggle', { bubbles: false }))
+        fire(this, 'toggle', 'closed')
       }
     }
+  })
+
+  // Invoker activation: a click on a <button popovertarget> toggles its target
+  // after dispatch (so listeners can still change the attribute or cancel)
+  document.addEventListener('click', (ev) => {
+    if (ev.defaultPrevented) return
+    const btn = ev.composedPath()[0]
+    if (!(btn instanceof HTMLButtonElement) || btn.disabled) return
+    const id = btn.getAttribute('popovertarget')
+    if (!id) return
+    const target = (btn.getRootNode() as Document | ShadowRoot).getElementById(id) as any
+    if (!target?.hasAttribute('popover')) return
+    if (target.hasAttribute('hidden')) target.showPopover()
+    else target.hidePopover()
   })
   
   // Watch for elements with popover attribute and initialize them as hidden

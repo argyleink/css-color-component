@@ -26,6 +26,10 @@ describe('template', () => {
       expect(trigger).not.toBeNull()
       expect(trigger?.getAttribute('part')).toBe('trigger')
       expect(trigger?.getAttribute('aria-haspopup')).toBe('dialog')
+      // a declarative invoker for the panel, collapsed until it opens
+      expect(trigger?.getAttribute('popovertarget')).toBe('panel')
+      expect(trigger?.getAttribute('aria-expanded')).toBe('false')
+      expect(template.content.querySelector('.panel')?.id).toBe('panel')
     })
 
     it('should include chip element', () => {

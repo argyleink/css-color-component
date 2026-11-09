@@ -182,6 +182,18 @@ button {
   }
 }
 
+/* Reduced motion: the panel only fades, no zoom */
+@media (prefers-reduced-motion: reduce) {
+  .panel:not(:popover-open) {
+    scale: 1;
+  }
+  @starting-style {
+    .panel:popover-open {
+      scale: 1;
+    }
+  }
+}
+
 .area-picker {
   position: relative;
   width: 100%;

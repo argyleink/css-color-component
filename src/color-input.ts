@@ -312,14 +312,60 @@ export class ColorInput extends HTMLElement {
     set(text, name || 'Color value')
   }
 
+  // Inline mode: the page restyles ::part(panel) into the flow (display: block;
+  // position: static), so the panel is always shown and never a popover. The
+  // UA gives every [popover] position: fixed, so an in-flow position is what
+  // sets inline mode apart. Computed display can't: a closing popover keeps
+  // display: block for the length of its allow-discrete exit transition.
   #isInlinePickerVisible() {
-    return this.#panel ? getComputedStyle(this.#panel).display !== 'none' : false
+    const panel = this.#panel
+    if (!panel || this.#panelOpen()) return false
+    const { display, position } = getComputedStyle(panel)
+    return display !== 'none' && position !== 'fixed' && position !== 'absolute'
+  }
+
+  #restoreFocus() {
+    this.#focusInPanelAtClose = false
+    const inner = this.#root.activeElement
+    const outer = document.activeElement
+    // Still inside the closing panel, or dropped on <body>; anything else is
+    // a deliberate move (an outside click focusing its target) and stays
+    const lost = inner ? !!this.#panel?.contains(inner) : (!outer || outer === document.body)
+    if (!lost) return
+    const target = this.#returnFocus?.isConnected ? this.#returnFocus : this.#internalTrigger
+    target?.focus({ preventScroll: true })
+  }
+
+  #panelOpen() {
+    try { return !!this.#panel?.matches(':popover-open') } catch { return this.#open.value }
+  }
+
+  // The swatch is a declarative popover invoker (popovertarget), so the
+  // browser owns toggling, light dismiss and focus return. In inline mode
+  // there is nothing to toggle: drop the invoker and its expanded state.
+  #syncInvoker() {
+    const btn = this.#internalTrigger
+    if (!btn) return
+    if (this.#isInlinePickerVisible()) {
+      btn.removeAttribute('popovertarget')
+      btn.removeAttribute('aria-expanded')
+    } else {
+      if (btn.getAttribute('popovertarget') !== 'panel') btn.setAttribute('popovertarget', 'panel')
+      btn.setAttribute('aria-expanded', String(this.#open.value))
+    }
   }
 
   show(anchor?: HTMLElement | null) {
     if (this.#disabled) return
     if (anchor) this.#anchor.value = anchor
-    this.#panel?.showPopover?.();
+    const panel = this.#panel
+    if (panel?.showPopover && !this.#panelOpen()) {
+      // Name the opener as the source, like an invoker click: focus returns
+      // to it on close. Browsers without the options bag ignore it.
+      const source = anchor ?? this.#internalTrigger
+      try { (panel.showPopover as (o?: { source?: HTMLElement }) => void)(source ? { source } : undefined) }
+      catch { try { panel.showPopover() } catch { } }
+    }
     this.#startReposition()
   }
   close() { this.#panel?.hidePopover?.(); this.#stopReposition() }
@@ -342,6 +388,8 @@ export class ColorInput extends HTMLElement {
   #textInput?: HTMLInputElement
   #errorMessage?: HTMLElement
   #lastInvoker: HTMLElement | null = null
+  #returnFocus: HTMLElement | null = null
+  #focusInPanelAtClose = false
   // While an editable color-string field has focus, reactive effects must not
   // rewrite its text out from under the user's caret (re-sync happens on blur)
   #editingField: HTMLInputElement | null = null
@@ -387,7 +435,10 @@ export class ColorInput extends HTMLElement {
       this.#internalTrigger?.focus({ preventScroll: true })
       this.show(this.#internalTrigger)
     })
-    this.addEventListener('focusin', () => this.#syncAccessibleName())
+    this.addEventListener('focusin', () => {
+      this.#syncAccessibleName()
+      this.#syncInvoker()
+    })
   }
 
   // Delegate focus to the text input (replaces delegatesFocus behavior
@@ -512,10 +563,13 @@ export class ColorInput extends HTMLElement {
       </optgroup>
     `
 
+    // Runs before the invoker's activation behavior, so popovertarget is
+    // current when the browser acts on it
     if (btn) btn.addEventListener('click', () => {
-      if (this.#isInlinePickerVisible()) return
-      this.show(btn)
+      this.#syncInvoker()
+      if (!this.#isInlinePickerVisible()) this.#anchor.value = btn
     })
+    this.#syncInvoker()
 
     // Text input validation
     if (this.#textInput) {
@@ -608,6 +662,22 @@ export class ColorInput extends HTMLElement {
       }
     })
 
+    // Focus return: Firefox and Safari hand focus back to the opener when a
+    // popover closes with focus inside it; Chromium misses it when that focus
+    // is in a shadow root (the document sees only the host) and drops it on
+    // <body>. Remember the opener, and put focus back only when it was lost.
+    this.#panel?.addEventListener('beforetoggle', (ev: Event) => {
+      const panel = this.#panel!
+      if ((ev as ToggleEvent).newState === 'open') {
+        let active: Element | null = document.activeElement
+        while (active?.shadowRoot?.activeElement) active = active.shadowRoot.activeElement
+        this.#returnFocus = active instanceof HTMLElement && active !== document.body && !panel.contains(active) ? active : null
+      } else {
+        const inner = this.#root.activeElement
+        this.#focusInPanelAtClose = !!inner && panel.contains(inner)
+      }
+    })
+
     this.#panel?.addEventListener('toggle', () => {
       const el = this.#panel as HTMLElement
       let isOpen = !el.hasAttribute('hidden')
@@ -615,10 +685,12 @@ export class ColorInput extends HTMLElement {
         isOpen = el.matches(':popover-open') ?? false
       } catch { }
       this.#open.value = isOpen
+      this.#syncInvoker()
       if (isOpen) {
         this.#startReposition()
       } else {
         this.#stopReposition()
+        if (this.#focusInPanelAtClose) this.#restoreFocus()
       }
       this.dispatchEvent(new CustomEvent(isOpen ? 'open' : 'close', { bubbles: true }))
     })

@@ -10,14 +10,14 @@
 export function createTemplate(): HTMLTemplateElement {
   const template = document.createElement('template')
   template.innerHTML = `
-  <button class="trigger" part="trigger" aria-haspopup="dialog" aria-label="Open color picker" title="Open color picker">
+  <button class="trigger" part="trigger" popovertarget="panel" aria-haspopup="dialog" aria-expanded="false" aria-label="Open color picker" title="Open color picker">
     <span class="chip" part="chip"></span>
   </button>
   <div class="input-wrapper">
     <span class="error-message" part="error" role="alert" aria-live="polite"></span>
     <input type="text" class="text-input" part="input" aria-label="Color value" title="Color value" aria-invalid="false" spellcheck="false" />
   </div>
-  <div class="panel" popover="auto" part="panel">
+  <div class="panel" id="panel" popover="auto" part="panel">
     <div class="area-picker" part="area" role="slider" aria-label="Color area picker" tabindex="0">
       <canvas class="area-canvas"></canvas>
       <div class="area-thumb"></div>

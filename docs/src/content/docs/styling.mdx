@@ -90,6 +90,18 @@ color-input::part(area) {
 }
 ```
 
+### Always-open (inline) panel
+
+Put the panel in the page flow to show the picker without a popover. Both declarations matter: `position: static` is what tells the component the panel is inline, so the swatch stops acting as a popover toggle and drops its `aria-expanded`.
+
+```css
+color-input.inline::part(panel) {
+  display: block;
+  position: static;
+  opacity: 1;
+}
+```
+
 ### Custom invalid styling
 
 When the inline text value is invalid, the host receives `data-error`.
