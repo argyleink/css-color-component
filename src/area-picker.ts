@@ -606,6 +606,7 @@ export class AreaPicker {
   #controller = new AbortController();
   #color = signal<null | ColorConstructor>(null);
   #space = signal<null | ColorSpace>(null);
+  #showGamutBoundaries = signal(true);
   // store color during drag to prevent jitter from conversions
   #draggingColor = signal<null | ColorConstructor>(null);
   #effectiveConfig = signal<null | AreaConfig>(null);
@@ -977,6 +978,9 @@ export class AreaPicker {
       // solve this by relying on hue when dragging is started
       pendingHue = hue.value;
       const _space = this.#space.value; // track color space changes, not the full color
+      // track the toggle so flipping it re-renders; the frame callback re-reads
+      // the current value, since a frame may already be pending with a stale one
+      this.#showGamutBoundaries.value;
 
       if (animationId === null) {
         animationId = requestAnimationFrame(() => {
@@ -988,6 +992,7 @@ export class AreaPicker {
                 return;
               }
               const dpr = window.devicePixelRatio || 1;
+              const showGamutBoundaries = this.#showGamutBoundaries.value;
               const userSpaceId = config.gamutBoundary
                 ? getColorJSSpaceID(this.#space.value === 'hex' ? 'srgb' : this.#space.value)
                 : '';
@@ -1003,6 +1008,7 @@ export class AreaPicker {
                   cssH: canvas.clientHeight || 200,
                   dpr,
                   supportsP3: supportsP3Canvas,
+                  showGamutBoundaries,
                 };
                 if (this.#workerBusy) {
                   this.#pendingWorkerMsg = msg;
@@ -1052,7 +1058,7 @@ export class AreaPicker {
                   }
                   return { spaceId: color.spaceId, coords, alpha: null };
                 }, dpr);
-                if (ctx && config.gamutBoundary) {
+                if (ctx && config.gamutBoundary && showGamutBoundaries) {
                   renderGamutBoundaries(ctx, effCfg, color.spaceId, userSpaceId, pendingHue ?? 0, dpr, chromaLUT, stretchGamut, polarLUT);
                 }
               }
@@ -1110,6 +1116,10 @@ export class AreaPicker {
       // If parsing fails, keep the current value or set to null
       this.#color.value = null;
     }
+  }
+
+  setShowGamutBoundaries(show: boolean) {
+    this.#showGamutBoundaries.value = !!show;
   }
 
   unmount() {

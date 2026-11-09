@@ -128,6 +128,20 @@ The `no-alpha` attribute hides the alpha channel control from the color picker. 
 Use `no-alpha` when you want to enforce fully opaque colors or prevent users from adjusting transparency in your application.
 :::
 
+### no-gamut-boundaries
+
+The `no-gamut-boundaries` attribute hides the gamut boundary guide lines from the 2D area picker while leaving the underlying color editing behavior unchanged.
+
+```html
+<color-input value="color(display-p3 0.3 0.7 0.95)" no-gamut-boundaries></color-input>
+```
+
+<ColorInputDemo value="color(display-p3 0.3 0.7 0.95)" noGamutBoundaries={true} showCode={false} />
+
+:::tip
+Use `no-gamut-boundaries` when you want a cleaner color field presentation without the extra gamut reference overlays.
+:::
+
 ### name
 
 The form field name. `<color-input>` is a [form-associated custom element](https://html.spec.whatwg.org/multipage/custom-elements.html#form-associated-custom-elements), so with a `name` its current `value` is submitted with the form and shows up in `FormData`, just like `<input>`.
@@ -302,6 +316,14 @@ picker.noAlpha = true; // Hides alpha controls
 picker.noAlpha = false; // Shows alpha controls
 ```
 
+**showGamutBoundaries** - Controls gamut boundary guide visibility
+
+```js
+console.log(picker.showGamutBoundaries); // true
+picker.showGamutBoundaries = false; // Hides gamut boundary lines
+picker.showGamutBoundaries = true; // Shows gamut boundary lines
+```
+
 ### Read-Only Properties
 
 **gamut** - Detected gamut (smallest gamut that contains the current color)
@@ -319,7 +341,7 @@ console.log(picker.contrastColor); // "white" or "black"
 **form** / **labels** / **validity** / **validationMessage** / **willValidate** - The standard form-control properties, backed by `ElementInternals`. `checkValidity()` and `reportValidity()` are available too.
 
 :::note
-`value`, `colorspace`, `initialColorspace`, `theme`, `noAlpha`, `name`, and `disabled` reflect to attributes. `gamut` and `contrastColor` are derived read-only values.
+`value`, `colorspace`, `initialColorspace`, `theme`, `noAlpha`, `showGamutBoundaries`, `name`, and `disabled` reflect to attributes. `gamut` and `contrastColor` are derived read-only values.
 :::
 
 ## Methods
