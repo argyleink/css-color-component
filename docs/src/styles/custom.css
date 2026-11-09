@@ -42,6 +42,7 @@ starlight-file-tree .highlight {
   display: block;
   position: static;
   opacity: 1;
+  scale: 1;
 }
 
 /* Menu button override */

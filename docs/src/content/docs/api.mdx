@@ -167,7 +167,7 @@ The swatch is a native popover invoker (`popovertarget`) for the picker panel, s
 - Clicking the swatch toggles the panel, including in the middle of its open or close animation.
 - Clicking outside or pressing <kbd>Escape</kbd> closes it (light dismiss).
 - The swatch reports `aria-expanded`, and <kbd>Tab</kbd> from the swatch moves into the open panel.
-- Closing with focus inside the panel puts focus back on whatever opened it: the swatch, a label, or the element passed to `show()`.
+- Closing with focus inside the panel puts focus back where it was when the panel opened (the swatch, for swatch and label opens), or on the swatch if that element can't take focus anymore.
 
 With `prefers-reduced-motion: reduce` the panel fades without zooming.
 

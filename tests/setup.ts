@@ -34,6 +34,13 @@ function installPopoverPolyfill() {
     }
   })
 
+  // :popover-open, which jsdom's selector engine doesn't know
+  const nativeMatches = Element.prototype.matches
+  Element.prototype.matches = function (selector: string) {
+    if (selector === ':popover-open') return this.hasAttribute('popover') && !this.hasAttribute('hidden')
+    return nativeMatches.call(this, selector)
+  }
+
   // Invoker activation: a click on a <button popovertarget> toggles its target
   // after dispatch (so listeners can still change the attribute or cancel)
   document.addEventListener('click', (ev) => {

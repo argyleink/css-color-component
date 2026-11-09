@@ -332,8 +332,12 @@ export class ColorInput extends HTMLElement {
     // a deliberate move (an outside click focusing its target) and stays
     const lost = inner ? !!this.#panel?.contains(inner) : (!outer || outer === document.body)
     if (!lost) return
-    const target = this.#returnFocus?.isConnected ? this.#returnFocus : this.#internalTrigger
-    target?.focus({ preventScroll: true })
+    // The opener may be gone, hidden or disabled by now; fall back to the swatch
+    const landed = (el?: HTMLElement | null) => {
+      el?.focus({ preventScroll: true })
+      return !!el && (document.activeElement === el || this.#root.activeElement === el)
+    }
+    if (!landed(this.#returnFocus?.isConnected ? this.#returnFocus : null)) landed(this.#internalTrigger)
   }
 
   #panelOpen() {
@@ -351,7 +355,7 @@ export class ColorInput extends HTMLElement {
       btn.removeAttribute('aria-expanded')
     } else {
       if (btn.getAttribute('popovertarget') !== 'panel') btn.setAttribute('popovertarget', 'panel')
-      btn.setAttribute('aria-expanded', String(this.#open.value))
+      btn.setAttribute('aria-expanded', String(this.#panelOpen()))
     }
   }
 
@@ -658,7 +662,7 @@ export class ColorInput extends HTMLElement {
       if (command === 'show-popover' || command === 'show') this.show(this.#lastInvoker)
       else if (command === 'hide-popover' || command === 'close') this.close()
       else if (command === 'toggle-popover' || command === 'toggle') {
-        if (this.#open.value) this.close(); else this.show(this.#lastInvoker)
+        if (this.#panelOpen()) this.close(); else this.show(this.#lastInvoker)
       }
     })
 
@@ -669,6 +673,7 @@ export class ColorInput extends HTMLElement {
     this.#panel?.addEventListener('beforetoggle', (ev: Event) => {
       const panel = this.#panel!
       if ((ev as ToggleEvent).newState === 'open') {
+        this.#focusInPanelAtClose = false
         let active: Element | null = document.activeElement
         while (active?.shadowRoot?.activeElement) active = active.shadowRoot.activeElement
         this.#returnFocus = active instanceof HTMLElement && active !== document.body && !panel.contains(active) ? active : null

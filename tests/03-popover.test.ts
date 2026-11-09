@@ -26,6 +26,7 @@ describe('popover show/close and focus', () => {
     const panel = el.shadowRoot.querySelector('.panel') as HTMLElement & { showPopover: () => void }
     panel.removeAttribute('hidden')
     panel.style.display = 'block'
+    panel.style.position = 'static'
 
     const showSpy = vi.spyOn(panel, 'showPopover')
 
@@ -120,6 +121,20 @@ describe('swatch is a declarative popover invoker', () => {
     el.close()
     expect(document.activeElement).toBe(opener)
     opener.remove()
+  })
+
+  it('falls back to the swatch when the opener is gone', async () => {
+    const el = makeEl()
+    const opener = document.createElement('button')
+    document.body.appendChild(opener)
+    await settle()
+    const { trigger, panel } = parts(el)
+    opener.focus()
+    el.show(opener)
+    ;(panel.querySelector('.area-picker') as HTMLElement).focus()
+    opener.remove()
+    el.close()
+    expect(el.shadowRoot.activeElement).toBe(trigger)
   })
 
   it('leaves focus alone when it already moved out of the panel (outside click)', async () => {
