@@ -1,7 +1,11 @@
 import { beforeAll, describe, expect, it } from 'vitest'
 
 // Polyfill CSS.supports for jsdom (not available natively)
-if (typeof globalThis.CSS === 'undefined') {
+// Only for DOM test environments: the SSR test (@vitest-environment node) must
+// see a bare Node global scope, with no CSS/HTMLElement stand-ins
+const hasDOM = typeof window !== 'undefined'
+
+if (hasDOM && typeof globalThis.CSS === 'undefined') {
   (globalThis as any).CSS = { supports: () => false }
 }
 
@@ -65,5 +69,5 @@ function installPopoverPolyfill() {
 }
 
 beforeAll(() => {
-  installPopoverPolyfill()
+  if (hasDOM) installPopoverPolyfill()
 })

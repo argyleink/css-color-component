@@ -13,6 +13,7 @@ It's meant to be easy to drop into any app while still supporting modern CSS col
 - automatic conversion between editing spaces
 - popover UI, anchor positioning, and Shadow DOM + CSS parts
 - gamut detection, contrast readouts, copy, and EyeDropper support
+- safe to import during SSR / prerender builds (Next, Astro, webpack `target: 'node'`); the element registers itself only in the browser, and only once
 
 Try on [CodePen](https://codepen.io/argyleink/pen/dPGBYZg), use it [inline](https://codepen.io/argyleink/pen/wBzPvaE), or get it on [NPM](https://www.npmjs.com/package/hdr-color-input)
 

@@ -31,7 +31,11 @@ import styles from './styles/index.css?inline'
 export type { Theme, ColorSpace }
 export interface ChangeDetail { value: string; colorspace: ColorSpace; gamut: string }
 
-const supportsAnchor = CSS.supports?.('anchor-name: --a') ?? false
+// Module scope must not touch DOM globals unguarded: SSR builds (Next, Astro,
+// Gatsby, webpack prerender) evaluate this file in Node, where CSS, HTMLElement,
+// CSSStyleSheet and customElements don't exist (#67)
+const isBrowser = typeof window !== 'undefined' && typeof document !== 'undefined'
+const supportsAnchor = typeof CSS !== 'undefined' && (CSS.supports?.('anchor-name: --a') ?? false)
 
 const DEFAULT_VALUE = 'oklch(75% 75% 180)'
 const DEFAULT_SPACE: ColorSpace = 'oklch'
@@ -56,14 +60,20 @@ const labelText = (label: HTMLElement) => {
   return text
 }
 
-// Create shared stylesheet for all component instances
-const sheet = new CSSStyleSheet()
-// Only call replaceSync if it exists (not available in jsdom)
-if (typeof sheet.replaceSync === 'function') {
+// Create shared stylesheet for all component instances (null outside a browser,
+// or where constructable stylesheets aren't available, e.g. jsdom)
+const sheet: CSSStyleSheet | null = typeof CSSStyleSheet === 'function' ? new CSSStyleSheet() : null
+if (typeof sheet?.replaceSync === 'function') {
   sheet.replaceSync(styles)
 }
 
-export class ColorInput extends HTMLElement {
+// On the server there's no HTMLElement to extend; a bare class keeps the module
+// importable (the element is only ever constructed in a browser)
+const BaseElement: typeof HTMLElement = isBrowser && typeof HTMLElement === 'function'
+  ? HTMLElement
+  : (class {} as unknown as typeof HTMLElement)
+
+export class ColorInput extends BaseElement {
   static get observedAttributes() { return ['value', 'colorspace', 'theme', 'no-alpha', 'no-gamut-boundaries', 'initial-colorspace', 'aria-label'] }
 
   // Form-associated custom element (HTML § 4.13.7): takes part in <form>
@@ -358,7 +368,7 @@ export class ColorInput extends HTMLElement {
     this.#root = this.attachShadow({ mode: 'open' })
 
     // Adopt shared stylesheet if supported, otherwise inject inline styles
-    if ('adoptedStyleSheets' in this.#root && typeof sheet.replaceSync === 'function') {
+    if (sheet && 'adoptedStyleSheets' in this.#root && typeof sheet.replaceSync === 'function') {
       this.#root.adoptedStyleSheets = [sheet]
     } else {
       // Fallback for environments without adoptedStyleSheets support (e.g., jsdom)
@@ -1429,7 +1439,11 @@ export class ColorInput extends HTMLElement {
   }
 }
 
-customElements.define('color-input', ColorInput)
+// Guarded so the module is safe to evaluate during SSR, and so a second copy of
+// the package (two bundles, HMR re-evaluation) doesn't throw NotSupportedError
+if (typeof customElements !== 'undefined' && !customElements.get('color-input')) {
+  customElements.define('color-input', ColorInput)
+}
 
 declare global {
   interface HTMLElementTagNameMap { 'color-input': ColorInput }
