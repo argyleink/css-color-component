@@ -116,6 +116,12 @@ const MAX_DECIMALS = 6
  */
 export function serializeChannel(space: ColorSpace | string, key: string, val: number | null | undefined, bits?: number): string {
   if (val == null || !Number.isFinite(val)) return '0'
+  // Drop binary float noise from unit conversions first (0.15 / 0.4 * 100 is
+  // 37.49999999999999). 12 significant digits is far finer than any channel's
+  // quantization step, so only noise goes, but it decides which side of a .5
+  // display boundary the value sits on, and with it the double-rounding guard
+  // below would otherwise reject every short form and emit all 16 digits
+  val = Number(val.toPrecision(12))
   bits ??= DEFAULT_BITS
   const tolerance = channelRange(space, key) / (2 ** bits - 1) / 2
   // The shorter form must also display the same as the exact value, or the
