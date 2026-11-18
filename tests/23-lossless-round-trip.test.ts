@@ -355,3 +355,36 @@ describe('serializeChannel edge cases', () => {
     expect(serializeChannel('srgb', 'R', NaN)).toBe('0')
   })
 })
+
+describe('float noise from unit conversions never reaches the value', () => {
+  // oklch chroma loads as a percentage of 0.4 and lch chroma as a percentage of
+  // 150, so a plain authored number can land a hair under a .5 boundary
+  // (0.15 / 0.4 * 100 = 37.49999999999999). That must serialize as 37.5, not
+  // leak 14 decimals into the value, the text field and form submissions.
+  const noisy = (s: string) => /\d\.\d{7,}/.test(s)
+
+  it('every authored oklch chroma 0.001-0.5 and lch chroma 0.1-230 stays short', () => {
+    const bad: string[] = []
+    for (let i = 1; i <= 500; i++) {
+      const c = (i / 1000).toString()
+      const out = gencolor('oklch', parseIntoChannels('oklch', `oklch(70% ${c} 250)`).ch)
+      if (noisy(out)) bad.push(`oklch ${c} → ${out}`)
+    }
+    for (let i = 1; i <= 2300; i++) {
+      const c = (i / 10).toString()
+      const out = gencolor('lch', parseIntoChannels('lch', `lch(50% ${c} 250)`).ch)
+      if (noisy(out)) bad.push(`lch ${c} → ${out}`)
+    }
+    expect(bad, bad.slice(0, 5).join('\n')).toEqual([])
+  })
+
+  it('loads oklch(70% 0.15 250) as 37.5% chroma, the same color', () => {
+    const el = document.createElement('color-input') as any
+    el.setAttribute('value', 'oklch(70% 0.15 250)')
+    document.body.appendChild(el)
+    expect(el.value).toBe('oklch(70% 37.5% 250)')
+    const [a, b] = [parse('oklch(70% 0.15 250)'), parse(el.value)]
+    expect(b.coords[1]).toBeCloseTo(a.coords[1] as number, 12)
+    el.remove()
+  })
+})
