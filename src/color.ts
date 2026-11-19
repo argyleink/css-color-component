@@ -28,13 +28,51 @@ colorjs.ColorSpace.register(colorjs.XYZ_D65);
 colorjs.ColorSpace.register(colorjs.XYZ_D50);
 colorjs.ColorSpace.register(colorjs.Okhsv);
 
+// A `none` component (null or NaN, depending on colorjs.io's version) stays missing
+const clamp = (v: number | null, min = -Infinity, max = Infinity) =>
+  v == null || Number.isNaN(v) ? v : Math.max(min, Math.min(max, v))
+
+/**
+ * Parse a CSS color the way a browser does: colorjs.io's parse(), plus the
+ * parsed-value-time rules of CSS Color 4 that it leaves out, so the picker
+ * loads the same color the browser renders.
+ *
+ * - legacy rgb()/rgba() channels clamp to 0-255 / 0-100%
+ *   (rgb(300 0 0) is red, not an out-of-gamut red)
+ * - hsl() saturation and lightness clamp to 0-100%, hwb() whiteness and
+ *   blackness to >= 0
+ *   (hsl(30 -10% 50%) is gray, not blue)
+ * - lab()/lch() L clamps to 0-100, oklab()/oklch() L to 0-1, chroma to >= 0
+ *   (lab(120 0 0) is white; oklch(60% -0.1 30) is gray)
+ * - alpha clamps to 0-1, and a `none` alpha is a missing component, which
+ *   resolves to 0 (§ 4.4), so rgb(255 0 0 / none) is transparent, not opaque
+ *
+ * color() channels are not clamped: they are how you write HDR / out-of-gamut colors.
+ */
+export function parseCSSColor(str: string): ColorConstructor {
+  const meta: { formatId?: string } = {}
+  const c = parse(str, { meta } as any) as ColorConstructor & { alpha: number | null }
+  const [x, y, z] = c.coords as [number, number, number]
+  const fmt = meta.formatId
+  let coords = [x, y, z] as [number, number, number]
+  if (c.spaceId === 'srgb' && (fmt === 'rgb' || fmt === 'rgba')) coords = [clamp(x, 0, 1), clamp(y, 0, 1), clamp(z, 0, 1)] as typeof coords
+  else if (c.spaceId === 'hsl') coords = [x, clamp(y, 0, 100), clamp(z, 0, 100)] as typeof coords
+  else if (c.spaceId === 'hwb') coords = [x, clamp(y, 0), clamp(z, 0)] as typeof coords
+  else if (c.spaceId === 'lab') coords = [clamp(x, 0, 100), y, z] as typeof coords
+  else if (c.spaceId === 'lch') coords = [clamp(x, 0, 100), clamp(y, 0), z] as typeof coords
+  else if (c.spaceId === 'oklab') coords = [clamp(x, 0, 1), y, z] as typeof coords
+  else if (c.spaceId === 'oklch') coords = [clamp(x, 0, 1), clamp(y, 0), z] as typeof coords
+  const alpha = c.alpha === null || Number.isNaN(c.alpha) ? 0 : clamp(c.alpha, 0, 1)!
+  return { ...c, coords, alpha }
+}
+
 export function parseCoords(x: number, min = 0, max = 100) {
   return Math.max(min, Math.min(max, x))
 }
 
 export function contrastColor(c: string): 'white' | 'black' {
   try {
-    const color = parse(c)
+    const color = parseCSSColor(c)
     let wh: number
     let bl: number
     try {
@@ -55,7 +93,7 @@ export function detectGamut(colorStr: string): Gamut {
   let gamut: Gamut = 'srgb'
   if (!colorStr || colorStr.startsWith('#')) return gamut
   try {
-    const c = parse(colorStr)
+    const c = parseCSSColor(colorStr)
     const srgb: ColorConstructor = { spaceId: 'srgb', coords: to(c, 'srgb').coords, alpha: null }
     const p3: ColorConstructor = { spaceId: 'p3', coords: to(c, 'p3').coords, alpha: null }
     const rec2020: ColorConstructor = { spaceId: 'rec2020', coords: to(c, 'rec2020').coords, alpha: null }
