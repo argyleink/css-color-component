@@ -25,6 +25,7 @@ import {
   type Size
 } from './utils/positioning'
 import { createTemplate } from './utils/template'
+import { resolveColorSyntax, needsResolution } from './utils/resolve-color'
 // @ts-ignore
 import styles from './styles/index.css?inline'
 
@@ -113,9 +114,25 @@ export class ColorInput extends HTMLElement {
     return asColorSpace(sid === 'rgb' ? 'srgb' : sid) ?? DEFAULT_SPACE
   }
 
+  // color-mix(), relative color syntax and context-dependent colors
+  // (currentcolor, var(), system colors) resolve to a concrete color before
+  // anything parses them; null when they can't be resolved
+  #resolve(v: string): string | null {
+    return resolveColorSyntax(v, this)
+  }
+
+  // A context-dependent color (currentcolor, var()) set before the element is
+  // connected has nothing to resolve against yet; hold it until connect
+  #deferIfContextual(v: string) {
+    if (!this.isConnected && needsResolution(v)) this.#pendingContextValue = v
+  }
+
   get value() { return this.#value.value }
-  set value(v: string) {
-    if (typeof v !== 'string' || !v) return
+  set value(raw: string) {
+    if (typeof raw !== 'string' || !raw) return
+    const v = this.#resolve(raw)
+    if (!v) { this.#deferIfContextual(raw); return }
+    this.#pendingContextValue = null
     try {
       const parsed = parse(v)
       this.#space.value = this.#detectSpace(v, parsed.spaceId)
@@ -204,6 +221,11 @@ export class ColorInput extends HTMLElement {
   #defaultState: { value: string; space: ColorSpace } | null = null
   #disabled = false
   #pendingRestore: string | null = null
+  #pendingContextValue: string | null = null
+  // The concrete color reflected for a resolved value attribute. During an
+  // upgrade the reflected attribute's callback is queued after
+  // connectedCallback (not run inline), so it's recognized by value instead
+  #reflectedValue: string | null = null
 
   get form() { return this.#internals?.form ?? null }
   get labels(): NodeListOf<HTMLLabelElement> {
@@ -215,8 +237,10 @@ export class ColorInput extends HTMLElement {
   get disabled() { return this.hasAttribute('disabled') }
   set disabled(v: boolean) { this.toggleAttribute('disabled', !!v) }
   get defaultValue() { return this.#defaultState?.value ?? this.getAttribute('value') ?? DEFAULT_VALUE }
-  set defaultValue(v: string) {
-    if (typeof v !== 'string' || !v) return
+  set defaultValue(raw: string) {
+    if (typeof raw !== 'string' || !raw) return
+    const v = this.#resolve(raw)
+    if (!v) return
     try {
       this.#defaultState = { value: v, space: this.#detectSpace(v, parse(v).spaceId) }
     } catch { }
@@ -267,6 +291,9 @@ export class ColorInput extends HTMLElement {
         space = asColorSpace(saved.colorspace)
       }
     } catch { }
+    const resolved = this.#resolve(value)
+    if (!resolved) return
+    value = resolved
     try {
       const parsed = parse(value)
       space ??= this.#detectSpace(value, parsed.spaceId)
@@ -398,6 +425,14 @@ export class ColorInput extends HTMLElement {
 
   connectedCallback() {
     this.#upgradeProperty('value')
+    if (this.#pendingContextValue !== null) {
+      const pending = this.#pendingContextValue
+      this.#pendingContextValue = null
+      // Resolved against the now-connected host, without a change event (like
+      // an authored attribute); falls back to the default if it still fails
+      const resolved = this.#resolve(pending)
+      if (resolved) this.attributeChangedCallback('value', null, resolved)
+    }
     this.#upgradeProperty('name')
     this.#upgradeProperty('disabled')
     this.#upgradeProperty('defaultValue')
@@ -771,15 +806,35 @@ export class ColorInput extends HTMLElement {
 
   attributeChangedCallback(name: string, _old: string | null, value: string | null) {
     if (value === _old) return
+    // Our own reflection of a resolved color (whether its callback runs inline
+    // or later in the reaction queue); checked first so it always clears
+    if (name === 'value' && value !== null && value === this.#reflectedValue) {
+      this.#reflectedValue = null
+      return
+    }
     // Skip processing if this is from a programmatic update (avoid circular event emissions)
     if (this.#programmaticUpdate) return
 
     if (name === 'value' && typeof value === 'string') {
-      try {
+      const raw = value
+      value = this.#resolve(raw)
+      if (!value) this.#deferIfContextual(raw)
+      else try {
         const parsed = parse(value)
+        this.#pendingContextValue = null
         this.#value.value = value
         this.#space.value = this.#detectSpace(value, parsed.spaceId)
         if (this.#spaceSelect) this.#spaceSelect.value = this.#space.value
+        // Reflect the concrete color so the attribute and value agree. Last,
+        // because during an upgrade this setAttribute flushes the element's
+        // queued reactions: connectedCallback runs inside it and must see the
+        // resolved color
+        if (value !== raw) {
+          this.#reflectedValue = value
+          this.#programmaticUpdate = true
+          this.setAttribute('value', value)
+          this.#programmaticUpdate = false
+        }
       } catch { }
     }
     if (name === 'colorspace' && value) {
@@ -820,7 +875,7 @@ export class ColorInput extends HTMLElement {
   }
 
   #validateAndSetColor(rawValue: string): boolean {
-    const inputValue = preprocessColorInput(rawValue ?? '')
+    const inputValue = this.#resolve(preprocessColorInput(rawValue ?? ''))
     if (!inputValue) return false
 
     try {
