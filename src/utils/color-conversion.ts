@@ -1,9 +1,10 @@
-import { getColor, OKLCH, parse, to, toGamut } from 'colorjs.io/fn'
+import { getColor, OKLCH, to, toGamut } from 'colorjs.io/fn'
 import type { ColorSpace } from '../color'
 import {
   alphaToString,
   getColorJSSpaceID,
   isRGBLike,
+  parseCSSColor,
   rgbColor,
   reverseColorJSSpaceID
 } from '../color'
@@ -123,7 +124,7 @@ export function preprocessColorInput(raw: string): string {
  */
 function readChannels(space: ColorSpace, colorStr: string): { space: ColorSpace; ch: Record<string, number> } {
   // getColor() converts input to compatible type with to() result
-  let c = getColor(parse(colorStr))
+  let c = getColor(parseCSSColor(colorStr))
   // Hex is internally sRGB
   const actualSpace = space === 'hex' ? 'srgb' : space
   // Convert to target space if different
@@ -184,7 +185,7 @@ function readChannels(space: ColorSpace, colorStr: string): { space: ColorSpace;
     ch.G = n(g) * 100
     ch.B = n(b) * 100
   }
-  if (Object.keys(ch).length) ch.ALP = (c.alpha ?? 1) * 100
+  if (Object.keys(ch).length) ch.ALP = n(c.alpha ?? 1) * 100
 
   return { space: s, ch }
 }
