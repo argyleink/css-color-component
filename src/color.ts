@@ -44,8 +44,8 @@ const clamp = (v: number | null, min = -Infinity, max = Infinity) =>
  *   (hsl(30 -10% 50%) is gray, not blue)
  * - lab()/lch() L clamps to 0-100, oklab()/oklch() L to 0-1, chroma to >= 0
  *   (lab(120 0 0) is white; oklch(60% -0.1 30) is gray)
- * - a `none` alpha is a missing component, which resolves to 0 (§ 4.4),
- *   so rgb(255 0 0 / none) is transparent, not opaque
+ * - alpha clamps to 0-1, and a `none` alpha is a missing component, which
+ *   resolves to 0 (§ 4.4), so rgb(255 0 0 / none) is transparent, not opaque
  *
  * color() channels are not clamped: they are how you write HDR / out-of-gamut colors.
  */
@@ -62,7 +62,7 @@ export function parseCSSColor(str: string): ColorConstructor {
   else if (c.spaceId === 'lch') coords = [clamp(x, 0, 100), clamp(y, 0), z] as typeof coords
   else if (c.spaceId === 'oklab') coords = [clamp(x, 0, 1), y, z] as typeof coords
   else if (c.spaceId === 'oklch') coords = [clamp(x, 0, 1), clamp(y, 0), z] as typeof coords
-  const alpha = c.alpha === null || Number.isNaN(c.alpha) ? 0 : c.alpha
+  const alpha = c.alpha === null || Number.isNaN(c.alpha) ? 0 : clamp(c.alpha, 0, 1)!
   return { ...c, coords, alpha }
 }
 

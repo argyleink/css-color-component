@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { parse, getColor, deltaE, inGamut, to } from 'colorjs.io/fn'
 import './setup'
+import '../src/index'
 import { gencolor, parseIntoChannels, displayChannels } from '../src/utils/color-conversion'
 import { detectGamut, parseCSSColor } from '../src/color'
 
@@ -96,5 +97,38 @@ describe('parse-time clamping (CSS Color 4)', () => {
     expect(detectGamut('hsl(30 130% 50%)')).toBe('srgb')
     // color() is still wide gamut
     expect(detectGamut('color(srgb 1.2 0 0)')).not.toBe('srgb')
+  })
+
+  it.each([
+    ['hsl(30 -10% 50%)', 'hsl', 'oklch'],
+    ['rgb(300 128 -40)', 'srgb', 'oklch'],
+    ['lab(120 0 0)', 'lab', 'hsl'],
+    ['rgb(255 0 0 / none)', 'srgb', 'oklch'],
+  ] as const)('<color-input value="%s"> switched from %s to %s keeps the rendered color', async (authored, from, to) => {
+    const el = document.createElement('color-input') as any
+    el.setAttribute('value', authored)
+    el.setAttribute('colorspace', from)
+    document.body.append(el)
+    try {
+      await new Promise(r => setTimeout(r, 0))
+      el.value = authored // the setter keeps the authored string verbatim
+      el.colorspace = from
+      await new Promise(r => setTimeout(r, 0))
+      el.colorspace = to
+      await new Promise(r => setTimeout(r, 0))
+      expect(el.colorspace).toBe(to)
+      expect(el.value.startsWith(to)).toBe(true)
+      const rendered = CLAMPED.find(([a]) => a === authored)![1]
+      const A = getColor(parse(el.value)), B = getColor(parse(rendered))
+      expect(deltaE(A, B, 'OK'), `${el.value} vs ${rendered}`).toBeLessThan(0.01)
+      expect(Math.abs((A.alpha ?? 1) - (B.alpha ?? 1))).toBeLessThan(0.001)
+    } finally {
+      el.remove()
+    }
+  })
+
+  it('alpha clamps to 0-1', () => {
+    expect(parseCSSColor('rgb(0 0 0 / 2)').alpha).toBe(1)
+    expect(parseCSSColor('rgb(0 0 0 / -50%)').alpha).toBe(0)
   })
 })
