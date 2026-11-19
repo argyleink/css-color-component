@@ -31,6 +31,7 @@ export function resolveColorSyntax(input: string, context?: Element | null): str
 /** True when `s` uses syntax colorjs.io can't parse without resolution */
 export function needsResolution(s: string): boolean {
   if (/color-mix\(|\(\s*from\s|var\(|env\(|attr\(|currentcolor/i.test(s)) return true
+  if (s.toLowerCase().includes('light-dark(')) return true
   if (/^[a-z]+$/i.test(s.trim())) {
     try { parse(s.trim()); return false } catch { return true }
   }
@@ -184,12 +185,11 @@ function convertKeepingMissing(c: PlainColorObject, target: string): { coords: (
   // An achromatic color's hue is powerless, so it's treated as missing
   const h = HUE_INDEX[target]
   if (h !== undefined) {
-    const [a, b, c2] = converted as number[]
+    const [, b, c2] = converted as number[]
     const achromatic = target === 'hsl' ? (b ?? 0) <= 1e-6
       : target === 'hwb' ? (b ?? 0) + (c2 ?? 0) >= 100 - 1e-6
       : (converted[1] ?? 0) <= 1e-6
     if (achromatic) converted[h] = null
-    void a
   }
   return { coords: converted, alpha: isMissing(c.alpha) ? null : c.alpha as number }
 }
@@ -291,7 +291,7 @@ function resolveRelative(fn: string, rest: string): PlainColorObject {
   })
   let alpha: number | null = originAlpha
   if (alphaPart !== undefined) {
-    alpha = alphaPart.toLowerCase() === 'none' ? null : evalCalc(alphaPart, vars, 1, false)
+    alpha = alphaPart.toLowerCase() === 'none' ? null : Math.min(1, Math.max(0, evalCalc(alphaPart, vars, 1, false)))
   }
   return { spaceId, coords, alpha } as unknown as PlainColorObject
 }

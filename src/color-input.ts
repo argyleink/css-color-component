@@ -806,13 +806,15 @@ export class ColorInput extends HTMLElement {
 
   attributeChangedCallback(name: string, _old: string | null, value: string | null) {
     if (value === _old) return
-    // Skip processing if this is from a programmatic update (avoid circular event emissions)
-    if (this.#programmaticUpdate) return
-
+    // Our own reflection of a resolved color (whether its callback runs inline
+    // or later in the reaction queue); checked first so it always clears
     if (name === 'value' && value !== null && value === this.#reflectedValue) {
       this.#reflectedValue = null
       return
     }
+    // Skip processing if this is from a programmatic update (avoid circular event emissions)
+    if (this.#programmaticUpdate) return
+
     if (name === 'value' && typeof value === 'string') {
       const raw = value
       value = this.#resolve(raw)
