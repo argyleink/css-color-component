@@ -6,6 +6,7 @@ import {
   detectGamut,
   getColorJSSpaceID,
   isRGBLike,
+  parseCSSColor,
   reverseColorJSSpaceID,
   type Theme,
   type ColorSpace
@@ -147,7 +148,7 @@ export class ColorInput extends HTMLElement {
       if (next === origin.space) {
         newValue = origin.value
       } else {
-        const current = parse(origin.value)
+        const current = parseCSSColor(origin.value)
         const targetSpace = next === 'hex' ? 'srgb' : next
         const converted = toGamut(to(current, getColorJSSpaceID(targetSpace)))
         const tempStr = serialize(converted, { precision: 12 })
@@ -657,7 +658,7 @@ export class ColorInput extends HTMLElement {
       const crB = this.#root.querySelector('.cr-b') as HTMLElement
       if (crW && crB) {
         try {
-          const parsed = parse(v)
+          const parsed = parseCSSColor(v)
           const cw = contrastFn(parsed, 'white', 'WCAG21')
           const cb = contrastFn(parsed, 'black', 'WCAG21')
           crW.textContent = `${(cw as number).toFixed(1)}:1`
