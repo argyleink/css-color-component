@@ -61,4 +61,13 @@ describe('panel follows externally set values', () => {
     await new Promise(r => requestAnimationFrame(() => r(null)))
     expect(el.value).toBe('hsl(200 100% 50%)')
   })
+
+  it('form reset brings the controls back with the authored color', () => {
+    const el = makeEl('hsl(200 100% 40%)')
+    el.value = 'oklab(50% -.25 .3)'
+    expect(channels(el)).toEqual(['ch-l', 'ch-a', 'ch-b', 'ch-alp'])
+    el.formResetCallback()
+    expect(select(el).value).toBe('hsl')
+    expect(nums(el)).toEqual(['200', '100', '40', '100'])
+  })
 })
