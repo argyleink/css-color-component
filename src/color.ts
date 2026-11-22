@@ -112,6 +112,18 @@ export function getColorJSSpaceID(space: ColorSpace | string) {
   return space
 }
 
+// Two editing spaces that name the same colorjs space (`xyz` is an alias of
+// `xyz-d65`). Hex and srgb share a colorjs space but are distinct formats
+export function isSameColorSpace(a: ColorSpace | string, b: ColorSpace | string) {
+  if (a === b) return true
+  if (a === 'hex' || b === 'hex') return false
+  try {
+    return colorjs.ColorSpace.get(getColorJSSpaceID(a)).id === colorjs.ColorSpace.get(getColorJSSpaceID(b)).id
+  } catch {
+    return false
+  }
+}
+
 export function reverseColorJSSpaceID(space: string): ColorSpace | string {
   if (space === 'p3') return 'display-p3'
   if (space === 'a98rgb') return 'a98-rgb'

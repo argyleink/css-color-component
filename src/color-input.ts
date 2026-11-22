@@ -9,7 +9,8 @@ import {
   parseCSSColor,
   reverseColorJSSpaceID,
   type Theme,
-  type ColorSpace
+  type ColorSpace,
+  isSameColorSpace,
 } from './color'
 import { AreaPicker } from './area-picker'
 import { formatChannel } from './utils/channel-formatting'
@@ -40,6 +41,13 @@ const DEFAULT_SPACE: ColorSpace = 'oklch'
 const ANNOUNCE_DELAY = 600
 const asColorSpace = (value: string | null): ColorSpace | null =>
   COLOR_SPACES.includes(value as ColorSpace) ? value as ColorSpace : null
+// A colorspace from outside (attribute, property): case-insensitive, and the
+// select's own "rgb" label means srgb. Anything else is not a space
+const toColorSpace = (value: unknown): ColorSpace | null => {
+  if (typeof value !== 'string') return null
+  const v = value.trim().toLowerCase()
+  return asColorSpace(v === 'rgb' ? 'srgb' : v)
+}
 
 // A wrapping <label> also holds the control itself (and maybe others), so
 // collect only its own text, skipping control subtrees and hidden content
@@ -95,6 +103,7 @@ export class ColorInput extends HTMLElement {
   #errorEffectCleanup: ReturnType<typeof effect> | null = null
   #controlsEffectCleanup: ReturnType<typeof effect> | null = null
   #controlsUpdate: ((ch: ChannelRecord) => void) | null = null
+  #cancelPendingApply: (() => void) | null = null
   #areaPickerEffectCleanup: ReturnType<typeof effect> | null = null
   #formValueEffectCleanup: ReturnType<typeof effect> | null = null
   #areaPickerGamutBoundariesEffectCleanup: ReturnType<typeof effect> | null = null
@@ -104,7 +113,16 @@ export class ColorInput extends HTMLElement {
   // Infer the working colorspace from a color string. Hex and functional
   // notations express a format preference; named colors (`rebeccapurple`)
   // don't, so they default to oklch rather than srgb.
-  #detectSpace(value: string, parsedSpaceId: string): ColorSpace {
+  // Pass `keep` (the current space) for incoming values: a string that names
+  // the same space under another alias (`color(xyz …)` parses as xyz-d65)
+  // stays in the current space, so echoing the component's own value back
+  // never re-renders the controls mid-drag
+  #detectSpace(value: string, parsedSpaceId: string, keep?: ColorSpace): ColorSpace {
+    const detected = this.#detectFormat(value, parsedSpaceId)
+    return keep && isSameColorSpace(detected, keep) ? keep : detected
+  }
+
+  #detectFormat(value: string, parsedSpaceId: string): ColorSpace {
     const v = value.trim()
     if (v.startsWith('#')) return 'hex'
     if (/^[a-z]+$/i.test(v)) return DEFAULT_SPACE
@@ -120,7 +138,11 @@ export class ColorInput extends HTMLElement {
     try {
       const parsed = parse(v)
       const prevSpace = this.#space.value
-      this.#space.value = this.#detectSpace(v, parsed.spaceId)
+      const nextSpace = this.#detectSpace(v, parsed.spaceId, prevSpace)
+      // Echoing the current value back (a framework binding `change` to
+      // `value`) is a no-op: no re-render, and no change event to echo again
+      if (v === this.#value.value && nextSpace === prevSpace) return
+      this.#space.value = nextSpace
       this.#value.value = v
       this.#programmaticUpdate = true
       this.setAttribute('value', v)
@@ -133,7 +155,9 @@ export class ColorInput extends HTMLElement {
 
   get colorspace() { return this.#space.value }
   set colorspace(s: ColorSpace | string) {
-    const next = (s as ColorSpace) || DEFAULT_SPACE
+    // An unknown space has no controls to render; ignore it like a bad value
+    const next = s ? toColorSpace(s) : DEFAULT_SPACE
+    if (!next) return
     const prevSpace = this.#space.value
     this.#space.value = next
     this.#programmaticUpdate = true
@@ -162,8 +186,8 @@ export class ColorInput extends HTMLElement {
       this.#emitChange()
     } catch { }
     this.#programmaticUpdate = false
-    // Re-render controls for new colorspace
-    if (this.#controls) this.#renderControls()
+    // The space select, sliders and number fields follow, as for el.value
+    this.#syncPanel(true)
   }
 
   get theme() { return this.#theme.value }
@@ -784,14 +808,23 @@ export class ColorInput extends HTMLElement {
         const parsed = parse(value)
         const prevSpace = this.#space.value
         this.#value.value = value
-        this.#space.value = this.#detectSpace(value, parsed.spaceId)
+        this.#space.value = this.#detectSpace(value, parsed.spaceId, prevSpace)
         this.#syncPanel(this.#space.value !== prevSpace)
       } catch { }
     }
     if (name === 'colorspace' && value) {
-      const prevSpace = this.#space.value
-      this.#space.value = value as ColorSpace
-      this.#syncPanel(this.#space.value !== prevSpace)
+      // Unknown spaces ("foo") are ignored; "HSL" and the "rgb" label resolve
+      const next = toColorSpace(value)
+      if (next) {
+        const prevSpace = this.#space.value
+        this.#space.value = next
+        if (next !== value) {
+          this.#programmaticUpdate = true
+          this.setAttribute('colorspace', next)
+          this.#programmaticUpdate = false
+        }
+        this.#syncPanel(next !== prevSpace)
+      }
     }
     if (name === 'theme') {
       this.#theme.value = (value as Theme) || 'auto'
@@ -811,6 +844,9 @@ export class ColorInput extends HTMLElement {
   // a value/colorspace attribute, a form restore). Before the first render
   // there is nothing to sync; connectedCallback renders from current state
   #syncPanel(spaceChanged: boolean) {
+    // A slider/number edit still waiting for its frame would write its old
+    // color over the one that just arrived
+    this.#cancelPendingApply?.()
     if (this.#spaceSelect) this.#spaceSelect.value = this.#space.value
     if (!this.#controlsUpdate) return
     if (spaceChanged) this.#renderControls()
@@ -843,8 +879,9 @@ export class ColorInput extends HTMLElement {
 
     try {
       const parsed = parse(inputValue)
-      const nextSpace = this.#detectSpace(inputValue, parsed.spaceId)
+      const nextSpace = this.#detectSpace(inputValue, parsed.spaceId, this.#space.value)
       const spaceChanged = nextSpace !== this.#space.value
+      this.#cancelPendingApply?.()
 
       // Update value and colorspace
       this.#space.value = nextSpace
@@ -1058,6 +1095,8 @@ export class ColorInput extends HTMLElement {
   // ──────────────────────────────────────────────────────────────────────────────
   #renderControls() {
     if (this.#controlsEffectCleanup) this.#controlsEffectCleanup()
+    // Drop the old controls' queued apply: it would overwrite the new state
+    this.#cancelPendingApply?.()
     const space = this.#space.value
     if (!this.#controls) return
     const current = parseIntoChannels(space, this.#value.value)
@@ -1071,6 +1110,11 @@ export class ColorInput extends HTMLElement {
 
     let rafId: number | null = null
     let pendingApply: (() => void) | null = null
+    this.#cancelPendingApply = () => {
+      if (rafId !== null) cancelAnimationFrame(rafId)
+      rafId = null
+      pendingApply = null
+    }
 
     const stripLeadingZeros = (s: string) => s.replace(/^0+(\d)/, '$1').replace(/^0\./, '.')
 
