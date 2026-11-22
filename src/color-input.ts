@@ -119,12 +119,14 @@ export class ColorInput extends HTMLElement {
     if (typeof v !== 'string' || !v) return
     try {
       const parsed = parse(v)
+      const prevSpace = this.#space.value
       this.#space.value = this.#detectSpace(v, parsed.spaceId)
       this.#value.value = v
       this.#programmaticUpdate = true
       this.setAttribute('value', v)
       this.setAttribute('colorspace', this.#space.value)
       this.#programmaticUpdate = false
+      this.#syncPanel(this.#space.value !== prevSpace)
       this.#emitChange()
     } catch { }
   }
@@ -453,7 +455,9 @@ export class ColorInput extends HTMLElement {
               })
               const color = gencolor(space, displayChannels(space, serialized).ch)
               this.#value.value = color
+              this.#programmaticUpdate = true
               this.setAttribute('value', color)
+              this.#programmaticUpdate = false
               this.#emitChange()
               this.#renderControls()
             }
@@ -778,14 +782,16 @@ export class ColorInput extends HTMLElement {
     if (name === 'value' && typeof value === 'string') {
       try {
         const parsed = parse(value)
+        const prevSpace = this.#space.value
         this.#value.value = value
         this.#space.value = this.#detectSpace(value, parsed.spaceId)
-        if (this.#spaceSelect) this.#spaceSelect.value = this.#space.value
+        this.#syncPanel(this.#space.value !== prevSpace)
       } catch { }
     }
     if (name === 'colorspace' && value) {
+      const prevSpace = this.#space.value
       this.#space.value = value as ColorSpace
-      if (this.#spaceSelect) this.#spaceSelect.value = value
+      this.#syncPanel(this.#space.value !== prevSpace)
     }
     if (name === 'theme') {
       this.#theme.value = (value as Theme) || 'auto'
@@ -798,6 +804,17 @@ export class ColorInput extends HTMLElement {
     if (name === 'no-gamut-boundaries') {
       this.#showGamutBoundaries.value = value === null
     }
+  }
+
+  // Bring the panel's space select, sliders and number fields in line with a
+  // value or space that arrived from outside the panel (the value property,
+  // a value/colorspace attribute, a form restore). Before the first render
+  // there is nothing to sync; connectedCallback renders from current state
+  #syncPanel(spaceChanged: boolean) {
+    if (this.#spaceSelect) this.#spaceSelect.value = this.#space.value
+    if (!this.#controlsUpdate) return
+    if (spaceChanged) this.#renderControls()
+    else this.#updateControls()
   }
 
   #emitChange() {
@@ -832,8 +849,10 @@ export class ColorInput extends HTMLElement {
       // Update value and colorspace
       this.#space.value = nextSpace
       this.#value.value = inputValue
+      this.#programmaticUpdate = true
       this.setAttribute('value', inputValue)
       this.setAttribute('colorspace', nextSpace)
+      this.#programmaticUpdate = false
       if (this.#spaceSelect) this.#spaceSelect.value = nextSpace
       this.#emitChange()
 
@@ -857,10 +876,8 @@ export class ColorInput extends HTMLElement {
     this.setAttribute('value', value)
     this.setAttribute('colorspace', space)
     this.#programmaticUpdate = false
-    if (this.#spaceSelect) this.#spaceSelect.value = space
+    this.#syncPanel(spaceChanged)
     if (!silent) this.#emitChange()
-    if (spaceChanged) this.#renderControls()
-    else this.#updateControls()
   }
 
   // ──────────────────────────────────────────────────────────────────────────────
@@ -1145,7 +1162,9 @@ export class ColorInput extends HTMLElement {
       const apply = () => {
         const next = gencolor(space, ch)
         this.#value.value = next
+        this.#programmaticUpdate = true
         this.setAttribute('value', next)
+        this.#programmaticUpdate = false
         this.#emitChange()
       }
 
