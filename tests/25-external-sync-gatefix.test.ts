@@ -101,6 +101,19 @@ describe('colorspace carries the panel', () => {
     expect(ranges(el).length).toBe(4)
   })
 
+  it('echoing the current colorspace is a no-op', () => {
+    const el = makeEl()
+    let changes = 0
+    el.addEventListener('change', (e: CustomEvent) => { changes++; el.colorspace = e.detail.colorspace })
+    const before = ranges(el)[0]
+    el.colorspace = 'oklch'
+    expect(changes).toBe(0)
+    expect(ranges(el)[0]).toBe(before)
+    el.colorspace = 'hsl'
+    expect(changes).toBe(1)
+    expect(select(el).value).toBe('hsl')
+  })
+
   it('colorspace property ignores unknown spaces', () => {
     const el = makeEl()
     el.colorspace = 'foo'

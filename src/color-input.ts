@@ -159,6 +159,9 @@ export class ColorInput extends HTMLElement {
     const next = s ? toColorSpace(s) : DEFAULT_SPACE
     if (!next) return
     const prevSpace = this.#space.value
+    // Same space: nothing to convert, re-render or announce (a framework
+    // binding `change` to `colorspace` must not recurse or rebuild mid-drag)
+    if (next === prevSpace) return
     this.#space.value = next
     this.#programmaticUpdate = true
     this.setAttribute('colorspace', next)
