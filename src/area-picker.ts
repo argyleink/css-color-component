@@ -944,7 +944,11 @@ export class AreaPicker {
             const yNorm = (prevY - cfgYMin(config)) / cfgYRange(config);
             const maxChroma = lerpLUT(chromaLUT, yNorm);
             const xStep = maxChroma / 100;
-            newCoords[config.xIndex] = Math.max(0, Math.min(maxChroma, prevX + effXDelta * xStep));
+            // The LUT max is interpolated, so a color right on the gamut edge
+            // (p3 red) can sit just past it: pushing outward must not clamp it
+            // back inward, or Right drains chroma a little on every press
+            const xHi = effXDelta > 0 ? Math.max(maxChroma, prevX) : maxChroma;
+            newCoords[config.xIndex] = Math.max(0, Math.min(xHi, prevX + effXDelta * xStep));
             newCoords[config.yIndex] = Math.max(cfgYMin(config), Math.min(config.yMax, prevY + effYDelta * config.yStep));
           } else {
             newCoords[config.xIndex] = Math.max(cfgXMin(config), Math.min(config.xMax, prevX + effXDelta * config.xStep));
@@ -966,6 +970,9 @@ export class AreaPicker {
           if (next[config.xIndex] === newCoords[config.xIndex] && next[config.yIndex] === newCoords[config.yIndex]) break;
           newCoords = next;
         }
+        // Pinned at an edge: the value can't move, so don't commit (and emit
+        // a change event for) the same color again
+        if (toValue({ ...color, coords: newCoords }) === current) return;
         handleChange({ ...color, coords: newCoords });
       },
       { signal: this.#controller.signal }

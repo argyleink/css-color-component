@@ -66,6 +66,16 @@ describe('area picker accessible value', () => {
     expect(area.getAttribute('aria-valuenow')).toBe('41')
   })
 
+  it('aria-valuenow is the thumb position, even on the inverted hwb axis', () => {
+    let area: HTMLElement
+    ;({ el, area } = make('hwb(200 10% 20%)'))
+    // whiteness runs right-to-left, so 10% whiteness sits 90% across
+    expect(area.getAttribute('aria-valuenow')).toBe('90')
+    key(area, 'ArrowRight')
+    expect(area.getAttribute('aria-valuetext')).toBe('Whiteness 9%, Blackness 20%')
+    expect(area.getAttribute('aria-valuenow')).toBe('91')
+  })
+
   it('follows external value changes', () => {
     let area: HTMLElement
     ;({ el, area } = make('hsl(200 40% 30%)'))
@@ -123,5 +133,44 @@ describe('area picker arrow keys always move the value', () => {
     ;({ el, area } = make('hsl(200 100% 30%)'))
     key(area, 'ArrowRight')
     expect(el.value).toBe('hsl(200 100% 30%)')
+  })
+
+  it.each([
+    ['color(display-p3 1 0 0)'],
+    ['color(rec2020 0 1 0)'],
+    ['oklch(70% 0.37 150)'],
+  ])('ArrowRight at the gamut edge never drains chroma (%s)', async (value) => {
+    let area: HTMLElement
+    ;({ el, area } = make(value))
+    await nextFrame()
+    const before = el.value
+    for (let i = 0; i < 3; i++) key(area, 'ArrowRight')
+    expect(el.value).toBe(before)
+  })
+
+  it('a press that cannot move the value emits no change event', async () => {
+    let area: HTMLElement
+    ;({ el, area } = make('#ffffff'))
+    await nextFrame()
+    let changes = 0
+    el.addEventListener('change', () => changes++)
+    key(area, 'ArrowUp')
+    key(area, 'ArrowLeft')
+    expect(changes).toBe(0)
+    expect(el.value).toBe('#ffffff')
+    key(area, 'ArrowDown')
+    expect(changes).toBe(1)
+  })
+
+  it('a framework echoing change back into el.value does not loop', async () => {
+    let area: HTMLElement
+    ;({ el, area } = make('oklch(70% 0.15 250)'))
+    await nextFrame()
+    let changes = 0
+    el.addEventListener('change', (e: CustomEvent) => { changes++; el.value = e.detail.value })
+    key(area, 'ArrowRight')
+    key(area, 'ArrowUp', { shiftKey: true })
+    expect(changes).toBe(2)
+    expect(area.getAttribute('aria-valuetext')).toMatch(/^Chroma \d+%, Lightness 80%$/)
   })
 })
