@@ -101,6 +101,33 @@ const AREA_CONFIGS: Record<string, undefined | AreaConfig> = {
   },
 };
 
+// What the area's two axes are, for its accessible value. Keyed like
+// AREA_CONFIGS: [x axis, y axis], each a name and a formatter for the raw coord
+const pct = (scale: number) => (v: number) => `${Math.round(v * scale)}%`;
+const fixed = (digits: number) => (v: number) => {
+  const s = v.toFixed(digits);
+  return Number(s) === 0 ? (0).toFixed(digits) : s; // no "-0.000"
+};
+const AREA_AXES: Record<string, undefined | [[string, (v: number) => string], [string, (v: number) => string]]> = {
+  okhsv: [["Saturation", pct(100)], ["Value", pct(100)]],
+  // chroma as a percentage of 0.4, the CSS reference range, matching the C field
+  oklch: [["Chroma", pct(250)], ["Lightness", pct(100)]],
+  hsl: [["Saturation", pct(1)], ["Lightness", pct(1)]],
+  hwb: [["Whiteness", pct(1)], ["Blackness", pct(1)]],
+  oklab: [["a", fixed(3)], ["b", fixed(3)]],
+  lab: [["a", fixed(0)], ["b", fixed(0)]],
+};
+
+/** aria-valuetext for the area: both axes, e.g. "Chroma 50%, Lightness 70%" */
+export function areaValueText(spaceId: string, x: number, y: number): string {
+  const axes = AREA_AXES[spaceId];
+  if (!axes) return "";
+  const [[xName, xFmt], [yName, yFmt]] = axes;
+  const fx = Number.isFinite(x) ? x : 0;
+  const fy = Number.isFinite(y) ? y : 0;
+  return `${xName} ${xFmt(fx)}, ${yName} ${yFmt(fy)}`;
+}
+
 const getAreaConfig = (color: null | ColorConstructor) => {
   if (color) {
     return AREA_CONFIGS[color.spaceId];
@@ -699,12 +726,13 @@ export class AreaPicker {
       this.#worker = null;
     }
 
-    const handleChange = (newColor: ColorConstructor, isDragging = false) => {
-      if (!this.#space.value) {
-        return;
-      }
-      // Serialize to target color space
+    // The value an area color commits as: the editing space, gamut mapped,
+    // at display precision (a drag is a user edit)
+    const toValue = (newColor: ColorConstructor): string | null => {
       const space = this.#space.value;
+      if (!space) {
+        return null;
+      }
       const targetSpace = getColorJSSpaceID(
         space === "hex" ? "srgb" : space
       );
@@ -712,11 +740,14 @@ export class AreaPicker {
       const serialized = serialize(targetColor, {
         format: space === "hex" ? "hex" : undefined,
       })
-      onChange(
-        // reformat color at display precision: a drag is a user edit
-        gencolor(space, displayChannels(space, serialized).ch),
-        isDragging
-      );
+      return gencolor(space, displayChannels(space, serialized).ch);
+    };
+
+    const handleChange = (newColor: ColorConstructor, isDragging = false) => {
+      const value = toValue(newColor);
+      if (value !== null) {
+        onChange(value, isDragging);
+      }
     };
 
     const thumb = element.querySelector<HTMLElement>(".area-thumb");
@@ -883,35 +914,57 @@ export class AreaPicker {
             return;
         }
         event.preventDefault();
+        // Shift steps 10x, like the channel number fields (10% of the area)
+        if (event.shiftKey) {
+          xDelta *= 10;
+          yDelta *= 10;
+        }
 
         // Calculate new values with clamping
         const prevX = color.coords[config.xIndex] ?? 0;
         const prevY = color.coords[config.yIndex] ?? 0;
-        const effXDelta = config.xInvert ? -xDelta : xDelta;
-        const effYDelta = config.yInvert ? -yDelta : yDelta;
-
-        // Build new coords array
-        const newCoords: [number, number, number] = [color.coords[0] ?? 0, color.coords[1] ?? 0, color.coords[2] ?? 0];
         const chromaLUT = this.#chromaLUT.value;
         const polarLUT = this.#polarLUT.value;
-        if (polarLUT) {
-          // Polar stretch mode: step relative to gamut extent along each axis
-          const xMaxR = lerpAngleLUT(polarLUT, 0); // max extent along positive a-axis
-          const yMaxR = lerpAngleLUT(polarLUT, Math.PI / 2); // max extent along positive b-axis
-          const xStep = xMaxR / 50;
-          const yStep = yMaxR / 50;
-          newCoords[config.xIndex] = prevX + effXDelta * xStep;
-          newCoords[config.yIndex] = prevY + effYDelta * yStep;
-        } else if (chromaLUT) {
-          // Row stretch mode: step is 1% of max chroma at current lightness
-          const yNorm = (prevY - cfgYMin(config)) / cfgYRange(config);
-          const maxChroma = lerpLUT(chromaLUT, yNorm);
-          const xStep = maxChroma / 100;
-          newCoords[config.xIndex] = Math.max(0, Math.min(maxChroma, prevX + effXDelta * xStep));
-          newCoords[config.yIndex] = Math.max(cfgYMin(config), Math.min(config.yMax, prevY + effYDelta * config.yStep));
-        } else {
-          newCoords[config.xIndex] = Math.max(cfgXMin(config), Math.min(config.xMax, prevX + effXDelta * config.xStep));
-          newCoords[config.yIndex] = Math.max(cfgYMin(config), Math.min(config.yMax, prevY + effYDelta * config.yStep));
+
+        // The coords `scale` steps away along the pressed arrow
+        const stepped = (scale: number): [number, number, number] => {
+          const effXDelta = (config.xInvert ? -xDelta : xDelta) * scale;
+          const effYDelta = (config.yInvert ? -yDelta : yDelta) * scale;
+          const newCoords: [number, number, number] = [color.coords[0] ?? 0, color.coords[1] ?? 0, color.coords[2] ?? 0];
+          if (polarLUT) {
+            // Polar stretch mode: step relative to gamut extent along each axis
+            const xMaxR = lerpAngleLUT(polarLUT, 0); // max extent along positive a-axis
+            const yMaxR = lerpAngleLUT(polarLUT, Math.PI / 2); // max extent along positive b-axis
+            const xStep = xMaxR / 50;
+            const yStep = yMaxR / 50;
+            newCoords[config.xIndex] = prevX + effXDelta * xStep;
+            newCoords[config.yIndex] = prevY + effYDelta * yStep;
+          } else if (chromaLUT) {
+            // Row stretch mode: step is 1% of max chroma at current lightness
+            const yNorm = (prevY - cfgYMin(config)) / cfgYRange(config);
+            const maxChroma = lerpLUT(chromaLUT, yNorm);
+            const xStep = maxChroma / 100;
+            newCoords[config.xIndex] = Math.max(0, Math.min(maxChroma, prevX + effXDelta * xStep));
+            newCoords[config.yIndex] = Math.max(cfgYMin(config), Math.min(config.yMax, prevY + effYDelta * config.yStep));
+          } else {
+            newCoords[config.xIndex] = Math.max(cfgXMin(config), Math.min(config.xMax, prevX + effXDelta * config.xStep));
+            newCoords[config.yIndex] = Math.max(cfgYMin(config), Math.min(config.yMax, prevY + effYDelta * config.yStep));
+          }
+          return newCoords;
+        };
+
+        // A step smaller than the value's display precision rounds straight
+        // back to the current value, so the press does nothing and the next
+        // one starts from the same place: oklch chroma steps (1% of the max
+        // chroma at that lightness) are under the 1% (0.004) the value keeps,
+        // and dark okhsv steps vanish in 8-bit hex. Grow the step until the
+        // committed value actually moves, or the thumb is pinned at an edge
+        const current = toValue(color);
+        let newCoords = stepped(1);
+        for (let scale = 2; scale <= 100 && toValue({ ...color, coords: newCoords }) === current; scale++) {
+          const next = stepped(scale);
+          if (next[config.xIndex] === newCoords[config.xIndex] && next[config.yIndex] === newCoords[config.yIndex]) break;
+          newCoords = next;
         }
         handleChange({ ...color, coords: newCoords });
       },
@@ -926,6 +979,8 @@ export class AreaPicker {
     });
 
     // update thumb position whenever color changes or during drag
+    let lastValueText = "";
+    let lastValueNow = "";
     const cleanupColor = effect(() => {
       const color = this.#draggingColor.value ?? this.#color.value;
       const config = this.#effectiveConfig.value ?? getAreaConfig(color);
@@ -958,6 +1013,25 @@ export class AreaPicker {
 
       this.#area?.style.setProperty("--thumb-x", `${config.xInvert ? 100 - x : x}%`);
       this.#area?.style.setProperty("--thumb-y", `${config.yInvert ? y : 100 - y}%`);
+
+      // role="slider" requires a value: without one, screen readers announce
+      // nothing as the thumb moves. Only touch the DOM when the text changes
+      // (this runs every drag frame)
+      const valueText = areaValueText(
+        color.spaceId,
+        color.coords[config.xIndex] ?? 0,
+        color.coords[config.yIndex] ?? 0
+      );
+      const xPos = config.xInvert ? 100 - x : x;
+      const valueNow = String(Number.isFinite(xPos) ? Math.round(Math.max(0, Math.min(100, xPos))) : 0);
+      if (valueText && valueText !== lastValueText) {
+        lastValueText = valueText;
+        element.setAttribute("aria-valuetext", valueText);
+      }
+      if (valueText && valueNow !== lastValueNow) {
+        lastValueNow = valueNow;
+        element.setAttribute("aria-valuenow", valueNow);
+      }
     });
 
     let animationId: null | number = null;

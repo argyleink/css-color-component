@@ -18,7 +18,7 @@ export function createTemplate(): HTMLTemplateElement {
     <input type="text" class="text-input" part="input" aria-label="Color value" title="Color value" aria-invalid="false" spellcheck="false" />
   </div>
   <div class="panel" popover="auto" part="panel">
-    <div class="area-picker" part="area" role="slider" aria-label="Color area picker" tabindex="0">
+    <div class="area-picker" part="area" role="slider" aria-roledescription="2D slider" aria-label="Color area picker" aria-valuemin="0" aria-valuemax="100" tabindex="0">
       <canvas class="area-canvas"></canvas>
       <div class="area-thumb"></div>
     </div>
