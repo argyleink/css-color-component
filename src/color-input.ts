@@ -1,7 +1,8 @@
 import { signal, computed, effect, batch, Signal } from '@preact/signals-core'
-import { parse, serialize, to, toGamut, contrast as contrastFn } from 'colorjs.io/fn'
+import { parse, serialize, to, toGamut } from 'colorjs.io/fn'
 import {
   contrastColor,
+  contrastRatios,
   COLOR_SPACES,
   detectGamut,
   getColorJSSpaceID,
@@ -95,7 +96,12 @@ export class ColorInput extends HTMLElement {
   #noAlpha = signal(false)
   #showGamutBoundaries = signal(true)
 
-  #contrast = computed(() => contrastColor(this.#value.value))
+  // The opaque surface the preview paints the color on (the panel's Canvas).
+  // Translucent colors are composited over it before picking text contrast
+  #backdrop = signal<string>('white')
+  #contrast = computed(() => contrastColor(this.#value.value, this.#backdrop.value))
+  #schemeQuery: MediaQueryList | null = null
+  #onSchemeChange = () => this.#resolveBackdrop()
   #gamut = computed(() => detectGamut(this.#value.value))
 
   #previewEffectCleanup: ReturnType<typeof effect> | null = null
@@ -648,6 +654,8 @@ export class ColorInput extends HTMLElement {
       } catch { }
       this.#open.value = isOpen
       if (isOpen) {
+        // ::part(panel) or an inherited color-scheme may have changed the surface
+        this.#resolveBackdrop()
         this.#startReposition()
       } else {
         this.#stopReposition()
@@ -689,11 +697,10 @@ export class ColorInput extends HTMLElement {
       const crB = this.#root.querySelector('.cr-b') as HTMLElement
       if (crW && crB) {
         try {
-          const parsed = parseCSSColor(v)
-          const cw = contrastFn(parsed, 'white', 'WCAG21')
-          const cb = contrastFn(parsed, 'black', 'WCAG21')
-          crW.textContent = `${(cw as number).toFixed(1)}:1`
-          crB.textContent = `${(cb as number).toFixed(1)}:1`
+          // Scored as painted: a translucent color over the panel backdrop
+          const { white: cw, black: cb } = contrastRatios(v, this.#backdrop.value)
+          crW.textContent = `${cw.toFixed(1)}:1`
+          crB.textContent = `${cb.toFixed(1)}:1`
         } catch { }
       }
     })
@@ -711,10 +718,14 @@ export class ColorInput extends HTMLElement {
       }
     })
 
+    // Auto theme: the panel Canvas flips with the OS scheme
+    this.#schemeQuery = typeof matchMedia === 'function' ? matchMedia('(prefers-color-scheme: dark)') : null
+    this.#schemeQuery?.addEventListener?.('change', this.#onSchemeChange)
     this.#colorSchemeEffectCleanup = effect(() => {
       const theme = this.#theme.value
       const colorScheme = theme === 'auto' ? 'light dark' : theme
       this.style.setProperty('color-scheme', colorScheme)
+      this.#resolveBackdrop()
     })
 
     // Defaults
@@ -782,7 +793,29 @@ export class ColorInput extends HTMLElement {
     ;(this as any)[prop] = v
   }
 
+  /**
+   * Read the panel's painted background (Canvas, or a ::part(panel) override)
+   * into #backdrop. Falls back to white/black by the used color scheme when
+   * it can't be read or isn't opaque (jsdom, a transparent panel).
+   */
+  #resolveBackdrop() {
+    let backdrop = ''
+    try {
+      const bg = this.#panel ? getComputedStyle(this.#panel as HTMLElement).backgroundColor : ''
+      const parsed = bg ? parseCSSColor(bg) : null
+      if (parsed && (parsed.alpha ?? 1) >= 1) backdrop = bg
+    } catch { }
+    if (!backdrop) {
+      const theme = this.#theme.peek()
+      const dark = theme === 'dark' || (theme === 'auto' && !!this.#schemeQuery?.matches)
+      backdrop = dark ? 'black' : 'white'
+    }
+    if (backdrop !== this.#backdrop.peek()) this.#backdrop.value = backdrop
+  }
+
   disconnectedCallback() {
+    this.#schemeQuery?.removeEventListener?.('change', this.#onSchemeChange)
+    this.#schemeQuery = null
     this.#colorSchemeEffectCleanup?.()
     this.#previewEffectCleanup?.()
     this.#errorEffectCleanup?.()
