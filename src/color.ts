@@ -89,6 +89,7 @@ export function compositeOver(color: ColorConstructor, backdrop: string | ColorC
  * WCAG 2.1 contrast of white and black text over `c` as it is painted on
  * `backdrop`. A translucent color is composited first: contrast() ignores
  * alpha, which scored `transparent` as black (21:1 against white text).
+ * Throws on an unparseable color; contrastColor() is the non-throwing form.
  */
 export function contrastRatios(c: string, backdrop: string = 'white'): { white: number, black: number } {
   const color = compositeOver(parseCSSColor(c), backdrop)

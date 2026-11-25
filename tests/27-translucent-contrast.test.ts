@@ -44,10 +44,13 @@ describe('contrastColor / contrastRatios with a backdrop', () => {
     expect(contrastColor(value, backdrop)).toBe(expected)
   })
 
-  it('leaves opaque colors as before', () => {
-    for (const v of ['#3b82f6', 'oklch(20% 0.05 250)', 'hsl(60 100% 50%)', 'black', 'white']) {
-      expect(contrastColor(v, 'black')).toBe(contrastColor(v, 'white'))
-    }
+  it.each([
+    ['#3b82f6', 'black'], ['oklch(20% 0.05 250)', 'white'], ['hsl(60 100% 50%)', 'black'],
+    ['black', 'white'], ['white', 'black'], ['color(display-p3 0 0 1)', 'white'],
+  ])('opaque %s still reads best in %s, on either backdrop', (value, expected) => {
+    expect(contrastColor(value)).toBe(expected)
+    expect(contrastColor(value, 'white')).toBe(expected)
+    expect(contrastColor(value, 'black')).toBe(expected)
   })
 
   it('scores transparent as the backdrop, not as black', () => {
@@ -106,6 +109,19 @@ describe('<color-input> text contrast for translucent values', () => {
     el.remove()
     expect(listeners.size).toBe(0)
     vi.unstubAllGlobals()
+  })
+
+  it("uses the panel's painted background when the browser reports one", () => {
+    // jsdom resolves no Canvas color; stand in for a ::part(panel) { background: #121212 }
+    const real = window.getComputedStyle
+    vi.spyOn(window, 'getComputedStyle').mockImplementation(((el: Element, pseudo?: string | null) => {
+      const cs = real(el, pseudo)
+      if (!(el as HTMLElement).classList?.contains('panel')) return cs
+      return new Proxy(cs, { get: (t, k) => k === 'backgroundColor' ? 'rgb(18, 18, 18)' : Reflect.get(t, k) })
+    }) as typeof window.getComputedStyle)
+    // theme light would fall back to a white backdrop; the real surface is dark
+    const el = make({ theme: 'light', value: 'transparent' })
+    expect(el.contrastColor).toBe('white')
   })
 
   it('opaque values are unaffected by the theme', () => {

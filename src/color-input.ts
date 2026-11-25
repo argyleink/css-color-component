@@ -796,7 +796,8 @@ export class ColorInput extends HTMLElement {
   /**
    * Read the panel's painted background (Canvas, or a ::part(panel) override)
    * into #backdrop. Falls back to white/black by the used color scheme when
-   * it can't be read or isn't opaque (jsdom, a transparent panel).
+   * it can't be read or isn't opaque (jsdom, a transparent or glassy panel,
+   * whose real backdrop is whatever page content sits behind it).
    */
   #resolveBackdrop() {
     let backdrop = ''
