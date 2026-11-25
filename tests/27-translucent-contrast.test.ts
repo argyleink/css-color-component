@@ -124,6 +124,50 @@ describe('<color-input> text contrast for translucent values', () => {
     expect(el.contrastColor).toBe('white')
   })
 
+  // Stand in for the panel's computed background (jsdom resolves none)
+  function stubPanelBg(get: () => string) {
+    const real = window.getComputedStyle
+    vi.spyOn(window, 'getComputedStyle').mockImplementation(((el: Element, pseudo?: string | null) => {
+      const cs = real(el, pseudo)
+      if (!(el as HTMLElement).classList?.contains('panel')) return cs
+      return new Proxy(cs, { get: (t, k) => k === 'backgroundColor' ? get() : Reflect.get(t, k) })
+    }) as typeof window.getComputedStyle)
+  }
+
+  it('a glassy (translucent) panel is composited, not ignored', () => {
+    // ::part(panel) { background: rgb(20 20 20 / .85) } in the light theme
+    // paints a dark surface; ignoring it picked black text at 1.6:1
+    stubPanelBg(() => 'rgba(20, 20, 20, 0.85)')
+    const el = make({ theme: 'light', value: 'transparent' })
+    expect(el.contrastColor).toBe('white')
+    expect(scores(el)[0]).toBe('11.9:1')
+  })
+
+  it('a fully transparent panel falls back to the theme surface', () => {
+    stubPanelBg(() => 'rgba(0, 0, 0, 0)')
+    expect(make({ theme: 'light', value: 'transparent' }).contrastColor).toBe('black')
+  })
+
+  it('re-picks when page CSS repaints the panel (no theme change)', () => {
+    let bg = 'rgb(255, 255, 255)'
+    stubPanelBg(() => bg)
+    const el = make({ theme: 'light', value: 'transparent' })
+    expect(el.contrastColor).toBe('black')
+    // a class-toggled dark mode: the panel's 1ms background transition ends
+    bg = 'rgb(17, 17, 17)'
+    const panel = el.shadowRoot.querySelector('.panel')
+    const ev = new Event('transitionend') as any
+    ev.propertyName = 'background-color'
+    panel.dispatchEvent(ev)
+    expect(el.contrastColor).toBe('white')
+    // other properties' transitions (the popover's opacity) don't re-read
+    bg = 'rgb(255, 255, 255)'
+    const other = new Event('transitionend') as any
+    other.propertyName = 'opacity'
+    panel.dispatchEvent(other)
+    expect(el.contrastColor).toBe('white')
+  })
+
   it('opaque values are unaffected by the theme', () => {
     const el = make({ theme: 'dark', value: '#3b82f6' })
     expect(el.contrastColor).toBe('black')
