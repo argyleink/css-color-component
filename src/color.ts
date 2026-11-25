@@ -70,19 +70,48 @@ export function parseCoords(x: number, min = 0, max = 100) {
   return Math.max(min, Math.min(max, x))
 }
 
-export function contrastColor(c: string): 'white' | 'black' {
+/**
+ * Paint a (possibly translucent) color over an opaque backdrop the way the
+ * browser does: source-over compositing of gamma-encoded sRGB (CSS Color 4
+ * §12 / Compositing 1). Coordinates stay unclamped so wide-gamut colors keep
+ * their extra chroma; `none` channels count as 0. Opaque colors pass through.
+ */
+export function compositeOver(color: ColorConstructor, backdrop: string | ColorConstructor = 'white'): ColorConstructor {
+  const a = color.alpha === null || color.alpha === undefined || Number.isNaN(color.alpha) ? 1 : clamp(color.alpha, 0, 1)!
+  if (a >= 1) return color
+  const bg = to(typeof backdrop === 'string' ? parseCSSColor(backdrop) : backdrop, 'srgb').coords
+  const fg = to({ ...color, alpha: 1 }, 'srgb').coords
+  const coords = fg.map((v, i) => (Number.isNaN(v as number) || v === null ? 0 : v as number) * a + (bg[i] as number || 0) * (1 - a))
+  return { spaceId: 'srgb', coords: coords as [number, number, number], alpha: 1 }
+}
+
+/**
+ * WCAG 2.1 contrast of white and black text over `c` as it is painted on
+ * `backdrop`. A translucent color is composited first: contrast() ignores
+ * alpha, which scored `transparent` as black (21:1 against white text).
+ * Throws on an unparseable color; contrastColor() is the non-throwing form.
+ */
+export function contrastRatios(c: string, backdrop: string = 'white'): { white: number, black: number } {
+  const color = compositeOver(parseCSSColor(c), backdrop)
   try {
-    const color = parseCSSColor(c)
-    let wh: number
-    let bl: number
-    try {
-      wh = contrast(color, 'white', 'WCAG21') ?? contrastLstar(color, 'white')
-      bl = contrast(color, 'black', 'WCAG21') ?? contrastLstar(color, 'black')
-    } catch {
-      wh = contrastLstar(color, 'white')
-      bl = contrastLstar(color, 'black')
+    return {
+      white: contrast(color, 'white', 'WCAG21') ?? contrastLstar(color, 'white'),
+      black: contrast(color, 'black', 'WCAG21') ?? contrastLstar(color, 'black'),
     }
-    return wh > bl ? 'white' : 'black'
+  } catch {
+    return { white: contrastLstar(color, 'white'), black: contrastLstar(color, 'black') }
+  }
+}
+
+/**
+ * Text color (white or black) that reads best on `c`. `backdrop` is the
+ * opaque surface the color sits on (the panel's Canvas), which decides the
+ * answer for translucent colors: `transparent` over a light panel needs black.
+ */
+export function contrastColor(c: string, backdrop: string = 'white'): 'white' | 'black' {
+  try {
+    const { white, black } = contrastRatios(c, backdrop)
+    return white > black ? 'white' : 'black'
   } catch {
     return 'black'
   }
