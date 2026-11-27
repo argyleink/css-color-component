@@ -346,6 +346,25 @@ button {
   &:hover::picker-icon {
     translate: 0 1px;
   }
+
+  /* The open list sits on a system surface, not on the swatch, so its
+     options must not inherit --contrast (white on a white list in light
+     mode, black on a dark one in dark mode: #3, #15, #61).
+     Only the button is base-select; the list is still the native popup
+     in every engine (Chromium included), and that popup's own surface
+     follows color-scheme, not --canvas. Give the options both colors so
+     text and surface always match, even when the page overrides
+     --canvas / --canvas-text. */
+  & :is(option, optgroup) {
+    color: var(--canvas-text);
+    background-color: var(--canvas);
+  }
+
+  /* If the picker is ever opted into base-select, it gets the same surface. */
+  &::picker(select) {
+    background-color: var(--canvas);
+    color: var(--canvas-text);
+  }
 }
 
 /* Gamut badge: displays detected color gamut (srgb/p3/rec2020/xyz) */
