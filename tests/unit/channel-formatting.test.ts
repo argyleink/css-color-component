@@ -62,7 +62,9 @@ describe('channel-formatting', () => {
       it('should format A and B with 2 decimals', () => {
         expect(formatChannel('oklab', 'A', 0.125)).toBe('0.13')
         expect(formatChannel('oklab', 'B', -0.456)).toBe('-0.46')
-        expect(formatChannel('oklab', 'A', 0.1)).toBe('0.1')
+        expect(formatChannel('oklab', 'A', 0.1)).toBe('0.10')
+        expect(formatChannel('oklab', 'A', 0.003)).toBe('0')
+        expect(formatChannel('oklab', 'B', -0.004)).toBe('0')
       })
     })
 
@@ -188,7 +190,7 @@ describe('channel-formatting', () => {
       })
 
       it('should handle negative values', () => {
-        expect(formatChannel('oklab', 'A', -0.5)).toBe('-0.5')
+        expect(formatChannel('oklab', 'A', -0.5)).toBe('-0.50')
         expect(formatChannel('lab', 'B', -100.7)).toBe('-101')
       })
     })

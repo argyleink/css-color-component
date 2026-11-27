@@ -374,6 +374,9 @@ export class ColorInput extends HTMLElement {
   #controls?: HTMLElement
   #spaceSelect?: HTMLSelectElement
   #infoInput?: HTMLInputElement
+  // Widest text each value token has had during the live drag, or null when
+  // no drag is live. See #heldDisplay()
+  #heldSlots: number[] | null = null
   #chip?: HTMLElement
   #internalTrigger?: HTMLButtonElement
   #textInput?: HTMLInputElement
@@ -573,6 +576,23 @@ export class ColorInput extends HTMLElement {
       })
     }
 
+    // Hold the footer value's layout while the area or a slider is dragged
+    // (#60): digit counts change mid-drag (5% -> 12%, 0 -> -.15), which shifted
+    // every token after them. The plain value comes back on release.
+    this.#panel?.addEventListener('pointerdown', (ev: PointerEvent) => {
+      const t = ev.target as Element | null
+      if (!t?.closest?.('.area-picker, input[type="range"]')) return
+      this.#heldSlots = []
+      const release = () => {
+        window.removeEventListener('pointerup', release, true)
+        window.removeEventListener('pointercancel', release, true)
+        this.#heldSlots = null
+        if (this.#infoInput && this.#editingField !== this.#infoInput) this.#infoInput.value = this.#value.value
+      }
+      window.addEventListener('pointerup', release, true)
+      window.addEventListener('pointercancel', release, true)
+    })
+
     // Editable color string in the panel footer: paste/type any CSS color
     if (this.#infoInput) {
       this.#infoInput.value = this.#value.value
@@ -674,8 +694,9 @@ export class ColorInput extends HTMLElement {
       const v = this.#value.value
       const gamut = this.#gamut.value
       const contrast = this.#contrast.value
-      if (this.#infoInput && this.#editingField !== this.#infoInput && this.#infoInput.value !== v) {
-        this.#infoInput.value = v
+      const shown = this.#heldDisplay(v)
+      if (this.#infoInput && this.#editingField !== this.#infoInput && this.#infoInput.value !== shown) {
+        this.#infoInput.value = shown
       }
       if (this.#chip) this.#chip.style.setProperty('--value', v)
       if (this.#textInput && this.#editingField !== this.#textInput && this.#textInput.value !== v) {
@@ -822,6 +843,25 @@ export class ColorInput extends HTMLElement {
   // transition reports it here so the text contrast doesn't go stale
   #onPanelTransition = (ev: TransitionEvent) => {
     if (ev.target === this.#panel && ev.propertyName === 'background-color') this.#resolveBackdrop()
+  }
+
+  /**
+   * The footer text for `v` while a drag is live: each token after the color
+   * function's name is padded at its start with figure spaces (digit-wide) to
+   * the widest it has been this drag, so numbers read right-aligned and
+   * nothing after them moves. Display only: el.value, change events and the
+   * copy button keep the plain string. Hex has no tokens to hold.
+   */
+  #heldDisplay(v: string): string {
+    const held = this.#heldSlots
+    const m = held && /^(color\(\s*[\w-]+ |[\w-]+\()(.*)$/.exec(v)
+    if (!held || !m) return v
+    const parts = m[2].split(' ')
+    if (held.length && held.length !== parts.length) held.length = 0 // alpha appeared/left
+    return m[1] + parts.map((p, i) => {
+      held[i] = Math.max(held[i] ?? 0, p.length)
+      return ' '.repeat(held[i] - p.length) + p
+    }).join(' ')
   }
 
   disconnectedCallback() {
