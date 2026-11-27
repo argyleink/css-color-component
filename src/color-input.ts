@@ -697,6 +697,14 @@ export class ColorInput extends HTMLElement {
       const shown = this.#heldDisplay(v)
       if (this.#infoInput && this.#editingField !== this.#infoInput && this.#infoInput.value !== shown) {
         this.#infoInput.value = shown
+        // Slots are held per token, so an area drag (two or three channels
+        // moving at once) can pad to a string wider than any value it really
+        // produced and clip the end of the footer. Never trade jitter for a
+        // clipped value: show the plain string and hold from these widths.
+        if (shown !== v && this.#infoInput.scrollWidth > this.#infoInput.clientWidth) {
+          this.#heldSlots = []
+          this.#infoInput.value = this.#heldDisplay(v) // seeds the slots, returns v
+        }
       }
       if (this.#chip) this.#chip.style.setProperty('--value', v)
       if (this.#textInput && this.#editingField !== this.#textInput && this.#textInput.value !== v) {

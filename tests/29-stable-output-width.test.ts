@@ -71,6 +71,33 @@ describe('stable output width while dragging (#60)', () => {
     expect(info.value).toBe('oklch(66% 3% 344)')
   })
 
+  it('never pads the footer past its width (shows the plain value instead)', async () => {
+    el = make('oklch(66% 12% 344)')
+    el.colorspace = 'oklch'
+    const info = el.shadowRoot.querySelector('input.info') as HTMLInputElement
+    // jsdom has no layout: 10px per character in a 180px-wide field, so the
+    // 18-char plain values fit and a 19-char padded one overflows
+    Object.defineProperty(info, 'clientWidth', { configurable: true, get: () => 180 })
+    Object.defineProperty(info, 'scrollWidth', { configurable: true, get: () => Math.max(180, info.value.length * 10) })
+    const range = el.shadowRoot.querySelector('.controls input[type=range].ch-c') as HTMLInputElement
+    const frame = () => new Promise(r => requestAnimationFrame(() => r(null)))
+    range.dispatchEvent(new Event('pointerdown', { bubbles: true }))
+    setRange(el, 'c', 100)
+    await frame()
+    setRange(el, 'c', 9)
+    await frame()
+    // 'oklch(66%   9% 344)' would be 19 chars: too wide, so the plain value shows
+    expect(info.value).toBe('oklch(66% 9% 344)')
+    expect(info.scrollWidth).toBeLessThanOrEqual(info.clientWidth)
+    // holding restarts from the widths just shown (hue held at 3 digits), so
+    // a shorter hue still pads and fits
+    setRange(el, 'h', 5)
+    await frame()
+    expect(info.value).toBe('oklch(66% 9% ' + ' '.repeat(2) + '5)')
+    window.dispatchEvent(new Event('pointerup'))
+    expect(info.value).toBe(el.value)
+  })
+
   it('leaves an authored value untouched (lossless on load)', () => {
     el = make('oklab(66% 0.1 -0.02)')
     expect(el.value).toBe('oklab(66% .1 -.02)')
