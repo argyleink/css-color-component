@@ -38,8 +38,13 @@ describe('colorspace select list colors', () => {
     expect(opts).not.toContain('--contrast')
   })
 
-  it('native popups get a matching option background', () => {
-    const native = block(space, space.indexOf('@supports not (appearance: base-select)'))
-    expect(native).toMatch(/:is\(option, optgroup\)\s*\{\s*background-color: var\(--canvas\)/)
+  it('options carry their own surface in every engine, not behind @supports', () => {
+    // Only the button is base-select; Chromium's list is still the native
+    // popup, whose surface follows color-scheme and ignores --canvas. A page
+    // that overrides --canvas/--canvas-text got light text on a white list
+    // when the background was gated to non-base-select engines.
+    const opts = block(space, space.indexOf('& :is(option, optgroup)'))
+    expect(opts).toContain('background-color: var(--canvas)')
+    expect(space).not.toMatch(/@supports not \(appearance: base-select\)/)
   })
 })
