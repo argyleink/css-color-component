@@ -24,7 +24,7 @@ export function trimZeros(s: string): string {
 /**
  * Format a channel value to appropriate precision for the given color space and channel name.
  * Handles different precision requirements across color spaces:
- * - OKLab: L (0 decimals), A/B (2 decimals)
+ * - OKLab: L (0 decimals), A/B (2 decimals, trailing zero kept so the width is stable)
  * - OKLCH: L/C/H (0 decimals)
  * - Lab: L/A/B (0 decimals)
  * - LCH: L/C/H (0 decimals)
@@ -38,7 +38,9 @@ export function formatChannel(space: ColorSpace, key: string, val: number): stri
 
   if (space === 'oklab') {
     if (key === 'L') return String(round(val, 0))
-    if (key === 'A' || key === 'B') return String(round(val, 2))
+    // Fixed two decimals (0.10, not 0.1) so the value keeps its width while
+    // dragging: trimmed zeros made the rest of the string jump (#60)
+    if (key === 'A' || key === 'B') return round(val, 2) === 0 ? '0' : round(val, 2).toFixed(2)
   } else if (space === 'oklch') {
     if (key === 'L') return String(round(val, 0))
     if (key === 'C') return String(round(val, 0)) // 0-100 percentage
