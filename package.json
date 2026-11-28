@@ -34,7 +34,8 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
-    }
+    },
+    "./undefined.css": "./dist/undefined.css"
   },
   "main": "dist/index.js",
   "module": "dist/index.js",
