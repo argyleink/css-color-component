@@ -63,7 +63,7 @@ jobs:
         run: |
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
-          git add -f dist/color-input.min.js dist/index.js
+          git add -f dist/color-input.min.js dist/index.js dist/undefined.css
           git diff --staged --quiet || git commit -m "build: publish v${{ steps.package-version.outputs.version }} to CDN"
 
       - name: Create/Update CDN tag
@@ -84,6 +84,7 @@ jobs:
           # Purge both the minified and ES module versions
           curl -X POST "https://purge.jsdelivr.net/gh/${{ github.repository }}@cdn-latest/dist/color-input.min.js"
           curl -X POST "https://purge.jsdelivr.net/gh/${{ github.repository }}@cdn-latest/dist/index.js"
+          curl -X POST "https://purge.jsdelivr.net/gh/${{ github.repository }}@cdn-latest/dist/undefined.css"
           echo "CDN cache purged successfully"
 
       - name: Upload release assets

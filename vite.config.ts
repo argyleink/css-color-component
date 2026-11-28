@@ -1,5 +1,6 @@
 import { defineConfig } from 'vite'
 import { resolve } from 'node:path'
+import { readFileSync } from 'node:fs'
 import dts from 'vite-plugin-dts'
 
 export default defineConfig(({ command, mode }) => {
@@ -14,6 +15,13 @@ export default defineConfig(({ command, mode }) => {
       fs: { allow: ['..'] }
     },
     plugins: isServe && !isTest ? [] : [
+      // Pre-upgrade placeholder sheet (#12), shipped as-is next to the bundle
+      {
+        name: 'undefined-css',
+        generateBundle() {
+          this.emitFile({ type: 'asset', fileName: 'undefined.css', source: readFileSync(resolve(__dirname, 'src/undefined.css'), 'utf8') })
+        }
+      },
       dts({
         include: ['src/**/*'],
         outDir: 'dist',

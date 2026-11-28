@@ -80,6 +80,20 @@ These pieces stay synchronized whether the value changes through the UI, attribu
 The custom element auto-registers on import. Use it in any HTML document or framework. The popover UI relies on the [Popover API](https://developer.mozilla.org/en-US/docs/Web/API/Popover_API), and the EyeDropper tool appears only in browsers that support the EyeDropper API.
 :::
 
+### No layout shift while the script loads
+
+Until the module runs, `<color-input>` is an undefined, empty element with no height, so the picker popping in pushes everything below it down by about 40px. Load the small placeholder sheet in `<head>` and the undefined element draws a static swatch and value field at the exact size of the real one, holding the authored `value`:
+
+```html
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/argyleink/css-color-component/dist/undefined.css">
+```
+
+From npm it is `hdr-color-input/undefined.css`. Every rule is scoped to `color-input:not(:defined)`, so it switches off the moment the element is defined. Where [typed `attr()`](https://developer.mozilla.org/en-US/docs/Web/CSS/attr) is supported the placeholder swatch already shows the authored color.
+
+:::note
+The placeholder matches the default closed layout (swatch plus field). If you restyle the host or render the panel inline, add your own `color-input:not(:defined)` size rule to match.
+:::
+
 ## How the picker behaves
 
 The component chooses a different editing plane depending on the current colorspace:

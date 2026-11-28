@@ -1,0 +1,63 @@
+/*
+ * <color-input> before it upgrades
+ *
+ * Until the script loads, an undefined <color-input> is an empty inline
+ * element with no height, so the picker popping in pushes the page down
+ * (CLS, issue #12). This sheet draws a static stand-in at the exact size of
+ * the upgraded element: the swatch and the value field, holding the
+ * authored value. Load it in <head>, before the script:
+ *
+ *   <link rel="stylesheet" href="hdr-color-input/undefined.css">
+ *
+ * Every rule is scoped to :not(:defined), so it switches itself off the
+ * moment the element is defined.
+ */
+color-input:not(:defined) {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  color-scheme: light dark;
+}
+
+/* The swatch: 1.25rem round chip (the authored color where typed attr() works) */
+color-input:not(:defined)::before {
+  content: "";
+  flex-shrink: 0;
+  inline-size: 1.25rem;
+  block-size: 1.25rem;
+  border-radius: 1e4px;
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, CanvasText, transparent 92%);
+  background: color-mix(in oklab, CanvasText, Canvas 80%);
+  background: attr(value type(<color>), color-mix(in oklab, CanvasText, Canvas 80%));
+}
+
+/* The value field: same font size, line height, padding and border as the
+   shadow <input>, so it lands on the same height in every engine. The
+   zero-width space keeps a line box when there is no value attribute */
+color-input:not(:defined)::after {
+  content: attr(value) "\200B";
+  flex: 1;
+  min-inline-size: 0;
+  overflow: hidden;
+  white-space: pre;
+  /* The UA's own form-control font, which sizes the shadow <input>: 13.33px
+     in Chromium and Firefox, 13px in WebKit on Windows, and whatever the
+     platform uses elsewhere. Firefox drops the -webkit- keyword and keeps
+     the 13.33px */
+  font-size: 13.333333px;
+  font: -webkit-small-control;
+  font-family: inherit;
+  font-weight: 400;
+  font-style: normal;
+  line-height: normal;
+  letter-spacing: normal;
+  padding: 1ch 1.5ch;
+  border: 1px solid color-mix(in oklab, CanvasText, Canvas 80%);
+  border-radius: 0.5rem;
+  background: color-mix(in oklab, CanvasText, Canvas 92%);
+  color: CanvasText;
+}
+
+color-input[hidden]:not(:defined) {
+  display: none;
+}
