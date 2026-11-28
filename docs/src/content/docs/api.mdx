@@ -142,6 +142,20 @@ The `no-gamut-boundaries` attribute hides the gamut boundary guide lines from th
 Use `no-gamut-boundaries` when you want a cleaner color field presentation without the extra gamut reference overlays.
 :::
 
+### no-hex-shorten
+
+By default the picker writes the shortest hex that holds the same bytes, so white comes out as `#fff` and translucent white as `#fff8`. The `no-hex-shorten` attribute keeps every hex the picker writes at full length (`#ffffff`, `#ffffff88`): slider and area edits, the eye dropper, switching to hex, a short hex typed into the field, and a short `value` on load.
+
+```html
+<color-input value="#fff" no-hex-shorten></color-input>
+```
+
+<ColorInputDemo value="#fff" colorspace="hex" noHexShorten={true} showCode={false} />
+
+:::tip
+Use `no-hex-shorten` when the value goes somewhere that expects a fixed-length hex, such as a database column, a design-token file, or an API that only accepts `#rrggbb`.
+:::
+
 ### name
 
 The form field name. `<color-input>` is a [form-associated custom element](https://html.spec.whatwg.org/multipage/custom-elements.html#form-associated-custom-elements), so with a `name` its current `value` is submitted with the form and shows up in `FormData`, just like `<input>`.
@@ -316,6 +330,13 @@ picker.noAlpha = true; // Hides alpha controls
 picker.noAlpha = false; // Shows alpha controls
 ```
 
+**noHexShorten** - Keeps hex output at 6/8 digits
+
+```js
+console.log(picker.noHexShorten); // false
+picker.noHexShorten = true; // white is written as #ffffff, not #fff
+```
+
 **showGamutBoundaries** - Controls gamut boundary guide visibility
 
 ```js
@@ -341,7 +362,7 @@ console.log(picker.contrastColor); // "white" or "black"
 **form** / **labels** / **validity** / **validationMessage** / **willValidate** - The standard form-control properties, backed by `ElementInternals`. `checkValidity()` and `reportValidity()` are available too.
 
 :::note
-`value`, `colorspace`, `initialColorspace`, `theme`, `noAlpha`, `showGamutBoundaries`, `name`, and `disabled` reflect to attributes. `gamut` and `contrastColor` are derived read-only values.
+`value`, `colorspace`, `initialColorspace`, `theme`, `noAlpha`, `noHexShorten`, `showGamutBoundaries`, `name`, and `disabled` reflect to attributes. `gamut` and `contrastColor` are derived read-only values.
 :::
 
 ## Methods

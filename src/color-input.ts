@@ -75,7 +75,7 @@ if (typeof sheet.replaceSync === 'function') {
 }
 
 export class ColorInput extends HTMLElement {
-  static get observedAttributes() { return ['value', 'colorspace', 'theme', 'no-alpha', 'no-gamut-boundaries', 'initial-colorspace', 'aria-label'] }
+  static get observedAttributes() { return ['value', 'colorspace', 'theme', 'no-alpha', 'no-gamut-boundaries', 'no-hex-shorten', 'initial-colorspace', 'aria-label'] }
 
   // Form-associated custom element (HTML § 4.13.7): takes part in <form>
   // submission, FormData, reset, disabled <fieldset>s, and <label for>.
@@ -95,6 +95,8 @@ export class ColorInput extends HTMLElement {
   #anchor: Signal<HTMLElement | null> = signal(null)
   #error = signal<string | null>(null)
   #noAlpha = signal(false)
+  // Hex the picker writes stays 6/8 digits (#ffffff, never #fff)
+  #noHexShorten = signal(false)
   #showGamutBoundaries = signal(true)
 
   // The opaque surface the preview paints the color on (the panel's Canvas).
@@ -190,6 +192,9 @@ export class ColorInput extends HTMLElement {
         const tempStr = serialize(converted, { precision: 12 })
         newValue = gencolor(next, displayChannels(next, tempStr).ch)
       }
+      if (next === 'hex') {
+        newValue = this.#hexOut(newValue)
+      }
       this.#switchOrigin = { value: origin.value, space: origin.space, shown: newValue }
       this.#value.value = newValue
       this.setAttribute('value', newValue)
@@ -213,6 +218,19 @@ export class ColorInput extends HTMLElement {
     this.#noAlpha.value = !!v
     if (v) this.setAttribute('no-alpha', '')
     else this.removeAttribute('no-alpha')
+  }
+
+  get noHexShorten() { return this.#noHexShorten.value }
+  set noHexShorten(v: boolean) {
+    this.#noHexShorten.value = !!v
+    if (v) this.setAttribute('no-hex-shorten', '')
+    else this.removeAttribute('no-hex-shorten')
+  }
+
+  // #rgb / #rgba → #rrggbb / #rrggbbaa when `no-hex-shorten` is set; any
+  // other string passes through untouched
+  #hexOut(color: string): string {
+    return this.#noHexShorten.value && /^#(?:[0-9a-f]{3}){1,2}$|^#[0-9a-f]{4}$/i.test(color) ? expandHex(color) : color
   }
 
   get showGamutBoundaries() { return this.#showGamutBoundaries.value }
@@ -455,7 +473,8 @@ export class ColorInput extends HTMLElement {
     // Initialize AreaPicker only when visible
     const areaPickerEl = this.#root.querySelector<HTMLElement>('.area-picker')
     if (areaPickerEl && getComputedStyle(areaPickerEl).display !== 'none') {
-      this.#areaPicker = new AreaPicker(areaPickerEl, (color, isDragging) => {
+      this.#areaPicker = new AreaPicker(areaPickerEl, (picked, isDragging) => {
+        const color = this.#hexOut(picked)
         this.#value.value = color
         this.#programmaticUpdate = true
         this.setAttribute('value', color)
@@ -490,7 +509,7 @@ export class ColorInput extends HTMLElement {
               const serialized = serialize(converted, {
                 format: space === "hex" ? "hex" : undefined,
               })
-              const color = gencolor(space, displayChannels(space, serialized).ch)
+              const color = this.#hexOut(gencolor(space, displayChannels(space, serialized).ch))
               this.#value.value = color
               this.#programmaticUpdate = true
               this.setAttribute('value', color)
@@ -787,7 +806,7 @@ export class ColorInput extends HTMLElement {
         const normalized = gencolor(this.#space.value, ch)
         const keep = this.#space.value === 'hex' && /^#(?:[0-9a-f]{3}){1,2}$|^#(?:[0-9a-f]{4}){1,2}$/.test(authored)
           && expandHex(authored) === expandHex(normalized)
-        this.#value.value = keep ? authored : normalized
+        this.#value.value = this.#hexOut(keep ? authored : normalized)
       } catch {}
     }
 
@@ -933,6 +952,9 @@ export class ColorInput extends HTMLElement {
     if (name === 'no-gamut-boundaries') {
       this.#showGamutBoundaries.value = value === null
     }
+    if (name === 'no-hex-shorten') {
+      this.#noHexShorten.value = value !== null
+    }
   }
 
   // Bring the panel's space select, sliders and number fields in line with a
@@ -979,11 +1001,13 @@ export class ColorInput extends HTMLElement {
       const spaceChanged = nextSpace !== this.#space.value
       this.#cancelPendingApply?.()
 
-      // Update value and colorspace
+      // Update value and colorspace (typed short hex grows to 6/8 digits
+      // under `no-hex-shorten`)
+      const committed = this.#hexOut(inputValue)
       this.#space.value = nextSpace
-      this.#value.value = inputValue
+      this.#value.value = committed
       this.#programmaticUpdate = true
-      this.setAttribute('value', inputValue)
+      this.setAttribute('value', committed)
       this.setAttribute('colorspace', nextSpace)
       this.#programmaticUpdate = false
       if (this.#spaceSelect) this.#spaceSelect.value = nextSpace
@@ -1300,7 +1324,7 @@ export class ColorInput extends HTMLElement {
       }
 
       const apply = () => {
-        const next = gencolor(space, ch)
+        const next = this.#hexOut(gencolor(space, ch))
         this.#value.value = next
         this.#programmaticUpdate = true
         this.setAttribute('value', next)
