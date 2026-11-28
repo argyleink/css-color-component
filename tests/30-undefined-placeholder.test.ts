@@ -29,7 +29,7 @@ describe('undefined placeholder sheet (#12)', () => {
     expect(shadow).toMatch(/\.text-input \{[^}]*padding: 1ch 1\.5ch/)
     expect(css).toMatch(/padding: 1ch 1\.5ch/)
     // keeps a line box with no value attribute
-    expect(css).toContain('content: attr(value) "\200B"')
+    expect(css).toContain('content: attr(value) "' + String.fromCharCode(92) + '200B"')
   })
 
   it('is exported from the package and emitted by the build', () => {
